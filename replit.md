@@ -148,3 +148,9 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - Feb 13, 2026: Created my-purchases page (client/src/pages/my-purchases.tsx) for guest viewer purchase history lookup
 - Feb 13, 2026: Added "Buy Votes" button on competition detail page contestant cards
 - Feb 13, 2026: Updated login page with guest viewer purchase lookup link
+- Feb 13, 2026: Added Join/Host system with Firestore collections (joinSettings, joinSubmissions, hostSettings, hostSubmissions)
+- Feb 13, 2026: Built Join page (client/src/pages/join.tsx) - dynamic form with admin-configurable fields, optional payment
+- Feb 13, 2026: Built Host page (client/src/pages/host.tsx) - event proposal form with admin-configurable fields, optional payment
+- Feb 13, 2026: Added admin dashboard tabs for Join and Host management (settings configuration + submission review)
+- Feb 13, 2026: Added Join and Host links to navbar (desktop + mobile)
+- Feb 13, 2026: Updated login page with guest viewer purchase lookup link

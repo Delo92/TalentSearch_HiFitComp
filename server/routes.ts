@@ -17,6 +17,10 @@ import {
   firestoreSettings,
   firestoreViewerProfiles,
   firestoreVotePurchases,
+  firestoreJoinSettings,
+  firestoreJoinSubmissions,
+  firestoreHostSettings,
+  firestoreHostSubmissions,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import {
@@ -758,6 +762,213 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Update settings error:", error);
       res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+
+  app.get("/api/join/settings", async (_req, res) => {
+    try {
+      const settings = await firestoreJoinSettings.get();
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Get join settings error:", error);
+      res.status(500).json({ message: "Failed to get join settings" });
+    }
+  });
+
+  app.put("/api/admin/join/settings", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const updated = await firestoreJoinSettings.update(req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update join settings error:", error);
+      res.status(500).json({ message: "Failed to update join settings" });
+    }
+  });
+
+  app.post("/api/join/submit", async (req, res) => {
+    try {
+      const settings = await firestoreJoinSettings.get();
+      if (!settings.isActive) {
+        return res.status(400).json({ message: "Join applications are currently closed" });
+      }
+
+      const { fullName, email, phone, address, city, state, zip, bio, category, socialLinks, mediaUrls, competitionId, dataDescriptor, dataValue } = req.body;
+      if (!fullName || !email) {
+        return res.status(400).json({ message: "Name and email are required" });
+      }
+
+      let transactionId: string | null = null;
+      let amountPaid = 0;
+      if (settings.mode === "purchase" && settings.price > 0) {
+        if (!dataDescriptor || !dataValue) {
+          return res.status(400).json({ message: "Payment is required to join" });
+        }
+        const chargeResult = await chargePaymentNonce(
+          settings.price / 100,
+          dataDescriptor,
+          dataValue,
+          `Join competition application`,
+          email,
+          fullName,
+        );
+        transactionId = chargeResult.transactionId;
+        amountPaid = settings.price;
+      }
+
+      const submission = await firestoreJoinSubmissions.create({
+        competitionId: competitionId || null,
+        fullName: fullName.trim(),
+        email: email.toLowerCase().trim(),
+        phone: phone || null,
+        address: address || null,
+        city: city || null,
+        state: state || null,
+        zip: zip || null,
+        bio: bio || null,
+        category: category || null,
+        socialLinks: socialLinks || null,
+        mediaUrls: mediaUrls || [],
+        transactionId,
+        amountPaid,
+      });
+
+      res.status(201).json(submission);
+    } catch (error: any) {
+      console.error("Join submission error:", error);
+      if (error.errorMessage) {
+        return res.status(400).json({ message: `Payment failed: ${error.errorMessage}` });
+      }
+      res.status(500).json({ message: "Submission failed. Please try again." });
+    }
+  });
+
+  app.get("/api/admin/join/submissions", firebaseAuth, requireAdmin, async (_req, res) => {
+    try {
+      const submissions = await firestoreJoinSubmissions.getAll();
+      res.json(submissions);
+    } catch (error: any) {
+      console.error("Get join submissions error:", error);
+      res.status(500).json({ message: "Failed to get submissions" });
+    }
+  });
+
+  app.patch("/api/admin/join/submissions/:id/status", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      const updated = await firestoreJoinSubmissions.updateStatus(req.params.id, status);
+      if (!updated) return res.status(404).json({ message: "Submission not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update join submission error:", error);
+      res.status(500).json({ message: "Failed to update submission" });
+    }
+  });
+
+  app.get("/api/host/settings", async (_req, res) => {
+    try {
+      const settings = await firestoreHostSettings.get();
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Get host settings error:", error);
+      res.status(500).json({ message: "Failed to get host settings" });
+    }
+  });
+
+  app.put("/api/admin/host/settings", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const updated = await firestoreHostSettings.update(req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update host settings error:", error);
+      res.status(500).json({ message: "Failed to update host settings" });
+    }
+  });
+
+  app.post("/api/host/submit", async (req, res) => {
+    try {
+      const settings = await firestoreHostSettings.get();
+      if (!settings.isActive) {
+        return res.status(400).json({ message: "Host applications are currently closed" });
+      }
+
+      const { fullName, email, phone, organization, address, city, state, zip, eventName, eventDescription, eventCategory, eventDate, socialLinks, mediaUrls, dataDescriptor, dataValue } = req.body;
+      if (!fullName || !email || !eventName) {
+        return res.status(400).json({ message: "Name, email, and event name are required" });
+      }
+
+      let transactionId: string | null = null;
+      let amountPaid = 0;
+      if (settings.mode === "purchase" && settings.price > 0) {
+        if (!dataDescriptor || !dataValue) {
+          return res.status(400).json({ message: "Payment is required to host" });
+        }
+        const chargeResult = await chargePaymentNonce(
+          settings.price / 100,
+          dataDescriptor,
+          dataValue,
+          `Host event application: ${eventName}`,
+          email,
+          fullName,
+        );
+        transactionId = chargeResult.transactionId;
+        amountPaid = settings.price;
+      }
+
+      const submission = await firestoreHostSubmissions.create({
+        fullName: fullName.trim(),
+        email: email.toLowerCase().trim(),
+        phone: phone || null,
+        organization: organization || null,
+        address: address || null,
+        city: city || null,
+        state: state || null,
+        zip: zip || null,
+        eventName: eventName.trim(),
+        eventDescription: eventDescription || null,
+        eventCategory: eventCategory || null,
+        eventDate: eventDate || null,
+        socialLinks: socialLinks || null,
+        mediaUrls: mediaUrls || [],
+        transactionId,
+        amountPaid,
+      });
+
+      res.status(201).json(submission);
+    } catch (error: any) {
+      console.error("Host submission error:", error);
+      if (error.errorMessage) {
+        return res.status(400).json({ message: `Payment failed: ${error.errorMessage}` });
+      }
+      res.status(500).json({ message: "Submission failed. Please try again." });
+    }
+  });
+
+  app.get("/api/admin/host/submissions", firebaseAuth, requireAdmin, async (_req, res) => {
+    try {
+      const submissions = await firestoreHostSubmissions.getAll();
+      res.json(submissions);
+    } catch (error: any) {
+      console.error("Get host submissions error:", error);
+      res.status(500).json({ message: "Failed to get submissions" });
+    }
+  });
+
+  app.patch("/api/admin/host/submissions/:id/status", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      const updated = await firestoreHostSubmissions.updateStatus(req.params.id, status);
+      if (!updated) return res.status(404).json({ message: "Submission not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update host submission error:", error);
+      res.status(500).json({ message: "Failed to update submission" });
     }
   });
 

@@ -15,6 +15,10 @@ const COLLECTIONS = {
   LIVERY: "livery",
   SETTINGS: "settings",
   COUNTERS: "counters",
+  JOIN_SETTINGS: "joinSettings",
+  JOIN_SUBMISSIONS: "joinSubmissions",
+  HOST_SETTINGS: "hostSettings",
+  HOST_SUBMISSIONS: "hostSubmissions",
 } as const;
 
 function db() {
@@ -152,6 +156,68 @@ export interface FirestoreSettings {
   defaultVoteCost: number;
   defaultMaxVotesPerDay: number;
   updatedAt: admin.firestore.Timestamp;
+}
+
+export interface FirestoreJoinSettings {
+  mode: "request" | "purchase";
+  price: number;
+  pageTitle: string;
+  pageDescription: string;
+  requiredFields: string[];
+  isActive: boolean;
+  updatedAt: admin.firestore.Timestamp;
+}
+
+export interface FirestoreJoinSubmission {
+  id: string;
+  competitionId: number | null;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  bio: string | null;
+  category: string | null;
+  socialLinks: string | null;
+  mediaUrls: string[];
+  status: "pending" | "approved" | "rejected";
+  transactionId: string | null;
+  amountPaid: number;
+  createdAt: string;
+}
+
+export interface FirestoreHostSettings {
+  mode: "request" | "purchase";
+  price: number;
+  pageTitle: string;
+  pageDescription: string;
+  requiredFields: string[];
+  isActive: boolean;
+  updatedAt: admin.firestore.Timestamp;
+}
+
+export interface FirestoreHostSubmission {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  organization: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  eventName: string;
+  eventDescription: string | null;
+  eventCategory: string | null;
+  eventDate: string | null;
+  socialLinks: string | null;
+  mediaUrls: string[];
+  status: "pending" | "approved" | "rejected";
+  transactionId: string | null;
+  amountPaid: number;
+  createdAt: string;
 }
 
 export const firestoreCategories = {
@@ -694,5 +760,141 @@ export const firestoreSettings = {
 
     const updated = await ref.get();
     return updated.data() as FirestoreSettings;
+  },
+};
+
+const JOIN_SETTINGS_DEFAULTS: Omit<FirestoreJoinSettings, "updatedAt"> = {
+  mode: "request",
+  price: 0,
+  pageTitle: "JOIN A COMPETITION",
+  pageDescription: "Ready to showcase your talent? Submit your application to join an upcoming competition. Fill out the form below with your details and we'll review your entry.",
+  requiredFields: ["fullName", "email", "phone", "bio", "category"],
+  isActive: true,
+};
+
+export const firestoreJoinSettings = {
+  async get(): Promise<FirestoreJoinSettings> {
+    const doc = await db().collection(COLLECTIONS.JOIN_SETTINGS).doc("global").get();
+    if (!doc.exists) {
+      const settings = { ...JOIN_SETTINGS_DEFAULTS, updatedAt: now() };
+      await db().collection(COLLECTIONS.JOIN_SETTINGS).doc("global").set(settings);
+      return settings;
+    }
+    return doc.data() as FirestoreJoinSettings;
+  },
+
+  async update(data: Partial<Omit<FirestoreJoinSettings, "updatedAt">>): Promise<FirestoreJoinSettings> {
+    const ref = db().collection(COLLECTIONS.JOIN_SETTINGS).doc("global");
+    const doc = await ref.get();
+    if (doc.exists) {
+      await ref.update({ ...data, updatedAt: now() });
+    } else {
+      await ref.set({ ...JOIN_SETTINGS_DEFAULTS, ...data, updatedAt: now() });
+    }
+    const updated = await ref.get();
+    return updated.data() as FirestoreJoinSettings;
+  },
+};
+
+export const firestoreJoinSubmissions = {
+  async create(data: Omit<FirestoreJoinSubmission, "id" | "createdAt" | "status">): Promise<FirestoreJoinSubmission> {
+    const docRef = db().collection(COLLECTIONS.JOIN_SUBMISSIONS).doc();
+    const submission: FirestoreJoinSubmission = {
+      ...data,
+      id: docRef.id,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    await docRef.set(submission);
+    return submission;
+  },
+
+  async getAll(): Promise<FirestoreJoinSubmission[]> {
+    const snapshot = await db().collection(COLLECTIONS.JOIN_SUBMISSIONS).get();
+    const items = snapshot.docs.map(doc => doc.data() as FirestoreJoinSubmission);
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  async get(id: string): Promise<FirestoreJoinSubmission | null> {
+    const doc = await db().collection(COLLECTIONS.JOIN_SUBMISSIONS).doc(id).get();
+    if (!doc.exists) return null;
+    return doc.data() as FirestoreJoinSubmission;
+  },
+
+  async updateStatus(id: string, status: "approved" | "rejected"): Promise<FirestoreJoinSubmission | null> {
+    const ref = db().collection(COLLECTIONS.JOIN_SUBMISSIONS).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return null;
+    await ref.update({ status });
+    const updated = await ref.get();
+    return updated.data() as FirestoreJoinSubmission;
+  },
+};
+
+const HOST_SETTINGS_DEFAULTS: Omit<FirestoreHostSettings, "updatedAt"> = {
+  mode: "request",
+  price: 0,
+  pageTitle: "HOST YOUR EVENT",
+  pageDescription: "Want to run your own competition on HiFitComp? Whether you're an event coordinator, brand, or organization, we provide the platform. Submit your event details below and our team will get you set up.",
+  requiredFields: ["fullName", "email", "phone", "eventName", "eventDescription", "eventCategory"],
+  isActive: true,
+};
+
+export const firestoreHostSettings = {
+  async get(): Promise<FirestoreHostSettings> {
+    const doc = await db().collection(COLLECTIONS.HOST_SETTINGS).doc("global").get();
+    if (!doc.exists) {
+      const settings = { ...HOST_SETTINGS_DEFAULTS, updatedAt: now() };
+      await db().collection(COLLECTIONS.HOST_SETTINGS).doc("global").set(settings);
+      return settings;
+    }
+    return doc.data() as FirestoreHostSettings;
+  },
+
+  async update(data: Partial<Omit<FirestoreHostSettings, "updatedAt">>): Promise<FirestoreHostSettings> {
+    const ref = db().collection(COLLECTIONS.HOST_SETTINGS).doc("global");
+    const doc = await ref.get();
+    if (doc.exists) {
+      await ref.update({ ...data, updatedAt: now() });
+    } else {
+      await ref.set({ ...HOST_SETTINGS_DEFAULTS, ...data, updatedAt: now() });
+    }
+    const updated = await ref.get();
+    return updated.data() as FirestoreHostSettings;
+  },
+};
+
+export const firestoreHostSubmissions = {
+  async create(data: Omit<FirestoreHostSubmission, "id" | "createdAt" | "status">): Promise<FirestoreHostSubmission> {
+    const docRef = db().collection(COLLECTIONS.HOST_SUBMISSIONS).doc();
+    const submission: FirestoreHostSubmission = {
+      ...data,
+      id: docRef.id,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    await docRef.set(submission);
+    return submission;
+  },
+
+  async getAll(): Promise<FirestoreHostSubmission[]> {
+    const snapshot = await db().collection(COLLECTIONS.HOST_SUBMISSIONS).get();
+    const items = snapshot.docs.map(doc => doc.data() as FirestoreHostSubmission);
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  async get(id: string): Promise<FirestoreHostSubmission | null> {
+    const doc = await db().collection(COLLECTIONS.HOST_SUBMISSIONS).doc(id).get();
+    if (!doc.exists) return null;
+    return doc.data() as FirestoreHostSubmission;
+  },
+
+  async updateStatus(id: string, status: "approved" | "rejected"): Promise<FirestoreHostSubmission | null> {
+    const ref = db().collection(COLLECTIONS.HOST_SUBMISSIONS).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return null;
+    await ref.update({ status });
+    const updated = await ref.get();
+    return updated.data() as FirestoreHostSubmission;
   },
 };

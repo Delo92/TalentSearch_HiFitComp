@@ -12,6 +12,8 @@ import Dashboard from "@/pages/dashboard";
 import LoginPage from "@/pages/login";
 import CheckoutPage from "@/pages/checkout";
 import MyPurchasesPage from "@/pages/my-purchases";
+import JoinPage from "@/pages/join";
+import HostPage from "@/pages/host";
 
 function Router() {
   return (
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/talent/:id" component={TalentProfilePublic} />
       <Route path="/checkout/:competitionId/:contestantId" component={CheckoutPage} />
       <Route path="/my-purchases" component={MyPurchasesPage} />
+      <Route path="/join" component={JoinPage} />
+      <Route path="/host" component={HostPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>

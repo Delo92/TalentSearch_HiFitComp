@@ -11,7 +11,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +45,45 @@ interface ContestantAdmin {
   };
 }
 
+interface JoinHostSettings {
+  mode: "request" | "purchase";
+  price: number;
+  pageTitle: string;
+  pageDescription: string;
+  requiredFields: string[];
+  isActive: boolean;
+}
+
+interface JoinSubmission {
+  id: string;
+  competitionId: number | null;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  bio: string | null;
+  category: string | null;
+  status: "pending" | "approved" | "rejected";
+  transactionId: string | null;
+  amountPaid: number;
+  createdAt: string;
+}
+
+interface HostSubmission {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  organization: string | null;
+  eventName: string;
+  eventDescription: string | null;
+  eventCategory: string | null;
+  eventDate: string | null;
+  status: "pending" | "approved" | "rejected";
+  transactionId: string | null;
+  amountPaid: number;
+  createdAt: string;
+}
+
 export default function AdminDashboard({ user }: { user: any }) {
   const { logout } = useAuth();
   const { toast } = useToast();
@@ -60,6 +100,11 @@ export default function AdminDashboard({ user }: { user: any }) {
   const { data: allContestants } = useQuery<ContestantAdmin[]>({ queryKey: ["/api/admin/contestants"] });
   const { data: liveryItems } = useQuery<SiteLivery[]>({ queryKey: ["/api/livery"] });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const { data: joinSettings } = useQuery<JoinHostSettings>({ queryKey: ["/api/join/settings"] });
+  const { data: joinSubmissions } = useQuery<JoinSubmission[]>({ queryKey: ["/api/admin/join/submissions"] });
+  const { data: hostSettings } = useQuery<JoinHostSettings>({ queryKey: ["/api/host/settings"] });
+  const { data: hostSubmissions } = useQuery<HostSubmission[]>({ queryKey: ["/api/admin/host/submissions"] });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -150,6 +195,58 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
     onError: (err: Error) => {
       toast({ title: "Reset failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const updateJoinSettingsMutation = useMutation({
+    mutationFn: async (data: Partial<JoinHostSettings>) => {
+      await apiRequest("PUT", "/api/admin/join/settings", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/join/settings"] });
+      toast({ title: "Join settings updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const updateJoinSubmissionMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      await apiRequest("PATCH", `/api/admin/join/submissions/${id}/status`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/join/submissions"] });
+      toast({ title: "Submission updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const updateHostSettingsMutation = useMutation({
+    mutationFn: async (data: Partial<JoinHostSettings>) => {
+      await apiRequest("PUT", "/api/admin/host/settings", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/settings"] });
+      toast({ title: "Host settings updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const updateHostSubmissionMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      await apiRequest("PATCH", `/api/admin/host/submissions/${id}/status`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/host/submissions"] });
+      toast({ title: "Submission updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
     },
   });
 
@@ -274,6 +371,12 @@ export default function AdminDashboard({ user }: { user: any }) {
             </TabsTrigger>
             <TabsTrigger value="livery" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-livery">
               <Image className="h-4 w-4 mr-1" /> Livery
+            </TabsTrigger>
+            <TabsTrigger value="join" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-join">
+              <UserPlus className="h-4 w-4 mr-1" /> Join
+            </TabsTrigger>
+            <TabsTrigger value="host" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-host">
+              <Megaphone className="h-4 w-4 mr-1" /> Host
             </TabsTrigger>
           </TabsList>
 
@@ -427,6 +530,291 @@ export default function AdminDashboard({ user }: { user: any }) {
                 <p className="text-sm text-white/30">No livery items configured yet. Restart the app to seed defaults.</p>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="join">
+            <div className="space-y-6">
+              {joinSettings && (
+                <div className="rounded-md bg-white/5 border border-white/5 p-5" data-testid="join-settings-panel">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+                    <div className="flex items-center gap-3">
+                      <Settings className="h-5 w-5 text-orange-400" />
+                      <h3 className="font-bold text-lg">Join Settings</h3>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-white/40">Active</span>
+                      <Switch
+                        checked={joinSettings.isActive}
+                        onCheckedChange={(val) => updateJoinSettingsMutation.mutate({ isActive: val })}
+                        data-testid="switch-join-active"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Mode</Label>
+                      <Select value={joinSettings.mode} onValueChange={(val) => updateJoinSettingsMutation.mutate({ mode: val as "request" | "purchase" })}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-join-mode">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-white/10">
+                          <SelectItem value="request">Free Application</SelectItem>
+                          <SelectItem value="purchase">Paid Entry</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {joinSettings.mode === "purchase" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-white/60">Price (cents)</Label>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-white/30" />
+                          <Input
+                            type="number"
+                            defaultValue={joinSettings.price}
+                            onBlur={(e) => updateJoinSettingsMutation.mutate({ price: parseInt(e.target.value) || 0 })}
+                            className="bg-white/5 border-white/10 text-white"
+                            data-testid="input-join-price"
+                          />
+                        </div>
+                        <p className="text-xs text-white/30">${((joinSettings.price || 0) / 100).toFixed(2)}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Page Title</Label>
+                      <Input
+                        defaultValue={joinSettings.pageTitle}
+                        onBlur={(e) => updateJoinSettingsMutation.mutate({ pageTitle: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white"
+                        data-testid="input-join-title"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Page Description</Label>
+                      <Textarea
+                        defaultValue={joinSettings.pageDescription}
+                        onBlur={(e) => updateJoinSettingsMutation.mutate({ pageDescription: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white resize-none min-h-[80px]"
+                        data-testid="input-join-description"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Required Fields</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {["fullName", "email", "phone", "address", "city", "state", "zip", "bio", "category", "socialLinks"].map((field) => {
+                          const active = joinSettings.requiredFields?.includes(field);
+                          return (
+                            <button
+                              key={field}
+                              onClick={() => {
+                                const current = joinSettings.requiredFields || [];
+                                const updated = active ? current.filter((f) => f !== field) : [...current, field];
+                                updateJoinSettingsMutation.mutate({ requiredFields: updated });
+                              }}
+                              className={`text-xs px-3 py-1.5 border transition-colors ${active ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-white/5 border-white/10 text-white/40 hover:text-white/60"}`}
+                              data-testid={`toggle-join-field-${field}`}
+                            >
+                              {field}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-white/20 mt-1">Click to toggle required fields on the join form.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-bold text-lg mb-3">Join Submissions ({joinSubmissions?.length || 0})</h3>
+                {joinSubmissions && joinSubmissions.length > 0 ? (
+                  <div className="space-y-3">
+                    {joinSubmissions.map((sub) => (
+                      <div key={sub.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`join-sub-${sub.id}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <h4 className="font-medium">{sub.fullName}</h4>
+                            <p className="text-xs text-white/30">{sub.email} {sub.category && `| ${sub.category}`}</p>
+                            {sub.bio && <p className="text-xs text-white/40 mt-1 line-clamp-2">{sub.bio}</p>}
+                            {sub.amountPaid > 0 && (
+                              <p className="text-xs text-green-400 mt-1">Paid ${(sub.amountPaid / 100).toFixed(2)} {sub.transactionId && `(${sub.transactionId})`}</p>
+                            )}
+                            <p className="text-xs text-white/20 mt-1">{new Date(sub.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`border-0 ${sub.status === "approved" ? "bg-green-500/20 text-green-400" : sub.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                              {sub.status}
+                            </Badge>
+                            {sub.status === "pending" && (
+                              <>
+                                <Button size="icon" onClick={() => updateJoinSubmissionMutation.mutate({ id: sub.id, status: "approved" })}
+                                  className="bg-green-500/20 text-green-400 border-0" data-testid={`button-approve-join-${sub.id}`}>
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" onClick={() => updateJoinSubmissionMutation.mutate({ id: sub.id, status: "rejected" })}
+                                  className="bg-red-500/20 text-red-400 border-0" data-testid={`button-reject-join-${sub.id}`}>
+                                  <XIcon className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+                    <UserPlus className="h-8 w-8 text-white/10 mx-auto mb-2" />
+                    <p className="text-sm text-white/30">No join submissions yet.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="host">
+            <div className="space-y-6">
+              {hostSettings && (
+                <div className="rounded-md bg-white/5 border border-white/5 p-5" data-testid="host-settings-panel">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+                    <div className="flex items-center gap-3">
+                      <Settings className="h-5 w-5 text-orange-400" />
+                      <h3 className="font-bold text-lg">Host Settings</h3>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-white/40">Active</span>
+                      <Switch
+                        checked={hostSettings.isActive}
+                        onCheckedChange={(val) => updateHostSettingsMutation.mutate({ isActive: val })}
+                        data-testid="switch-host-active"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Mode</Label>
+                      <Select value={hostSettings.mode} onValueChange={(val) => updateHostSettingsMutation.mutate({ mode: val as "request" | "purchase" })}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-host-mode">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-white/10">
+                          <SelectItem value="request">Free Application</SelectItem>
+                          <SelectItem value="purchase">Paid Entry</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {hostSettings.mode === "purchase" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-white/60">Price (cents)</Label>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-white/30" />
+                          <Input
+                            type="number"
+                            defaultValue={hostSettings.price}
+                            onBlur={(e) => updateHostSettingsMutation.mutate({ price: parseInt(e.target.value) || 0 })}
+                            className="bg-white/5 border-white/10 text-white"
+                            data-testid="input-host-price"
+                          />
+                        </div>
+                        <p className="text-xs text-white/30">${((hostSettings.price || 0) / 100).toFixed(2)}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Page Title</Label>
+                      <Input
+                        defaultValue={hostSettings.pageTitle}
+                        onBlur={(e) => updateHostSettingsMutation.mutate({ pageTitle: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white"
+                        data-testid="input-host-title"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Page Description</Label>
+                      <Textarea
+                        defaultValue={hostSettings.pageDescription}
+                        onBlur={(e) => updateHostSettingsMutation.mutate({ pageDescription: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white resize-none min-h-[80px]"
+                        data-testid="input-host-description"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/60">Required Fields</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {["fullName", "email", "phone", "organization", "address", "city", "state", "zip", "eventName", "eventDescription", "eventCategory", "eventDate", "socialLinks"].map((field) => {
+                          const active = hostSettings.requiredFields?.includes(field);
+                          return (
+                            <button
+                              key={field}
+                              onClick={() => {
+                                const current = hostSettings.requiredFields || [];
+                                const updated = active ? current.filter((f) => f !== field) : [...current, field];
+                                updateHostSettingsMutation.mutate({ requiredFields: updated });
+                              }}
+                              className={`text-xs px-3 py-1.5 border transition-colors ${active ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-white/5 border-white/10 text-white/40 hover:text-white/60"}`}
+                              data-testid={`toggle-host-field-${field}`}
+                            >
+                              {field}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-white/20 mt-1">Click to toggle required fields on the host form.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-bold text-lg mb-3">Host Submissions ({hostSubmissions?.length || 0})</h3>
+                {hostSubmissions && hostSubmissions.length > 0 ? (
+                  <div className="space-y-3">
+                    {hostSubmissions.map((sub) => (
+                      <div key={sub.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`host-sub-${sub.id}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <h4 className="font-medium">{sub.eventName}</h4>
+                            <p className="text-xs text-white/30">{sub.fullName} | {sub.email}</p>
+                            {sub.organization && <p className="text-xs text-white/40">{sub.organization}</p>}
+                            {sub.eventCategory && <p className="text-xs text-white/40 mt-1">Category: {sub.eventCategory}</p>}
+                            {sub.eventDate && <p className="text-xs text-white/40">Date: {sub.eventDate}</p>}
+                            {sub.eventDescription && <p className="text-xs text-white/40 mt-1 line-clamp-2">{sub.eventDescription}</p>}
+                            {sub.amountPaid > 0 && (
+                              <p className="text-xs text-green-400 mt-1">Paid ${(sub.amountPaid / 100).toFixed(2)} {sub.transactionId && `(${sub.transactionId})`}</p>
+                            )}
+                            <p className="text-xs text-white/20 mt-1">{new Date(sub.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`border-0 ${sub.status === "approved" ? "bg-green-500/20 text-green-400" : sub.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                              {sub.status}
+                            </Badge>
+                            {sub.status === "pending" && (
+                              <>
+                                <Button size="icon" onClick={() => updateHostSubmissionMutation.mutate({ id: sub.id, status: "approved" })}
+                                  className="bg-green-500/20 text-green-400 border-0" data-testid={`button-approve-host-${sub.id}`}>
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" onClick={() => updateHostSubmissionMutation.mutate({ id: sub.id, status: "rejected" })}
+                                  className="bg-red-500/20 text-red-400 border-0" data-testid={`button-reject-host-${sub.id}`}>
+                                  <XIcon className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+                    <Megaphone className="h-8 w-8 text-white/10 mx-auto mb-2" />
+                    <p className="text-sm text-white/30">No host submissions yet.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
