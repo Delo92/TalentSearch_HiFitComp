@@ -70,7 +70,7 @@ export default function LoginPage() {
 
       <div
         className="relative h-[300px] bg-cover bg-center flex items-end justify-center"
-        style={{ backgroundImage: `url(${getImage("breadcrumb_bg", "/images/template/breadcrumb-bg.jpg")})` }}
+        style={{ backgroundImage: `url(${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")})` }}
       >
         <div className="absolute inset-0 bg-black/60" />
         <div className="relative z-10 bg-white px-10 py-4 mb-[-1px]">

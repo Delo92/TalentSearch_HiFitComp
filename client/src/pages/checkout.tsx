@@ -264,7 +264,7 @@ export default function CheckoutPage() {
 
       <section
         className="relative h-[270px] md:h-[300px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcrumb-bg.jpg")}')` }}
+        style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")}')` }}
       >
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">

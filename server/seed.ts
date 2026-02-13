@@ -134,52 +134,35 @@ export async function seedDatabase() {
 
 const LIVERY_DEFAULTS = [
   { imageKey: "logo", label: "Site Logo", defaultUrl: "/images/template/logo.png" },
-  { imageKey: "hero_background", label: "Hero Background", defaultUrl: "/images/template/bg-1.jpg" },
-  { imageKey: "feature_background", label: "Feature Section Background", defaultUrl: "/images/template/bg-2.jpg" },
-  { imageKey: "cta_background", label: "Call to Action Background", defaultUrl: "/images/template/breadcumb.jpg" },
+  { imageKey: "hero_background", label: "Hero Background (Landing)", defaultUrl: "/images/template/bg-1.jpg" },
+  { imageKey: "feature_background", label: "Feature Section Background (Landing)", defaultUrl: "/images/template/bg-2.jpg" },
+  { imageKey: "cta_background", label: "Call to Action Background (Landing)", defaultUrl: "/images/template/breadcumb.jpg" },
+  { imageKey: "breadcrumb_bg", label: "Page Header Background (Login, Join, Host, Checkout, Purchases)", defaultUrl: "/images/template/breadcumb.jpg" },
   { imageKey: "competitions_header", label: "Competitions Page Header", defaultUrl: "/images/template/breadcumb2.jpg" },
   { imageKey: "competition_detail_header", label: "Competition Detail Header", defaultUrl: "/images/template/breadcumb3.jpg" },
-  { imageKey: "category_music", label: "Category Card - Music", defaultUrl: "/images/template/a1.jpg" },
-  { imageKey: "category_modeling", label: "Category Card - Modeling", defaultUrl: "/images/template/a2.jpg" },
-  { imageKey: "category_bodybuilding", label: "Category Card - Bodybuilding", defaultUrl: "/images/template/b1.jpg" },
-  { imageKey: "category_dance", label: "Category Card - Dance", defaultUrl: "/images/template/a4.jpg" },
-  { imageKey: "competition_card_fallback", label: "Competition Card Fallback", defaultUrl: "/images/template/e1.jpg" },
-  { imageKey: "talent_profile_fallback", label: "Talent Profile Fallback", defaultUrl: "/images/template/a1.jpg" },
-  { imageKey: "bg_3", label: "Background Image 3", defaultUrl: "/images/template/bg-3.jpg" },
-  { imageKey: "bg_4", label: "Background Image 4", defaultUrl: "/images/template/bg-4.jpg" },
-  { imageKey: "artist_a3", label: "Artist Image - A3", defaultUrl: "/images/template/a3.jpg" },
-  { imageKey: "artist_a5", label: "Artist Image - A5", defaultUrl: "/images/template/a5.jpg" },
-  { imageKey: "artist_a6", label: "Artist Image - A6", defaultUrl: "/images/template/a6.jpg" },
-  { imageKey: "artist_a7", label: "Artist Image - A7", defaultUrl: "/images/template/a7.jpg" },
-  { imageKey: "artist_a8", label: "Artist Image - A8", defaultUrl: "/images/template/a8.jpg" },
-  { imageKey: "artist_a9", label: "Artist Image - A9", defaultUrl: "/images/template/a9.jpg" },
-  { imageKey: "artist_a10", label: "Artist Image - A10", defaultUrl: "/images/template/a10.jpg" },
-  { imageKey: "artist_a11", label: "Artist Image - A11", defaultUrl: "/images/template/a11.jpg" },
-  { imageKey: "artist_a12", label: "Artist Image - A12", defaultUrl: "/images/template/a12.jpg" },
-  { imageKey: "bodybuilder_b2", label: "Bodybuilder Image - B2", defaultUrl: "/images/template/b2.jpg" },
-  { imageKey: "bodybuilder_b3", label: "Bodybuilder Image - B3", defaultUrl: "/images/template/b3.jpg" },
-  { imageKey: "bodybuilder_b4", label: "Bodybuilder Image - B4", defaultUrl: "/images/template/b4.jpg" },
-  { imageKey: "event_e1", label: "Event Image - E1", defaultUrl: "/images/template/e1.jpg" },
-  { imageKey: "event_e2", label: "Event Image - E2", defaultUrl: "/images/template/e2.jpg" },
-  { imageKey: "event_e3", label: "Event Image - E3", defaultUrl: "/images/template/e3.jpg" },
-  { imageKey: "event_e4", label: "Event Image - E4", defaultUrl: "/images/template/e4.jpg" },
-  { imageKey: "event_e5", label: "Event Image - E5", defaultUrl: "/images/template/e5.jpg" },
-  { imageKey: "event_e6", label: "Event Image - E6", defaultUrl: "/images/template/e6.jpg" },
-  { imageKey: "featured_artist", label: "Featured Artist", defaultUrl: "/images/template/fa.jpg" },
-  { imageKey: "promo_pa1", label: "Promo Image - PA1", defaultUrl: "/images/template/pa1.jpg" },
-  { imageKey: "promo_pa2", label: "Promo Image - PA2", defaultUrl: "/images/template/pa2.jpg" },
-  { imageKey: "promo_pa3", label: "Promo Image - PA3", defaultUrl: "/images/template/pa3.jpg" },
-  { imageKey: "promo_pa4", label: "Promo Image - PA4", defaultUrl: "/images/template/pa4.jpg" },
-  { imageKey: "promo_pa5", label: "Promo Image - PA5", defaultUrl: "/images/template/pa5.jpg" },
+  { imageKey: "category_music", label: "Category Card - Music (Landing)", defaultUrl: "/images/template/a1.jpg" },
+  { imageKey: "category_modeling", label: "Category Card - Modeling (Landing)", defaultUrl: "/images/template/a2.jpg" },
+  { imageKey: "category_bodybuilding", label: "Category Card - Bodybuilding (Landing)", defaultUrl: "/images/template/b1.jpg" },
+  { imageKey: "category_dance", label: "Category Card - Dance (Landing)", defaultUrl: "/images/template/a4.jpg" },
+  { imageKey: "competition_card_fallback", label: "Default Competition Card Image", defaultUrl: "/images/template/e1.jpg" },
+  { imageKey: "talent_profile_fallback", label: "Default Talent Profile Image", defaultUrl: "/images/template/a1.jpg" },
 ];
 
 export async function seedLivery() {
   const existing = await firestoreLivery.getAll();
   const existingKeys = new Set(existing.map((l) => l.imageKey));
 
+  const validKeys = new Set(LIVERY_DEFAULTS.map((l) => l.imageKey));
+
   for (const item of LIVERY_DEFAULTS) {
     if (!existingKeys.has(item.imageKey)) {
       await firestoreLivery.upsert({ ...item, imageUrl: null });
+    }
+  }
+
+  for (const item of existing) {
+    if (!validKeys.has(item.imageKey)) {
+      await firestoreLivery.delete(item.imageKey);
     }
   }
   console.log(`Livery seeded: ${LIVERY_DEFAULTS.length} slots configured (Firestore)`);

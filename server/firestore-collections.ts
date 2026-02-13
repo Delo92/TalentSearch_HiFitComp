@@ -729,6 +729,10 @@ export const firestoreLivery = {
     const updated = await ref.get();
     return updated.data() as FirestoreLiveryItem;
   },
+
+  async delete(imageKey: string): Promise<void> {
+    await db().collection(COLLECTIONS.LIVERY).doc(imageKey).delete();
+  },
 };
 
 export const firestoreSettings = {
