@@ -52,7 +52,7 @@ const FIELD_LABELS: Record<string, string> = {
 
 export default function JoinPage() {
   const { toast } = useToast();
-  const { getImage } = useLivery();
+  const { getImage, getMedia } = useLivery();
 
   const [form, setForm] = useState<Record<string, string>>({});
   const [cardNumber, setCardNumber] = useState("");
@@ -241,10 +241,12 @@ export default function JoinPage() {
     <div className="min-h-screen bg-black text-white">
       <SiteNavbar />
 
-      <section
-        className="relative h-[270px] md:h-[300px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")}')` }}
-      >
+      <section className="relative h-[270px] md:h-[300px] overflow-hidden">
+        {getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").type === "video" ? (
+          <video src={getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
+        ) : (
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")}')` }} />
+        )}
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
           <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">Get Started</p>

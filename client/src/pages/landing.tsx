@@ -24,7 +24,7 @@ export default function Landing() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-  const { getImage } = useLivery();
+  const { getImage, getMedia } = useLivery();
 
   const cats = useInView();
   const featured = useInView();
@@ -37,7 +37,11 @@ export default function Landing() {
 
       <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <motion.div style={{ y: heroY }} className="absolute inset-0">
-          <img src={getImage("hero_background", "/images/template/bg-1.jpg")} alt="" className="w-full h-full object-cover scale-110" />
+          {getMedia("hero_background", "/images/template/bg-1.jpg").type === "video" ? (
+            <video src={getMedia("hero_background", "/images/template/bg-1.jpg").url} className="w-full h-full object-cover scale-110" autoPlay muted loop playsInline />
+          ) : (
+            <img src={getImage("hero_background", "/images/template/bg-1.jpg")} alt="" className="w-full h-full object-cover scale-110" />
+          )}
           <div className="absolute inset-0 bg-black/35" />
         </motion.div>
 
@@ -100,10 +104,10 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Music, label: "Music", desc: "Singers, rappers, DJs & producers", img: getImage("category_music", "/images/template/a1.jpg") },
-              { icon: Camera, label: "Modeling", desc: "Fashion, fitness & swimwear models", img: getImage("category_modeling", "/images/template/a2.jpg") },
-              { icon: Dumbbell, label: "Bodybuilding", desc: "Physique, classic & open divisions", img: getImage("category_bodybuilding", "/images/template/b1.jpg") },
-              { icon: Star, label: "Dance", desc: "Hip-hop, contemporary & freestyle", img: getImage("category_dance", "/images/template/a4.jpg") },
+              { icon: Music, label: "Music", desc: "Singers, rappers, DJs & producers", media: getMedia("category_music", "/images/template/a1.jpg") },
+              { icon: Camera, label: "Modeling", desc: "Fashion, fitness & swimwear models", media: getMedia("category_modeling", "/images/template/a2.jpg") },
+              { icon: Dumbbell, label: "Bodybuilding", desc: "Physique, classic & open divisions", media: getMedia("category_bodybuilding", "/images/template/b1.jpg") },
+              { icon: Star, label: "Dance", desc: "Hip-hop, contemporary & freestyle", media: getMedia("category_dance", "/images/template/a4.jpg") },
             ].map((cat, i) => (
               <Link href="/competitions" key={cat.label}>
                 <div
@@ -112,11 +116,11 @@ export default function Landing() {
                   data-testid={`card-category-${cat.label.toLowerCase()}`}
                 >
                   <div className="overflow-hidden">
-                    <img
-                      src={cat.img}
-                      alt={cat.label}
-                      className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
+                    {cat.media.type === "video" ? (
+                      <video src={cat.media.url} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" autoPlay muted loop playsInline />
+                    ) : (
+                      <img src={cat.media.url} alt={cat.label} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" />
+                    )}
                   </div>
                   <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-6 px-4 transition-all duration-500">
                     <h4 className="text-white group-hover:text-black uppercase text-base font-bold mb-2 transition-colors duration-500">
@@ -139,7 +143,12 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="relative py-24 md:py-28 overflow-hidden bg-cover bg-center bg-fixed" style={{ backgroundImage: `url('${getImage("feature_background", "/images/template/bg-2.jpg")}')` }}>
+      <section className="relative py-24 md:py-28 overflow-hidden">
+        {getMedia("feature_background", "/images/template/bg-2.jpg").type === "video" ? (
+          <video src={getMedia("feature_background", "/images/template/bg-2.jpg").url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
+        ) : (
+          <div className="absolute inset-0 bg-cover bg-center bg-fixed" style={{ backgroundImage: `url('${getImage("feature_background", "/images/template/bg-2.jpg")}')` }} />
+        )}
         <div className="absolute inset-0 bg-black/65" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div ref={featured.ref} className={`text-center mb-24 transition-all duration-1000 ${featured.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
@@ -206,7 +215,12 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="relative py-24 md:py-28 overflow-hidden bg-cover bg-center bg-fixed" style={{ backgroundImage: `url('${getImage("cta_background", "/images/template/breadcumb.jpg")}')` }}>
+      <section className="relative py-24 md:py-28 overflow-hidden">
+        {getMedia("cta_background", "/images/template/breadcumb.jpg").type === "video" ? (
+          <video src={getMedia("cta_background", "/images/template/breadcumb.jpg").url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
+        ) : (
+          <div className="absolute inset-0 bg-cover bg-center bg-fixed" style={{ backgroundImage: `url('${getImage("cta_background", "/images/template/breadcumb.jpg")}')` }} />
+        )}
         <div className="absolute inset-0 bg-black/65" />
         <div ref={cta.ref} className={`relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${cta.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
           <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>

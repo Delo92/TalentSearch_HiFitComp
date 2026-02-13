@@ -1,8 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import type { SiteLivery } from "@shared/schema";
+
+interface LiveryItem {
+  imageKey: string;
+  label: string;
+  imageUrl: string | null;
+  defaultUrl: string;
+  mediaType?: "image" | "video";
+}
 
 export function useLivery() {
-  const { data: items, isLoading } = useQuery<SiteLivery[]>({
+  const { data: items, isLoading } = useQuery<LiveryItem[]>({
     queryKey: ["/api/livery"],
     staleTime: 5 * 60 * 1000,
   });
@@ -14,5 +21,21 @@ export function useLivery() {
     return item.imageUrl || item.defaultUrl;
   };
 
-  return { items, isLoading, getImage };
+  const getMediaType = (imageKey: string): "image" | "video" => {
+    if (!items) return "image";
+    const item = items.find((i) => i.imageKey === imageKey);
+    return item?.mediaType || "image";
+  };
+
+  const getMedia = (imageKey: string, fallback?: string): { url: string; type: "image" | "video" } => {
+    if (!items) return { url: fallback || "", type: "image" };
+    const item = items.find((i) => i.imageKey === imageKey);
+    if (!item) return { url: fallback || "", type: "image" };
+    return {
+      url: item.imageUrl || item.defaultUrl,
+      type: item?.mediaType || "image",
+    };
+  };
+
+  return { items, isLoading, getImage, getMediaType, getMedia };
 }

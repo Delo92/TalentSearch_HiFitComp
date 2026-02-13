@@ -2,12 +2,16 @@ import { Link } from "wouter";
 import { useLivery } from "@/hooks/use-livery";
 
 export default function SiteFooter() {
-  const { getImage } = useLivery();
+  const { getImage, getMedia } = useLivery();
   return (
     <footer className="bg-[#111111] py-8" data-testid="site-footer">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <img src={getImage("logo", "/images/template/logo.png")} alt="HiFitComp" className="h-32" />
+          {getMedia("logo", "/images/template/logo.png").type === "video" ? (
+            <video src={getMedia("logo", "/images/template/logo.png").url} className="h-32" autoPlay muted loop playsInline />
+          ) : (
+            <img src={getImage("logo", "/images/template/logo.png")} alt="HiFitComp" className="h-32" />
+          )}
         </div>
         <nav className="flex flex-wrap items-center gap-6">
           <Link

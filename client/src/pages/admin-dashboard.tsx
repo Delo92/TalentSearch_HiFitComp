@@ -891,24 +891,42 @@ export default function AdminDashboard({ user }: { user: any }) {
 
           <TabsContent value="livery">
             <div className="mb-4">
-              <p className="text-white/40 text-sm">Upload replacement images for any template slot. Click "Upload" to replace or "Reset" to restore the original.</p>
+              <p className="text-white/40 text-sm">Upload replacement images or short videos (15 seconds max) for any template slot. Click "Upload" to replace or "Reset" to restore the original.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {liveryItems?.map((item) => {
+              {liveryItems?.map((item: any) => {
                 const displayUrl = item.imageUrl || item.defaultUrl;
                 const isCustom = !!item.imageUrl;
+                const isVideo = item.mediaType === "video";
                 return (
                   <div key={item.imageKey} className="rounded-md bg-white/5 border border-white/5 overflow-visible" data-testid={`livery-item-${item.imageKey}`}>
                     <div className="relative aspect-video bg-black/50">
-                      <img
-                        src={displayUrl}
-                        alt={item.label}
-                        className="w-full h-full object-cover"
-                        data-testid={`livery-img-${item.imageKey}`}
-                      />
-                      {isCustom && (
-                        <Badge className="absolute top-2 right-2 bg-orange-500 text-white border-0 text-xs">Custom</Badge>
+                      {isVideo ? (
+                        <video
+                          src={displayUrl}
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          autoPlay
+                          playsInline
+                          data-testid={`livery-video-${item.imageKey}`}
+                        />
+                      ) : (
+                        <img
+                          src={displayUrl}
+                          alt={item.label}
+                          className="w-full h-full object-cover"
+                          data-testid={`livery-img-${item.imageKey}`}
+                        />
                       )}
+                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                        {isVideo && (
+                          <Badge className="bg-blue-500 text-white border-0 text-xs">Video</Badge>
+                        )}
+                        {isCustom && (
+                          <Badge className="bg-orange-500 text-white border-0 text-xs">Custom</Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="p-3">
                       <h4 className="font-medium text-sm mb-0.5" data-testid={`livery-label-${item.imageKey}`}>{item.label}</h4>
@@ -917,7 +935,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                         <input
                           ref={(el) => { fileInputRefs.current[item.imageKey] = el; }}
                           type="file"
-                          accept="image/*"
+                          accept="image/*,video/mp4,video/webm,video/quicktime"
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0];

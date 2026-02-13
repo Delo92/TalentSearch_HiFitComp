@@ -49,7 +49,7 @@ export default function CompetitionDetailPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { getImage } = useLivery();
+  const { getImage, getMedia } = useLivery();
   const { data: competition, isLoading } = useQuery<CompetitionDetail>({
     queryKey: ["/api/competitions", id],
     enabled: !!id,
@@ -104,10 +104,15 @@ export default function CompetitionDetailPage() {
     <div className="min-h-screen bg-black text-white">
       <SiteNavbar />
 
-      <section
-        className="relative h-[270px] md:h-[340px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${competition.coverImage || getImage("competition_detail_header", "/images/template/breadcumb3.jpg")}')` }}
-      >
+      <section className="relative h-[270px] md:h-[340px] overflow-hidden">
+        {(() => {
+          const headerMedia = competition.coverImage ? { url: competition.coverImage, type: "image" as const } : getMedia("competition_detail_header", "/images/template/breadcumb3.jpg");
+          return headerMedia.type === "video" ? (
+            <video src={headerMedia.url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
+          ) : (
+            <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${headerMedia.url}')` }} />
+          );
+        })()}
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
           <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">

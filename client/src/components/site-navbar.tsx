@@ -6,7 +6,7 @@ import { ShoppingCart } from "lucide-react";
 
 export default function SiteNavbar() {
   const { user, isAuthenticated } = useAuth();
-  const { getImage } = useLivery();
+  const { getImage, getMedia } = useLivery();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -23,7 +23,11 @@ export default function SiteNavbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-20">
         <Link href="/" className="flex items-center gap-3" data-testid="link-home">
-          <img src={getImage("logo", "/images/template/logo.png")} alt="HiFitComp" className="h-40" />
+          {getMedia("logo", "/images/template/logo.png").type === "video" ? (
+            <video src={getMedia("logo", "/images/template/logo.png").url} className="h-40" autoPlay muted loop playsInline />
+          ) : (
+            <img src={getImage("logo", "/images/template/logo.png")} alt="HiFitComp" className="h-40" />
+          )}
         </Link>
 
         <button

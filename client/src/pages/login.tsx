@@ -15,7 +15,7 @@ export default function LoginPage() {
   const { login, register, resetPassword, isAuthenticated, error } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { getImage } = useLivery();
+  const { getImage, getMedia } = useLivery();
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -68,10 +68,12 @@ export default function LoginPage() {
     <div className="min-h-screen bg-black text-white">
       <SiteNavbar />
 
-      <div
-        className="relative h-[300px] bg-cover bg-center flex items-end justify-center"
-        style={{ backgroundImage: `url(${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")})` }}
-      >
+      <div className="relative h-[300px] flex items-end justify-center overflow-hidden">
+        {getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").type === "video" ? (
+          <video src={getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
+        ) : (
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")})` }} />
+        )}
         <div className="absolute inset-0 bg-black/60" />
         <div className="relative z-10 bg-white px-10 py-4 mb-[-1px]">
           <h1

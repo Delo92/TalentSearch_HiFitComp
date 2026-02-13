@@ -13,7 +13,7 @@ export default function Competitions() {
     queryKey: ["/api/competitions"],
   });
   const [filter, setFilter] = useState("all");
-  const { getImage } = useLivery();
+  const { getImage, getMedia } = useLivery();
 
   const filtered = competitions?.filter((c) => {
     if (filter === "all") return c.status !== "draft";
@@ -24,10 +24,12 @@ export default function Competitions() {
     <div className="min-h-screen bg-black text-white">
       <SiteNavbar />
 
-      <section
-        className="relative h-[270px] md:h-[340px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${getImage("competitions_header", "/images/template/breadcumb2.jpg")}')` }}
-      >
+      <section className="relative h-[270px] md:h-[340px] overflow-hidden">
+        {getMedia("competitions_header", "/images/template/breadcumb2.jpg").type === "video" ? (
+          <video src={getMedia("competitions_header", "/images/template/breadcumb2.jpg").url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
+        ) : (
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${getImage("competitions_header", "/images/template/breadcumb2.jpg")}')` }} />
+        )}
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
           <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">See what&apos;s new</p>
