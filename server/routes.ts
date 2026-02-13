@@ -40,6 +40,18 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  app.get("/api/firebase-config", (_req, res) => {
+    res.json({
+      apiKey: process.env.FIREBASE_API_KEY,
+      authDomain: "hifitcomp.firebaseapp.com",
+      projectId: "hifitcomp",
+      storageBucket: "hifitcomp.firebasestorage.app",
+      messagingSenderId: "679824704394",
+      appId: "1:679824704394:web:ace3a59115a4645175fe73",
+      measurementId: "G-FPCK9DJDHD",
+    });
+  });
+
   app.get("/api/competitions", async (_req, res) => {
     const comps = await storage.getCompetitions();
     res.json(comps);
