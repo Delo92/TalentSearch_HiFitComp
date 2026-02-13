@@ -4,6 +4,7 @@ import {
   competitions, type Competition, type InsertCompetition,
   contestants, type Contestant, type InsertContestant,
   votes, type Vote, type InsertVote,
+  siteLivery, type SiteLivery, type InsertSiteLivery,
   users,
 } from "@shared/schema";
 import { db } from "./db";
@@ -39,6 +40,11 @@ export interface IStorage {
   getVoteCount(contestantId: number): Promise<number>;
   getTotalVotesByCompetition(competitionId: number): Promise<number>;
   getVotesTodayByIp(competitionId: number, voterIp: string): Promise<number>;
+
+  getAllLivery(): Promise<SiteLivery[]>;
+  getLiveryByKey(imageKey: string): Promise<SiteLivery | undefined>;
+  upsertLivery(item: InsertSiteLivery): Promise<SiteLivery>;
+  updateLiveryImage(imageKey: string, imageUrl: string | null): Promise<SiteLivery | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -206,6 +212,30 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return row?.count || 0;
+  }
+
+  async getAllLivery(): Promise<SiteLivery[]> {
+    return db.select().from(siteLivery).orderBy(siteLivery.label);
+  }
+
+  async getLiveryByKey(imageKey: string): Promise<SiteLivery | undefined> {
+    const [row] = await db.select().from(siteLivery).where(eq(siteLivery.imageKey, imageKey));
+    return row || undefined;
+  }
+
+  async upsertLivery(item: InsertSiteLivery): Promise<SiteLivery> {
+    const existing = await this.getLiveryByKey(item.imageKey);
+    if (existing) {
+      const [updated] = await db.update(siteLivery).set(item).where(eq(siteLivery.imageKey, item.imageKey)).returning();
+      return updated;
+    }
+    const [created] = await db.insert(siteLivery).values(item).returning();
+    return created;
+  }
+
+  async updateLiveryImage(imageKey: string, imageUrl: string | null): Promise<SiteLivery | undefined> {
+    const [updated] = await db.update(siteLivery).set({ imageUrl }).where(eq(siteLivery.imageKey, imageKey)).returning();
+    return updated || undefined;
   }
 }
 
