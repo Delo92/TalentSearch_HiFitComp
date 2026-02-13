@@ -116,7 +116,7 @@ export default function MyPurchasesPage() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder="Your full name"
                   required
                   data-testid="input-lookup-name"
@@ -131,7 +131,7 @@ export default function MyPurchasesPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder="your@email.com"
                   required
                   data-testid="input-lookup-email"

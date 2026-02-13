@@ -286,14 +286,14 @@ export default function HostPage() {
                     Address {(isRequired("address") || isRequired("city") || isRequired("state") || isRequired("zip")) && <span className="text-[#FF5A09]">*</span>}
                   </Label>
                   <Input value={form.address || ""} onChange={(e) => updateField("address", e.target.value)}
-                    className="bg-white/5 border-white/10 text-white mt-2" placeholder="Street address" data-testid="input-address" />
+                    className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="Street address" data-testid="input-address" />
                   <div className="grid grid-cols-3 gap-3 mt-2">
                     <Input value={form.city || ""} onChange={(e) => updateField("city", e.target.value)}
-                      className="bg-white/5 border-white/10 text-white" placeholder="City" data-testid="input-city" />
+                      className="bg-white/[0.08] border-white/20 text-white" placeholder="City" data-testid="input-city" />
                     <Input value={form.state || ""} onChange={(e) => updateField("state", e.target.value)}
-                      className="bg-white/5 border-white/10 text-white" placeholder="State" data-testid="input-state" />
+                      className="bg-white/[0.08] border-white/20 text-white" placeholder="State" data-testid="input-state" />
                     <Input value={form.zip || ""} onChange={(e) => updateField("zip", e.target.value)}
-                      className="bg-white/5 border-white/10 text-white" placeholder="ZIP" data-testid="input-zip" />
+                      className="bg-white/[0.08] border-white/20 text-white" placeholder="ZIP" data-testid="input-zip" />
                   </div>
                 </div>
               );
@@ -309,7 +309,7 @@ export default function HostPage() {
                   type={field === "email" ? "email" : field === "phone" ? "tel" : "text"}
                   value={form[field] || ""}
                   onChange={(e) => updateField(field, e.target.value)}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder={`Enter your ${label.toLowerCase()}`}
                   required={required}
                   data-testid={`input-${field}`}
@@ -339,7 +339,7 @@ export default function HostPage() {
                     id={`host-${field}`}
                     value={form[field] || ""}
                     onChange={(e) => updateField(field, e.target.value)}
-                    className="bg-white/5 border-white/10 text-white mt-2 resize-none min-h-[100px]"
+                    className="bg-white/[0.08] border-white/20 text-white mt-2 resize-none min-h-[100px]"
                     placeholder="Describe your event, its purpose, expected audience, etc."
                     required={required}
                     data-testid={`input-${field}`}
@@ -358,7 +358,7 @@ export default function HostPage() {
                   type={field === "eventDate" ? "date" : "text"}
                   value={form[field] || ""}
                   onChange={(e) => updateField(field, e.target.value)}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder={field === "eventCategory" ? "e.g., Music, Modeling, Bodybuilding" : `Enter ${label.toLowerCase()}`}
                   required={required}
                   data-testid={`input-${field}`}
@@ -378,23 +378,23 @@ export default function HostPage() {
               <div>
                 <Label className="text-white/60 uppercase text-xs tracking-wider">Card Number</Label>
                 <Input type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^\d\s]/g, ""))}
-                  className="bg-white/5 border-white/10 text-white mt-2" placeholder="4111 1111 1111 1111" maxLength={19} data-testid="input-card-number" />
+                  className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="4111 1111 1111 1111" maxLength={19} data-testid="input-card-number" />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">Month</Label>
                   <Input type="text" value={expMonth} onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                    className="bg-white/5 border-white/10 text-white mt-2" placeholder="MM" maxLength={2} data-testid="input-exp-month" />
+                    className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="MM" maxLength={2} data-testid="input-exp-month" />
                 </div>
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">Year</Label>
                   <Input type="text" value={expYear} onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    className="bg-white/5 border-white/10 text-white mt-2" placeholder="YYYY" maxLength={4} data-testid="input-exp-year" />
+                    className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="YYYY" maxLength={4} data-testid="input-exp-year" />
                 </div>
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">CVV</Label>
                   <Input type="text" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    className="bg-white/5 border-white/10 text-white mt-2" placeholder="123" maxLength={4} data-testid="input-cvv" />
+                    className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="123" maxLength={4} data-testid="input-cvv" />
                 </div>
               </div>
             </div>

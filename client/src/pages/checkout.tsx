@@ -367,7 +367,7 @@ export default function CheckoutPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-white/5 border-white/10 text-white mt-2"
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
                 placeholder="Your full name"
                 required
                 data-testid="input-name"
@@ -382,7 +382,7 @@ export default function CheckoutPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-white/5 border-white/10 text-white mt-2"
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
                 placeholder="your@email.com"
                 required
                 data-testid="input-email"
@@ -420,7 +420,7 @@ export default function CheckoutPage() {
                 type="text"
                 value={cardNumber}
                 onChange={(e) => setCardNumber(e.target.value.replace(/[^\d\s]/g, ""))}
-                className="bg-white/5 border-white/10 text-white mt-2"
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
                 placeholder="4111 1111 1111 1111"
                 maxLength={19}
                 data-testid="input-card-number"
@@ -436,7 +436,7 @@ export default function CheckoutPage() {
                   type="text"
                   value={expMonth}
                   onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder="MM"
                   maxLength={2}
                   data-testid="input-exp-month"
@@ -451,7 +451,7 @@ export default function CheckoutPage() {
                   type="text"
                   value={expYear}
                   onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder="YYYY"
                   maxLength={4}
                   data-testid="input-exp-year"
@@ -466,7 +466,7 @@ export default function CheckoutPage() {
                   type="text"
                   value={cvv}
                   onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder="123"
                   maxLength={4}
                   data-testid="input-cvv"

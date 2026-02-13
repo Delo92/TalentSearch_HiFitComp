@@ -295,7 +295,7 @@ export default function JoinPage() {
               value={compSearch}
               onChange={(e) => setCompSearch(e.target.value)}
               placeholder="Search competitions by name or category..."
-              className="bg-white/5 border-white/10 text-white pl-10"
+              className="bg-white/[0.08] border-white/20 text-white pl-10"
               data-testid="input-comp-search"
             />
           </div>
@@ -322,7 +322,7 @@ export default function JoinPage() {
                 <button
                   key={comp.id}
                   onClick={() => setSelectedCompetitionId(comp.id)}
-                  className="w-full text-left bg-white/5 border border-white/5 p-4 transition-colors hover:border-[#FF5A09]/30 hover:bg-[#FF5A09]/5 flex items-center gap-3"
+                  className="w-full text-left bg-white/[0.08] border border-white/15 p-4 transition-colors hover:border-[#FF5A09]/30 hover:bg-[#FF5A09]/5 flex items-center gap-3"
                   data-testid={`comp-option-${comp.id}`}
                 >
                   <Trophy className="h-4 w-4 text-white/30 flex-shrink-0" />
@@ -358,7 +358,7 @@ export default function JoinPage() {
                     id={field}
                     value={form[field] || ""}
                     onChange={(e) => updateField(field, e.target.value)}
-                    className="bg-white/5 border-white/10 text-white mt-2 resize-none min-h-[100px]"
+                    className="bg-white/[0.08] border-white/20 text-white mt-2 resize-none min-h-[100px]"
                     placeholder={`Enter your ${label.toLowerCase()}`}
                     required={required}
                     data-testid={`input-${field}`}
@@ -378,7 +378,7 @@ export default function JoinPage() {
                       id="address"
                       value={form.address || ""}
                       onChange={(e) => updateField("address", e.target.value)}
-                      className="bg-white/5 border-white/10 text-white mt-2"
+                      className="bg-white/[0.08] border-white/20 text-white mt-2"
                       placeholder="Street address"
                       required={isRequired("address")}
                       data-testid="input-address"
@@ -387,7 +387,7 @@ export default function JoinPage() {
                       <Input
                         value={form.city || ""}
                         onChange={(e) => updateField("city", e.target.value)}
-                        className="bg-white/5 border-white/10 text-white"
+                        className="bg-white/[0.08] border-white/20 text-white"
                         placeholder="City"
                         required={isRequired("city")}
                         data-testid="input-city"
@@ -395,7 +395,7 @@ export default function JoinPage() {
                       <Input
                         value={form.state || ""}
                         onChange={(e) => updateField("state", e.target.value)}
-                        className="bg-white/5 border-white/10 text-white"
+                        className="bg-white/[0.08] border-white/20 text-white"
                         placeholder="State"
                         required={isRequired("state")}
                         data-testid="input-state"
@@ -403,7 +403,7 @@ export default function JoinPage() {
                       <Input
                         value={form.zip || ""}
                         onChange={(e) => updateField("zip", e.target.value)}
-                        className="bg-white/5 border-white/10 text-white"
+                        className="bg-white/[0.08] border-white/20 text-white"
                         placeholder="ZIP"
                         required={isRequired("zip")}
                         data-testid="input-zip"
@@ -425,7 +425,7 @@ export default function JoinPage() {
                   type={field === "email" ? "email" : field === "phone" ? "tel" : "text"}
                   value={form[field] || ""}
                   onChange={(e) => updateField(field, e.target.value)}
-                  className="bg-white/5 border-white/10 text-white mt-2"
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
                   placeholder={`Enter your ${label.toLowerCase()}`}
                   required={required}
                   data-testid={`input-${field}`}
@@ -445,23 +445,23 @@ export default function JoinPage() {
               <div>
                 <Label htmlFor="join-card" className="text-white/60 uppercase text-xs tracking-wider">Card Number</Label>
                 <Input id="join-card" type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^\d\s]/g, ""))}
-                  className="bg-white/5 border-white/10 text-white mt-2" placeholder="4111 1111 1111 1111" maxLength={19} data-testid="input-card-number" />
+                  className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="4111 1111 1111 1111" maxLength={19} data-testid="input-card-number" />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">Month</Label>
                   <Input type="text" value={expMonth} onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                    className="bg-white/5 border-white/10 text-white mt-2" placeholder="MM" maxLength={2} data-testid="input-exp-month" />
+                    className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="MM" maxLength={2} data-testid="input-exp-month" />
                 </div>
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">Year</Label>
                   <Input type="text" value={expYear} onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    className="bg-white/5 border-white/10 text-white mt-2" placeholder="YYYY" maxLength={4} data-testid="input-exp-year" />
+                    className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="YYYY" maxLength={4} data-testid="input-exp-year" />
                 </div>
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">CVV</Label>
                   <Input type="text" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    className="bg-white/5 border-white/10 text-white mt-2" placeholder="123" maxLength={4} data-testid="input-cvv" />
+                    className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="123" maxLength={4} data-testid="input-cvv" />
                 </div>
               </div>
             </div>

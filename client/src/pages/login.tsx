@@ -98,7 +98,7 @@ export default function LoginPage() {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="bg-white/5 border-white/10 text-white mt-2"
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
                 placeholder="Your stage name"
                 data-testid="input-display-name"
               />
@@ -114,7 +114,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-white/5 border-white/10 text-white mt-2"
+              className="bg-white/[0.08] border-white/20 text-white mt-2"
               placeholder="your@email.com"
               required
               data-testid="input-email"
@@ -131,7 +131,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-white/5 border-white/10 text-white mt-2"
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
                 placeholder="Min 6 characters"
                 required
                 data-testid="input-password"
@@ -149,7 +149,7 @@ export default function LoginPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="bg-white/5 border-white/10 text-white mt-2"
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
                 placeholder="Repeat password"
                 required
                 data-testid="input-confirm-password"
