@@ -10,6 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
+import { useLivery } from "@/hooks/use-livery";
 
 interface ContestantWithProfile {
   id: number;
@@ -48,6 +49,7 @@ export default function CompetitionDetailPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const { getImage } = useLivery();
   const { data: competition, isLoading } = useQuery<CompetitionDetail>({
     queryKey: ["/api/competitions", id],
     enabled: !!id,
@@ -104,7 +106,7 @@ export default function CompetitionDetailPage() {
 
       <section
         className="relative h-[270px] md:h-[340px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${competition.coverImage || "/images/template/breadcumb3.jpg"}')` }}
+        style={{ backgroundImage: `url('${competition.coverImage || getImage("competition_detail_header", "/images/template/breadcumb3.jpg")}')` }}
       >
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
@@ -178,7 +180,7 @@ export default function CompetitionDetailPage() {
                 >
                   <div className="relative overflow-hidden h-52">
                     <img
-                      src={contestant.talentProfile.imageUrls?.[0] || "/images/template/a1.jpg"}
+                      src={contestant.talentProfile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg")}
                       alt={contestant.talentProfile.displayName}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />

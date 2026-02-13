@@ -6,12 +6,14 @@ import type { Competition } from "@shared/schema";
 import { useState } from "react";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
+import { useLivery } from "@/hooks/use-livery";
 
 export default function Competitions() {
   const { data: competitions, isLoading } = useQuery<Competition[]>({
     queryKey: ["/api/competitions"],
   });
   const [filter, setFilter] = useState("all");
+  const { getImage } = useLivery();
 
   const filtered = competitions?.filter((c) => {
     if (filter === "all") return c.status !== "draft";
@@ -24,7 +26,7 @@ export default function Competitions() {
 
       <section
         className="relative h-[270px] md:h-[340px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: "url('/images/template/breadcumb2.jpg')" }}
+        style={{ backgroundImage: `url('${getImage("competitions_header", "/images/template/breadcumb2.jpg")}')` }}
       >
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
@@ -86,6 +88,7 @@ export default function Competitions() {
 }
 
 function CompetitionCard({ competition }: { competition: Competition }) {
+  const { getImage } = useLivery();
   return (
     <Link href={`/competition/${competition.id}`}>
       <div
@@ -94,7 +97,7 @@ function CompetitionCard({ competition }: { competition: Competition }) {
       >
         <div className="overflow-hidden">
           <img
-            src={competition.coverImage || "/images/template/e1.jpg"}
+            src={competition.coverImage || getImage("competition_card_fallback", "/images/template/e1.jpg")}
             alt={competition.title}
             className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-105"
           />

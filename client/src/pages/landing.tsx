@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { ChevronRight, Music, Camera, Dumbbell, Star } from "lucide-react";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
+import { useLivery } from "@/hooks/use-livery";
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -23,6 +24,7 @@ export default function Landing() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+  const { getImage } = useLivery();
 
   const cats = useInView();
   const featured = useInView();
@@ -35,7 +37,7 @@ export default function Landing() {
 
       <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <motion.div style={{ y: heroY }} className="absolute inset-0">
-          <img src="/images/template/bg-1.jpg" alt="" className="w-full h-full object-cover scale-110" />
+          <img src={getImage("hero_background", "/images/template/bg-1.jpg")} alt="" className="w-full h-full object-cover scale-110" />
           <div className="absolute inset-0 bg-black/35" />
         </motion.div>
 
@@ -98,10 +100,10 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Music, label: "Music", desc: "Singers, rappers, DJs & producers", img: "/images/template/a1.jpg" },
-              { icon: Camera, label: "Modeling", desc: "Fashion, fitness & swimwear models", img: "/images/template/a2.jpg" },
-              { icon: Dumbbell, label: "Bodybuilding", desc: "Physique, classic & open divisions", img: "/images/template/b1.jpg" },
-              { icon: Star, label: "Dance", desc: "Hip-hop, contemporary & freestyle", img: "/images/template/a4.jpg" },
+              { icon: Music, label: "Music", desc: "Singers, rappers, DJs & producers", img: getImage("category_music", "/images/template/a1.jpg") },
+              { icon: Camera, label: "Modeling", desc: "Fashion, fitness & swimwear models", img: getImage("category_modeling", "/images/template/a2.jpg") },
+              { icon: Dumbbell, label: "Bodybuilding", desc: "Physique, classic & open divisions", img: getImage("category_bodybuilding", "/images/template/b1.jpg") },
+              { icon: Star, label: "Dance", desc: "Hip-hop, contemporary & freestyle", img: getImage("category_dance", "/images/template/a4.jpg") },
             ].map((cat, i) => (
               <Link href="/competitions" key={cat.label}>
                 <div
@@ -137,7 +139,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="relative py-24 md:py-28 overflow-hidden bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/images/template/bg-2.jpg')" }}>
+      <section className="relative py-24 md:py-28 overflow-hidden bg-cover bg-center bg-fixed" style={{ backgroundImage: `url('${getImage("feature_background", "/images/template/bg-2.jpg")}')` }}>
         <div className="absolute inset-0 bg-black/65" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div ref={featured.ref} className={`text-center mb-24 transition-all duration-1000 ${featured.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
@@ -204,7 +206,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="relative py-24 md:py-28 overflow-hidden bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/images/template/breadcumb.jpg')" }}>
+      <section className="relative py-24 md:py-28 overflow-hidden bg-cover bg-center bg-fixed" style={{ backgroundImage: `url('${getImage("cta_background", "/images/template/breadcumb.jpg")}')` }}>
         <div className="absolute inset-0 bg-black/65" />
         <div ref={cta.ref} className={`relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${cta.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
           <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>

@@ -6,10 +6,12 @@ import { Link } from "wouter";
 import type { TalentProfile } from "@shared/schema";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
+import { useLivery } from "@/hooks/use-livery";
 
 export default function TalentProfilePublic() {
   const [, params] = useRoute("/talent/:id");
   const id = params?.id;
+  const { getImage } = useLivery();
 
   const { data: profile, isLoading } = useQuery<TalentProfile>({
     queryKey: ["/api/talent-profiles", id],
@@ -46,7 +48,7 @@ export default function TalentProfilePublic() {
     );
   }
 
-  const mainImage = profile.imageUrls?.[0] || "/images/template/a1.jpg";
+  const mainImage = profile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg");
 
   return (
     <div className="min-h-screen bg-black text-white">

@@ -1,9 +1,11 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
+import { useLivery } from "@/hooks/use-livery";
 
 export default function SiteNavbar() {
   const { user } = useAuth();
+  const { getImage } = useLivery();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -20,7 +22,7 @@ export default function SiteNavbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
         <Link href="/" className="flex items-center gap-3" data-testid="link-home">
-          <img src="/images/template/logo.png" alt="StarVote" className="h-6" />
+          <img src={getImage("logo", "/images/template/logo.png")} alt="StarVote" className="h-6" />
         </Link>
 
         <button
