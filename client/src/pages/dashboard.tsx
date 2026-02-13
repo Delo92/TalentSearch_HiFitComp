@@ -1,13 +1,18 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Trophy, Shield } from "lucide-react";
 import { useEffect } from "react";
 import type { TalentProfile } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import TalentDashboard from "./talent-dashboard";
 import AdminDashboard from "./admin-dashboard";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -20,13 +25,27 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
+  const adminSetupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/setup");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/talent-profiles/me"] });
+      toast({ title: "Admin access granted!", description: "You are now the platform administrator." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Setup failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
   if (authLoading || profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="space-y-4 w-full max-w-md px-4">
-          <Skeleton className="h-10 w-3/4 mx-auto" />
-          <Skeleton className="h-4 w-1/2 mx-auto" />
-          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-10 w-3/4 mx-auto bg-white/5" />
+          <Skeleton className="h-4 w-1/2 mx-auto bg-white/10" />
+          <Skeleton className="h-48 w-full bg-white/5" />
         </div>
       </div>
     );
@@ -37,7 +56,46 @@ export default function Dashboard() {
   const isAdmin = profile?.role === "admin";
 
   if (isAdmin) {
-    return <AdminDashboard user={user} profile={profile!} />;
+    return <AdminDashboard user={user} />;
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <nav className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/5">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-16 lg:h-20">
+            <a href="/" className="flex items-center gap-2" data-testid="link-home">
+              <div className="w-8 h-8 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                <Trophy className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-serif text-xl font-bold">StarVote</span>
+            </a>
+          </div>
+        </nav>
+        <div className="max-w-lg mx-auto px-4 py-20 text-center">
+          <Shield className="h-16 w-16 text-orange-400/30 mx-auto mb-6" />
+          <h1 className="font-serif text-3xl font-bold mb-3">Welcome to StarVote</h1>
+          <p className="text-white/40 mb-8">Choose how you'd like to get started on the platform.</p>
+          <div className="space-y-4">
+            <Button
+              onClick={() => adminSetupMutation.mutate()}
+              disabled={adminSetupMutation.isPending}
+              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+              data-testid="button-setup-admin"
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              {adminSetupMutation.isPending ? "Setting up..." : "Set Up as Admin"}
+            </Button>
+            <p className="text-xs text-white/20">Only available if no admin exists yet.</p>
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
+              <div className="relative flex justify-center"><span className="bg-black px-4 text-sm text-white/30">or</span></div>
+            </div>
+            <TalentDashboard user={user} profile={null} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return <TalentDashboard user={user} profile={profile} />;
