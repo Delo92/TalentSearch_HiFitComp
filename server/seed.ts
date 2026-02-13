@@ -24,7 +24,7 @@ export async function seedDatabase() {
   if (!systemUser) {
     systemUser = await createFirestoreUser({
       uid: systemUid,
-      email: "system@starvote.com",
+      email: "system@hifitcomp.com",
       displayName: "System",
       level: 1,
     });
@@ -227,9 +227,9 @@ export async function seedSettings() {
   if (existing) return;
 
   await firestoreSettings.update({
-    siteName: "StarVote",
+    siteName: "HiFitComp",
     siteDescription: "Talent Competition & Voting Platform",
-    contactEmail: "admin@starvote.com",
+    contactEmail: "admin@hifitcomp.com",
     defaultVoteCost: 0,
     defaultMaxVotesPerDay: 10,
   });

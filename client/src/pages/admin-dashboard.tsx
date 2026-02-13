@@ -167,7 +167,7 @@ export default function AdminDashboard({ user }: { user: any }) {
             <div className="w-8 h-8 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
               <Trophy className="h-4 w-4 text-white" />
             </div>
-            <span className="font-serif text-xl font-bold">StarVote</span>
+            <span className="font-serif text-xl font-bold">HiFitComp</span>
           </Link>
           <div className="flex items-center gap-3">
             <Badge className="bg-orange-500/20 text-orange-400 border-0">Admin</Badge>

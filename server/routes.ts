@@ -617,9 +617,9 @@ export async function registerRoutes(
     try {
       const settings = await firestoreSettings.get();
       res.json(settings || {
-        siteName: "StarVote",
+        siteName: "HiFitComp",
         siteDescription: "Talent Competition & Voting Platform",
-        contactEmail: "admin@starvote.com",
+        contactEmail: "admin@hifitcomp.com",
         defaultVoteCost: 0,
         defaultMaxVotesPerDay: 10,
       });

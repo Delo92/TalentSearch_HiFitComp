@@ -66,7 +66,7 @@ export default function Dashboard() {
               <div className="w-8 h-8 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
                 <Trophy className="h-4 w-4 text-white" />
               </div>
-              <span className="font-serif text-xl font-bold">StarVote</span>
+              <span className="font-serif text-xl font-bold">HiFitComp</span>
             </a>
             <Button variant="ghost" onClick={() => logout()} className="text-white/60" data-testid="button-logout">
               Logout
@@ -75,7 +75,7 @@ export default function Dashboard() {
         </nav>
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
           <Shield className="h-16 w-16 text-orange-400/30 mx-auto mb-6" />
-          <h1 className="font-serif text-3xl font-bold mb-3">Welcome to StarVote</h1>
+          <h1 className="font-serif text-3xl font-bold mb-3">Welcome to HiFitComp</h1>
           <p className="text-white/40 mb-8">Choose how you'd like to get started on the platform.</p>
           <div className="space-y-4">
             <Button

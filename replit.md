@@ -1,4 +1,4 @@
-# StarVote - Talent Competition & Voting Platform
+# HiFitComp - Talent Competition & Voting Platform
 
 ## Overview
 A comprehensive talent competition and voting platform where artists, models, bodybuilders, and performers compete for public votes. Features dark entertainment-themed UI inspired by the "One Music" HTML template.

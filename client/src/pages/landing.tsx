@@ -145,7 +145,7 @@ export default function Landing() {
           <div ref={featured.ref} className={`text-center mb-24 transition-all duration-1000 ${featured.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
             <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>
             <h2 className="text-lg uppercase text-white font-normal" style={{ letterSpacing: "10px" }}>
-              Why StarVote
+              Why HiFitComp
             </h2>
           </div>
 

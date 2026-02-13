@@ -538,9 +538,9 @@ export const firestoreSettings = {
       await ref.update({ ...data, updatedAt: now() });
     } else {
       const defaults: FirestoreSettings = {
-        siteName: "StarVote",
+        siteName: "HiFitComp",
         siteDescription: "Talent Competition & Voting Platform",
-        contactEmail: "admin@starvote.com",
+        contactEmail: "admin@hifitcomp.com",
         defaultVoteCost: 0,
         defaultMaxVotesPerDay: 10,
         updatedAt: now(),
