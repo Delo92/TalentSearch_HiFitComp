@@ -54,8 +54,9 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `POST /api/auth/set-admin` - Set first admin (or existing admin grants access)
 
 ### Competitions
-- `GET /api/competitions` - List all competitions
+- `GET /api/competitions` - List competitions (supports ?category=X&status=Y filters)
 - `GET /api/competitions/:id` - Competition detail with contestants & vote counts
+- `GET /api/competitions/:id/leaderboard` - Public leaderboard with rankings & vote percentages
 - `POST /api/competitions` - Create competition (admin only)
 - `PATCH /api/competitions/:id` - Update competition (admin only)
 - `DELETE /api/competitions/:id` - Delete competition (admin only)
@@ -80,7 +81,8 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `DELETE /api/vimeo/videos/:videoId` - Delete video from Vimeo
 
 ### Admin
-- `GET /api/admin/stats` - Platform analytics
+- `GET /api/admin/stats` - Platform analytics (breakdowns by status/category, per-competition stats)
+- `GET /api/admin/competitions/:id/report` - Competition report (leaderboard, revenue, purchase stats)
 - `GET /api/admin/contestants` - All contestants with profiles
 - `PATCH /api/admin/contestants/:id/status` - Approve/reject applications
 - `GET /api/admin/users` - List all talent profiles
