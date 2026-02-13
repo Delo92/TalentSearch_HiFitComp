@@ -65,6 +65,7 @@ export interface FirestoreCompetition {
   startDate: string | null;
   endDate: string | null;
   createdAt: string | null;
+  createdBy: string | null;
 }
 
 export interface FirestoreTalentProfile {
@@ -308,6 +309,14 @@ export const firestoreCompetitions = {
       .get();
     const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
     return comps.sort((a, b) => b.id - a.id);
+  },
+
+  async getByCreator(createdBy: string): Promise<FirestoreCompetition[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.COMPETITIONS)
+      .where("createdBy", "==", createdBy)
+      .get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
   },
 
   async get(id: number): Promise<FirestoreCompetition | null> {

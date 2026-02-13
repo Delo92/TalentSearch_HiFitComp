@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import TalentDashboard from "./talent-dashboard";
 import AdminDashboard from "./admin-dashboard";
+import HostDashboard from "./host-dashboard";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
@@ -51,10 +52,15 @@ export default function Dashboard() {
     return null;
   }
 
-  const isAdmin = profile?.role === "admin" || user.level >= 3;
+  const isAdmin = profile?.role === "admin" || user.level >= 4;
+  const isHost = user.level === 3;
 
   if (isAdmin) {
     return <AdminDashboard user={user as any} />;
+  }
+
+  if (isHost) {
+    return <HostDashboard user={user as any} />;
   }
 
   if (!profile) {

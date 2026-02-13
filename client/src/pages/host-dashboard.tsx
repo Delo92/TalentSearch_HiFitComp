@@ -1,0 +1,483 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award } from "lucide-react";
+import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+
+interface HostStats {
+  totalCompetitions: number;
+  totalContestants: number;
+  totalVotes: number;
+  pendingApplications: number;
+}
+
+interface HostCompetition {
+  id: number;
+  title: string;
+  description: string | null;
+  category: string;
+  coverImage: string | null;
+  status: string;
+  voteCost: number;
+  maxVotesPerDay: number;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string | null;
+  createdBy: string | null;
+}
+
+interface ContestantItem {
+  id: number;
+  competitionId: number;
+  talentProfileId: number;
+  applicationStatus: string;
+  appliedAt: string;
+  competitionTitle: string;
+  talentProfile: {
+    id: number;
+    displayName: string;
+    bio: string | null;
+    category: string | null;
+    imageUrls: string[] | null;
+  };
+}
+
+interface CompReportResponse {
+  competition: HostCompetition;
+  leaderboard: { rank: number; contestantId: number; displayName: string; voteCount: number; votePercentage: number }[];
+  totalVotes: number;
+  totalRevenue: number;
+  totalContestants: number;
+  totalPurchases: number;
+}
+
+export default function HostDashboard({ user }: { user: any }) {
+  const { logout } = useAuth();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedCompId, setSelectedCompId] = useState<number | null>(null);
+
+  const [newComp, setNewComp] = useState({
+    title: "",
+    description: "",
+    category: "Music",
+    status: "draft",
+    voteCost: 0,
+    maxVotesPerDay: 10,
+    startDate: "",
+    endDate: "",
+  });
+
+  const { data: stats } = useQuery<HostStats>({
+    queryKey: ["/api/host/stats"],
+  });
+
+  const { data: competitions = [] } = useQuery<HostCompetition[]>({
+    queryKey: ["/api/host/competitions"],
+  });
+
+  const { data: selectedContestants = [] } = useQuery<ContestantItem[]>({
+    queryKey: ["/api/host/competitions", selectedCompId, "contestants"],
+    enabled: !!selectedCompId,
+  });
+
+  const { data: selectedReport } = useQuery<CompReportResponse>({
+    queryKey: ["/api/host/competitions", selectedCompId, "report"],
+    enabled: !!selectedCompId && activeTab === "analytics",
+  });
+
+  const createCompMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/competitions", newComp);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
+      setCreateDialogOpen(false);
+      setNewComp({ title: "", description: "", category: "Music", status: "draft", voteCost: 0, maxVotesPerDay: 10, startDate: "", endDate: "" });
+      toast({ title: "Event created" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to create event", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/host/competitions/${id}`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
+      toast({ title: "Status updated" });
+    },
+  });
+
+  const approveContestantMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/host/contestants/${id}/status`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions", selectedCompId, "contestants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
+      toast({ title: "Application updated" });
+    },
+  });
+
+  const deleteCompMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/host/competitions/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
+      setSelectedCompId(null);
+      toast({ title: "Event deleted" });
+    },
+  });
+
+  return (
+    <div className="min-h-screen bg-black text-white" data-testid="host-dashboard">
+      <nav className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-16 lg:h-20">
+          <Link href="/" className="flex items-center gap-2" data-testid="link-home">
+            <div className="w-8 h-8 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+              <Trophy className="h-4 w-4 text-white" />
+            </div>
+            <span className="font-serif text-xl font-bold">HiFitComp</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-white/40">{user?.displayName || user?.email}</span>
+            <Badge className="bg-purple-500/20 text-purple-300 border-0">Host</Badge>
+            <Button variant="ghost" size="icon" onClick={() => logout()} data-testid="button-logout">
+              <LogOut className="h-4 w-4 text-white/60" />
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="font-serif text-2xl font-bold" data-testid="host-dashboard-title">Host Dashboard</h1>
+            <p className="text-white/40 text-sm mt-1">Manage your competitions and contestants</p>
+          </div>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white" data-testid="button-create-event">
+                <Plus className="h-4 w-4 mr-2" /> New Event
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-[#111] border-white/10 text-white max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="font-serif">Create New Event</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-2">
+                <div>
+                  <Label className="text-white/60 text-xs">Title</Label>
+                  <Input value={newComp.title} onChange={(e) => setNewComp(p => ({ ...p, title: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-comp-title" />
+                </div>
+                <div>
+                  <Label className="text-white/60 text-xs">Description</Label>
+                  <Textarea value={newComp.description} onChange={(e) => setNewComp(p => ({ ...p, description: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-comp-description" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-white/60 text-xs">Category</Label>
+                    <Select value={newComp.category} onValueChange={(v) => setNewComp(p => ({ ...p, category: v }))}>
+                      <SelectTrigger className="bg-white/[0.08] border-white/20 text-white" data-testid="select-category">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#222] border-white/20 text-white">
+                        {["Music", "Dance", "Modeling", "Bodybuilding", "Talent", "Other"].map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-white/60 text-xs">Status</Label>
+                    <Select value={newComp.status} onValueChange={(v) => setNewComp(p => ({ ...p, status: v }))}>
+                      <SelectTrigger className="bg-white/[0.08] border-white/20 text-white" data-testid="select-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#222] border-white/20 text-white">
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="voting">Voting</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-white/60 text-xs">Max Votes/Day</Label>
+                    <Input type="number" value={newComp.maxVotesPerDay} onChange={(e) => setNewComp(p => ({ ...p, maxVotesPerDay: parseInt(e.target.value) || 0 }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-max-votes" />
+                  </div>
+                  <div>
+                    <Label className="text-white/60 text-xs">Vote Cost ($)</Label>
+                    <Input type="number" step="0.01" value={newComp.voteCost} onChange={(e) => setNewComp(p => ({ ...p, voteCost: parseFloat(e.target.value) || 0 }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-vote-cost" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-white/60 text-xs">Start Date</Label>
+                    <Input type="date" value={newComp.startDate} onChange={(e) => setNewComp(p => ({ ...p, startDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-start-date" />
+                  </div>
+                  <div>
+                    <Label className="text-white/60 text-xs">End Date</Label>
+                    <Input type="date" value={newComp.endDate} onChange={(e) => setNewComp(p => ({ ...p, endDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-end-date" />
+                  </div>
+                </div>
+                <Button onClick={() => createCompMutation.mutate()} disabled={createCompMutation.isPending || !newComp.title} className="w-full bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white" data-testid="button-submit-event">
+                  {createCompMutation.isPending ? "Creating..." : "Create Event"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="stat-competitions">
+            <div className="flex items-center gap-2 mb-1">
+              <Trophy className="h-4 w-4 text-orange-400" />
+              <span className="text-xs text-white/40 uppercase tracking-wider">My Events</span>
+            </div>
+            <p className="text-2xl font-bold">{stats?.totalCompetitions ?? 0}</p>
+          </div>
+          <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="stat-contestants">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="h-4 w-4 text-blue-400" />
+              <span className="text-xs text-white/40 uppercase tracking-wider">Contestants</span>
+            </div>
+            <p className="text-2xl font-bold">{stats?.totalContestants ?? 0}</p>
+          </div>
+          <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="stat-votes">
+            <div className="flex items-center gap-2 mb-1">
+              <Vote className="h-4 w-4 text-green-400" />
+              <span className="text-xs text-white/40 uppercase tracking-wider">Total Votes</span>
+            </div>
+            <p className="text-2xl font-bold">{stats?.totalVotes ?? 0}</p>
+          </div>
+          <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="stat-pending">
+            <div className="flex items-center gap-2 mb-1">
+              <Award className="h-4 w-4 text-yellow-400" />
+              <span className="text-xs text-white/40 uppercase tracking-wider">Pending</span>
+            </div>
+            <p className="text-2xl font-bold">{stats?.pendingApplications ?? 0}</p>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="bg-white/5 border border-white/10 mb-6">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-300" data-testid="tab-overview">
+              <Trophy className="h-4 w-4 mr-2" /> Events
+            </TabsTrigger>
+            <TabsTrigger value="contestants" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-300" data-testid="tab-contestants">
+              <Users className="h-4 w-4 mr-2" /> Contestants
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-300" data-testid="tab-analytics">
+              <BarChart3 className="h-4 w-4 mr-2" /> Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            {competitions.length === 0 ? (
+              <div className="text-center py-16 text-white/30" data-testid="empty-events">
+                <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p className="text-lg mb-2">No events yet</p>
+                <p className="text-sm">Create your first competition to get started.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {competitions.map(comp => (
+                  <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4" data-testid={`event-card-${comp.id}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-serif font-bold text-lg truncate" data-testid={`event-title-${comp.id}`}>{comp.title}</h3>
+                        <Badge className={`border-0 text-xs ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`event-status-${comp.id}`}>
+                          {comp.status}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-white/40">
+                        <span>{comp.category}</span>
+                        {comp.startDate && <span><Calendar className="h-3 w-3 inline mr-1" />{new Date(comp.startDate).toLocaleDateString()}</span>}
+                        {comp.endDate && <span>to {new Date(comp.endDate).toLocaleDateString()}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={comp.status} onValueChange={(v) => updateStatusMutation.mutate({ id: comp.id, status: v })}>
+                        <SelectTrigger className="bg-white/[0.08] border-white/20 text-white text-xs w-28" data-testid={`select-status-${comp.id}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#222] border-white/20 text-white">
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="voting">Voting</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedCompId(comp.id); setActiveTab("contestants"); }} data-testid={`button-view-contestants-${comp.id}`}>
+                        <Users className="h-4 w-4 text-white/60" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedCompId(comp.id); setActiveTab("analytics"); }} data-testid={`button-view-analytics-${comp.id}`}>
+                        <BarChart3 className="h-4 w-4 text-white/60" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this event?")) deleteCompMutation.mutate(comp.id); }} data-testid={`button-delete-${comp.id}`}>
+                        <XIcon className="h-4 w-4 text-red-400/60" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="contestants">
+            <div className="mb-4">
+              <Label className="text-white/60 text-xs mb-2 block">Select Event</Label>
+              <Select value={selectedCompId?.toString() ?? ""} onValueChange={(v) => setSelectedCompId(parseInt(v))}>
+                <SelectTrigger className="bg-white/[0.08] border-white/20 text-white w-full max-w-sm" data-testid="select-event-contestants">
+                  <SelectValue placeholder="Choose an event..." />
+                </SelectTrigger>
+                <SelectContent className="bg-[#222] border-white/20 text-white">
+                  {competitions.map(c => (
+                    <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {!selectedCompId ? (
+              <div className="text-center py-12 text-white/30" data-testid="no-event-selected">
+                <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p>Select an event to view contestants</p>
+              </div>
+            ) : selectedContestants.length === 0 ? (
+              <div className="text-center py-12 text-white/30" data-testid="no-contestants">
+                <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p>No contestants have applied yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedContestants.map(c => (
+                  <div key={c.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4" data-testid={`contestant-card-${c.id}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium" data-testid={`contestant-name-${c.id}`}>{c.talentProfile?.displayName || "Unknown"}</p>
+                      <p className="text-xs text-white/40">{c.talentProfile?.category || "No category"}</p>
+                      {c.appliedAt && <p className="text-xs text-white/30 mt-1">Applied {new Date(c.appliedAt).toLocaleDateString()}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={`border-0 ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`contestant-status-${c.id}`}>
+                        {c.applicationStatus}
+                      </Badge>
+                      {c.applicationStatus === "pending" && (
+                        <>
+                          <Button size="icon" variant="ghost" onClick={() => approveContestantMutation.mutate({ id: c.id, status: "approved" })} data-testid={`button-approve-${c.id}`}>
+                            <Check className="h-4 w-4 text-green-400" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => approveContestantMutation.mutate({ id: c.id, status: "rejected" })} data-testid={`button-reject-${c.id}`}>
+                            <XIcon className="h-4 w-4 text-red-400" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <div className="mb-4">
+              <Label className="text-white/60 text-xs mb-2 block">Select Event</Label>
+              <Select value={selectedCompId?.toString() ?? ""} onValueChange={(v) => setSelectedCompId(parseInt(v))}>
+                <SelectTrigger className="bg-white/[0.08] border-white/20 text-white w-full max-w-sm" data-testid="select-event-analytics">
+                  <SelectValue placeholder="Choose an event..." />
+                </SelectTrigger>
+                <SelectContent className="bg-[#222] border-white/20 text-white">
+                  {competitions.map(c => (
+                    <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {!selectedCompId || !selectedReport ? (
+              <div className="text-center py-12 text-white/30" data-testid="no-analytics">
+                <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p>Select an event to view analytics</p>
+              </div>
+            ) : (
+              <div className="space-y-6" data-testid="analytics-content">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Total Votes</p>
+                    <p className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid="analytics-votes">{selectedReport.totalVotes}</p>
+                  </div>
+                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Contestants</p>
+                    <p className="text-2xl font-bold" data-testid="analytics-contestants">{selectedReport.totalContestants}</p>
+                  </div>
+                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Revenue</p>
+                    <p className="text-2xl font-bold text-green-400" data-testid="analytics-revenue">${(selectedReport.totalRevenue / 100).toFixed(2)}</p>
+                  </div>
+                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Purchases</p>
+                    <p className="text-2xl font-bold" data-testid="analytics-purchases">{selectedReport.totalPurchases}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="leaderboard">
+                  <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-4">Leaderboard</h3>
+                  {selectedReport.leaderboard.length === 0 ? (
+                    <p className="text-white/30 text-sm text-center py-6">No votes cast yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedReport.leaderboard.map((entry) => (
+                        <div key={entry.contestantId} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 p-3" data-testid={`leaderboard-entry-${entry.contestantId}`}>
+                          <div className="flex items-center gap-3">
+                            <span className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold ${entry.rank === 1 ? "bg-orange-500/30 text-orange-300" : entry.rank === 2 ? "bg-white/10 text-white/80" : entry.rank === 3 ? "bg-amber-800/30 text-amber-400" : "bg-white/5 text-white/40"}`}>
+                              {entry.rank}
+                            </span>
+                            <span className="font-medium">{entry.displayName}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-white/60">{entry.voteCount} votes</span>
+                            <div className="w-20 h-2 rounded-full bg-white/10 overflow-hidden">
+                              <div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500" style={{ width: `${entry.votePercentage}%` }} />
+                            </div>
+                            <span className="text-xs text-white/40 w-10 text-right">{entry.votePercentage}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { firebaseAuth, requireAdmin, requireTalent } from "./auth-middleware";
+import { firebaseAuth, requireAdmin, requireHost, requireTalent } from "./auth-middleware";
 import {
   verifyFirebaseToken,
   createFirebaseUser,
@@ -230,13 +230,13 @@ export async function registerRoutes(
       const admins = await storage.getAdminProfiles();
       if (admins.length > 0) {
         const firestoreUser = await getFirestoreUser(uid);
-        if (!firestoreUser || firestoreUser.level < 3) {
+        if (!firestoreUser || firestoreUser.level < 4) {
           return res.status(403).json({ message: "Admin already exists. Contact existing admin." });
         }
       }
 
-      await setUserLevel(uid, 3);
-      await updateFirestoreUser(uid, { level: 3 });
+      await setUserLevel(uid, 4);
+      await updateFirestoreUser(uid, { level: 4 });
 
       let profile = await storage.getTalentProfileByUserId(uid);
       if (profile) {
@@ -257,7 +257,7 @@ export async function registerRoutes(
         });
       }
 
-      res.json({ message: "Admin access granted", level: 3, profile });
+      res.json({ message: "Admin access granted", level: 4, profile });
     } catch (error: any) {
       console.error("Set admin error:", error);
       res.status(500).json({ message: "Failed to set admin" });
@@ -314,7 +314,7 @@ export async function registerRoutes(
     endDate: z.string().optional().nullable(),
   });
 
-  app.post("/api/competitions", firebaseAuth, requireAdmin, async (req, res) => {
+  app.post("/api/competitions", firebaseAuth, requireHost, async (req, res) => {
     const parsed = createCompetitionSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid data" });
@@ -327,6 +327,7 @@ export async function registerRoutes(
       startDate: parsed.data.startDate || null,
       endDate: parsed.data.endDate || null,
       createdAt: new Date().toISOString(),
+      createdBy: req.firebaseUser!.uid,
     });
 
     try {
@@ -479,6 +480,142 @@ export async function registerRoutes(
     res.json(myContests);
   });
 
+
+  app.get("/api/host/competitions", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const competitions = await storage.getCompetitionsByCreator(uid);
+    res.json(competitions);
+  });
+
+  app.get("/api/host/stats", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const competitions = await storage.getCompetitionsByCreator(uid);
+    let totalContestants = 0;
+    let totalVotes = 0;
+    let pendingApplications = 0;
+
+    for (const comp of competitions) {
+      const allContestants = await storage.getContestantsByCompetition(comp.id);
+      totalContestants += allContestants.length;
+      for (const c of allContestants) {
+        totalVotes += c.voteCount;
+      }
+      const allContestantsRaw = await storage.getAllContestants();
+      const pending = allContestantsRaw.filter(
+        c => c.competitionId === comp.id && c.applicationStatus === "pending"
+      );
+      pendingApplications += pending.length;
+    }
+
+    res.json({
+      totalCompetitions: competitions.length,
+      totalContestants,
+      totalVotes,
+      pendingApplications,
+    });
+  });
+
+  app.get("/api/host/competitions/:id/contestants", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+    const comp = await storage.getCompetition(id);
+    if (!comp || comp.createdBy !== uid) {
+      return res.status(403).json({ message: "Not your competition" });
+    }
+
+    const allContestants = await storage.getAllContestants();
+    const compContestants = allContestants.filter(c => c.competitionId === id);
+    res.json(compContestants);
+  });
+
+  app.patch("/api/host/contestants/:id/status", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid contestant ID" });
+
+    const { status } = req.body;
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const allContestants = await storage.getAllContestants();
+    const contestant = allContestants.find(c => c.id === id);
+    if (!contestant) return res.status(404).json({ message: "Contestant not found" });
+
+    const comp = await storage.getCompetition(contestant.competitionId);
+    if (!comp || comp.createdBy !== uid) {
+      return res.status(403).json({ message: "Not your competition" });
+    }
+
+    const updated = await storage.updateContestantStatus(id, status);
+    res.json(updated);
+  });
+
+  app.patch("/api/host/competitions/:id", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+    const comp = await storage.getCompetition(id);
+    if (!comp || comp.createdBy !== uid) {
+      return res.status(403).json({ message: "Not your competition" });
+    }
+
+    const updated = await storage.updateCompetition(id, req.body);
+    if (!updated) return res.status(404).json({ message: "Competition not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/host/competitions/:id", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+    const comp = await storage.getCompetition(id);
+    if (!comp || comp.createdBy !== uid) {
+      return res.status(403).json({ message: "Not your competition" });
+    }
+
+    await storage.deleteCompetition(id);
+    res.json({ message: "Deleted" });
+  });
+
+  app.get("/api/host/competitions/:id/report", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+    const comp = await storage.getCompetition(id);
+    if (!comp || comp.createdBy !== uid) {
+      return res.status(403).json({ message: "Not your competition" });
+    }
+
+    const contestants = await storage.getContestantsByCompetition(id);
+    const totalVotes = contestants.reduce((sum, c) => sum + c.voteCount, 0);
+    const leaderboard = contestants
+      .sort((a, b) => b.voteCount - a.voteCount)
+      .map((c, i) => ({
+        rank: i + 1,
+        contestantId: c.id,
+        displayName: c.talentProfile.displayName,
+        voteCount: c.voteCount,
+        votePercentage: totalVotes > 0 ? Math.round((c.voteCount / totalVotes) * 100) : 0,
+      }));
+
+    const purchases = await storage.getVotePurchasesByCompetition(id);
+    const totalRevenue = purchases.reduce((sum, p) => sum + p.amount, 0);
+
+    res.json({
+      competition: comp,
+      leaderboard,
+      totalVotes,
+      totalRevenue,
+      totalContestants: contestants.length,
+      totalPurchases: purchases.length,
+    });
+  });
 
   app.get("/api/admin/contestants", firebaseAuth, requireAdmin, async (_req, res) => {
     const allContestants = await storage.getAllContestants();

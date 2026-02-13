@@ -30,6 +30,7 @@ export interface IStorage {
   getCompetitionsByStatus(status: string): Promise<FirestoreCompetition[]>;
   getCompetitionsByCategory(category: string): Promise<FirestoreCompetition[]>;
   getCompetitionsByCategoryAndStatus(category: string, status: string): Promise<FirestoreCompetition[]>;
+  getCompetitionsByCreator(createdBy: string): Promise<FirestoreCompetition[]>;
   getCompetition(id: number): Promise<FirestoreCompetition | null>;
   createCompetition(comp: Omit<FirestoreCompetition, "id">): Promise<FirestoreCompetition>;
   updateCompetition(id: number, data: Partial<Omit<FirestoreCompetition, "id">>): Promise<FirestoreCompetition | null>;
@@ -112,6 +113,10 @@ export class FirestoreStorage implements IStorage {
 
   async getCompetitionsByCategoryAndStatus(category: string, status: string): Promise<FirestoreCompetition[]> {
     return firestoreCompetitions.getByCategoryAndStatus(category, status);
+  }
+
+  async getCompetitionsByCreator(createdBy: string): Promise<FirestoreCompetition[]> {
+    return firestoreCompetitions.getByCreator(createdBy);
   }
 
   async getCompetition(id: number): Promise<FirestoreCompetition | null> {

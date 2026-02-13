@@ -53,6 +53,10 @@ export function requireLevel(minLevel: number) {
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  return requireLevel(4)(req, res, next);
+}
+
+export function requireHost(req: Request, res: Response, next: NextFunction) {
   return requireLevel(3)(req, res, next);
 }
 

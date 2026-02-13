@@ -59,6 +59,7 @@ export async function seedDatabase() {
       startDate: "2026-02-01T00:00:00.000Z",
       endDate: "2026-04-30T00:00:00.000Z",
       createdAt: new Date().toISOString(),
+      createdBy: null,
     },
     {
       title: "Iron Physique Championship",
@@ -71,6 +72,7 @@ export async function seedDatabase() {
       startDate: "2026-02-15T00:00:00.000Z",
       endDate: "2026-05-15T00:00:00.000Z",
       createdAt: new Date().toISOString(),
+      createdBy: null,
     },
     {
       title: "Top Model Search",
@@ -83,6 +85,7 @@ export async function seedDatabase() {
       startDate: "2026-03-01T00:00:00.000Z",
       endDate: "2026-06-01T00:00:00.000Z",
       createdAt: new Date().toISOString(),
+      createdBy: null,
     },
     {
       title: "Dance Battle Royale",
@@ -95,6 +98,7 @@ export async function seedDatabase() {
       startDate: "2026-01-15T00:00:00.000Z",
       endDate: "2026-03-30T00:00:00.000Z",
       createdAt: new Date().toISOString(),
+      createdBy: null,
     },
   ];
 
@@ -242,10 +246,17 @@ const TEST_ACCOUNTS = [
     },
   },
   {
+    email: "host@test.com",
+    password: "TestPass123",
+    displayName: "Test Host",
+    level: 3,
+    role: "host" as const,
+  },
+  {
     email: "admin@test.com",
     password: "TestPass123",
     displayName: "Test Admin",
-    level: 3,
+    level: 4,
     role: "admin" as const,
   },
 ];

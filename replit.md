@@ -28,23 +28,26 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `client/src/components/site-navbar.tsx` - Shared transparent fixed navbar (One Music style)
 - `client/src/components/site-footer.tsx` - Shared dark minimal footer
 - `client/src/pages/login.tsx` - Login/Register/Password Reset page
-- `client/src/pages/` - Landing, Login, Competitions, CompetitionDetail, TalentProfilePublic, Dashboard, AdminDashboard, TalentDashboard
+- `client/src/pages/` - Landing, Login, Competitions, CompetitionDetail, TalentProfilePublic, Dashboard, AdminDashboard, HostDashboard, TalentDashboard
 
 ## Key Features
 - **Public**: Browse competitions, view contestants, cast votes (IP-based daily limits)
 - **Talent Users (Level 2)**: Create profiles, upload images to Google Drive, upload videos to Vimeo, apply to competitions
-- **Admin Users (Level 3)**: Create/manage competitions, review applications, view analytics, manage site branding (Livery), manage user levels
+- **Host Users (Level 3)**: Create/manage own competitions, review applications for own events, view analytics for own events
+- **Admin Users (Level 4)**: Full platform management, review all applications, view all analytics, manage site branding (Livery), manage user levels
 - **Auth**: Firebase Auth (email/password) - JWT Bearer tokens, password reset via Firebase
 
 ## User Levels
-- Level 1: Viewer (voter registration, name/email, billing address, purchase votes, purchase history)
+- Level 1: Viewer (voter registration, name/email, purchase votes, purchase history)
 - Level 2: Talent/Creator (profile management with stage name & social links, competition applications)
-- Level 3: Admin (full platform management)
+- Level 3: Host (create/manage own competitions, review applications, view analytics for own events)
+- Level 4: Admin (full platform management, user level management, site livery, all competitions)
 
 ## Test Accounts (seeded on startup)
 - viewer@test.com / TestPass123 (Level 1 - Viewer)
 - talent@test.com / TestPass123 (Level 2 - Talent, stage name: "The Star")
-- admin@test.com / TestPass123 (Level 3 - Admin)
+- host@test.com / TestPass123 (Level 3 - Host)
+- admin@test.com / TestPass123 (Level 4 - Admin)
 
 ## API Routes
 ### Auth
@@ -57,7 +60,7 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `GET /api/competitions` - List competitions (supports ?category=X&status=Y filters)
 - `GET /api/competitions/:id` - Competition detail with contestants & vote counts
 - `GET /api/competitions/:id/leaderboard` - Public leaderboard with rankings & vote percentages
-- `POST /api/competitions` - Create competition (admin only)
+- `POST /api/competitions` - Create competition (host+ only, stores createdBy UID)
 - `PATCH /api/competitions/:id` - Update competition (admin only)
 - `DELETE /api/competitions/:id` - Delete competition (admin only)
 - `POST /api/competitions/:id/vote` - Cast vote (public, IP-limited)
@@ -79,6 +82,15 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `GET /api/vimeo/videos` - List talent's videos from Vimeo folder
 - `POST /api/vimeo/upload-ticket` - Get TUS upload ticket for video upload
 - `DELETE /api/vimeo/videos/:videoId` - Delete video from Vimeo
+
+### Host
+- `GET /api/host/competitions` - List host's own competitions
+- `GET /api/host/stats` - Host-specific analytics (own events only)
+- `GET /api/host/competitions/:id/contestants` - Contestants for host's competition
+- `PATCH /api/host/contestants/:id/status` - Approve/reject application (own competitions only)
+- `PATCH /api/host/competitions/:id` - Update own competition
+- `DELETE /api/host/competitions/:id` - Delete own competition
+- `GET /api/host/competitions/:id/report` - Report for host's competition
 
 ### Admin
 - `GET /api/admin/stats` - Platform analytics (breakdowns by status/category, per-competition stats)
