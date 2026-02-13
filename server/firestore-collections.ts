@@ -143,9 +143,18 @@ export const firestoreCategories = {
   async getAll(): Promise<FirestoreCategory[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.CATEGORIES)
+      .orderBy("order", "asc")
       .get();
-    const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreCategory));
-    return categories.sort((a, b) => a.order - b.order);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreCategory));
+  },
+
+  async getActive(): Promise<FirestoreCategory[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.CATEGORIES)
+      .where("isActive", "==", true)
+      .orderBy("order", "asc")
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreCategory));
   },
 
   async get(id: string): Promise<FirestoreCategory | null> {
@@ -184,6 +193,34 @@ export const firestoreCategories = {
 export const firestoreCompetitions = {
   async getAll(): Promise<FirestoreCompetition[]> {
     const snapshot = await db().collection(COLLECTIONS.COMPETITIONS).get();
+    const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    return comps.sort((a, b) => b.id - a.id);
+  },
+
+  async getByStatus(status: string): Promise<FirestoreCompetition[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.COMPETITIONS)
+      .where("status", "==", status)
+      .orderBy("createdAt", "desc")
+      .get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+  },
+
+  async getByCategory(category: string): Promise<FirestoreCompetition[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.COMPETITIONS)
+      .where("category", "==", category)
+      .get();
+    const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    return comps.sort((a, b) => b.id - a.id);
+  },
+
+  async getByCategoryAndStatus(category: string, status: string): Promise<FirestoreCompetition[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.COMPETITIONS)
+      .where("category", "==", category)
+      .where("status", "==", status)
+      .get();
     const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
     return comps.sort((a, b) => b.id - a.id);
   },
@@ -438,9 +475,18 @@ export const firestoreVotePurchases = {
     const snapshot = await db()
       .collection(COLLECTIONS.VOTE_PURCHASES)
       .where("userId", "==", userId)
+      .orderBy("purchasedAt", "desc")
       .get();
-    const purchases = snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
-    return purchases.sort((a, b) => (b.purchasedAt || "").localeCompare(a.purchasedAt || ""));
+    return snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
+  },
+
+  async getByCompetition(competitionId: number): Promise<FirestoreVotePurchase[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.VOTE_PURCHASES)
+      .where("competitionId", "==", competitionId)
+      .orderBy("purchasedAt", "desc")
+      .get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
   },
 };
 
@@ -448,18 +494,18 @@ export const firestoreVotePackages = {
   async getAll(): Promise<FirestoreVotePackage[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.VOTE_PACKAGES)
+      .orderBy("order", "asc")
       .get();
-    const packages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
-    return packages.sort((a, b) => a.order - b.order);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
   },
 
   async getActive(): Promise<FirestoreVotePackage[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.VOTE_PACKAGES)
       .where("isActive", "==", true)
+      .orderBy("order", "asc")
       .get();
-    const packages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
-    return packages.sort((a, b) => a.order - b.order);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
   },
 
   async get(id: string): Promise<FirestoreVotePackage | null> {
@@ -497,9 +543,8 @@ export const firestoreVotePackages = {
 
 export const firestoreLivery = {
   async getAll(): Promise<FirestoreLiveryItem[]> {
-    const snapshot = await db().collection(COLLECTIONS.LIVERY).get();
-    const items = snapshot.docs.map(doc => doc.data() as FirestoreLiveryItem);
-    return items.sort((a, b) => a.label.localeCompare(b.label));
+    const snapshot = await db().collection(COLLECTIONS.LIVERY).orderBy("label", "asc").get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreLiveryItem);
   },
 
   async getByKey(imageKey: string): Promise<FirestoreLiveryItem | null> {
