@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,8 @@ import { apiRequest } from "@/lib/queryClient";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
-import { CheckCircle, Send, CreditCard } from "lucide-react";
+import { CheckCircle, Send, CreditCard, Search, Trophy } from "lucide-react";
+import type { Competition } from "@shared/schema";
 
 interface JoinSettings {
   mode: "request" | "purchase";
@@ -61,6 +62,8 @@ export default function JoinPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [acceptLoaded, setAcceptLoaded] = useState(false);
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState<number | null>(null);
+  const [compSearch, setCompSearch] = useState("");
 
   const { data: settings, isLoading } = useQuery<JoinSettings>({
     queryKey: ["/api/join/settings"],
@@ -69,6 +72,25 @@ export default function JoinPage() {
   const { data: paymentConfig } = useQuery<PaymentConfig>({
     queryKey: ["/api/payment-config"],
   });
+
+  const { data: competitions } = useQuery<Competition[]>({
+    queryKey: ["/api/competitions"],
+  });
+
+  const filteredCompetitions = useMemo(() => {
+    if (!competitions) return [];
+    const openComps = competitions.filter(c => c.status === "active" || c.status === "voting" || c.status === "draft");
+    if (!compSearch.trim()) return openComps;
+    const q = compSearch.toLowerCase();
+    return openComps.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      c.category.toLowerCase().includes(q)
+    );
+  }, [competitions, compSearch]);
+
+  const selectedCompetition = useMemo(() => {
+    return competitions?.find(c => c.id === selectedCompetitionId) || null;
+  }, [competitions, selectedCompetitionId]);
 
   useEffect(() => {
     if (paymentConfig && settings?.mode === "purchase" && !acceptLoaded) {
@@ -94,6 +116,11 @@ export default function JoinPage() {
   const handleSubmit = useCallback(async () => {
     if (!settings) return;
 
+    if (!selectedCompetitionId) {
+      toast({ title: "Please select a competition to apply for", variant: "destructive" });
+      return;
+    }
+
     for (const field of settings.requiredFields) {
       if (!form[field]?.trim()) {
         toast({ title: `${FIELD_LABELS[field] || field} is required`, variant: "destructive" });
@@ -107,6 +134,7 @@ export default function JoinPage() {
       try {
         await apiRequest("POST", "/api/join/submit", {
           ...form,
+          competitionId: selectedCompetitionId,
           mediaUrls: [],
           dataDescriptor,
           dataValue,
@@ -243,6 +271,60 @@ export default function JoinPage() {
             <p className="text-white/40 text-xs mt-1">Payment is required to submit your application.</p>
           </div>
         )}
+
+        <div className="mb-10">
+          <p className="text-[#5f5f5f] text-sm mb-1">Select Competition</p>
+          <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
+            CHOOSE YOUR EVENT
+          </h3>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+            <Input
+              value={compSearch}
+              onChange={(e) => setCompSearch(e.target.value)}
+              placeholder="Search competitions by name or category..."
+              className="bg-white/5 border-white/10 text-white pl-10"
+              data-testid="input-comp-search"
+            />
+          </div>
+          {selectedCompetition ? (
+            <div className="border border-[#FF5A09]/40 bg-[#FF5A09]/5 p-4 flex flex-wrap items-center justify-between gap-3" data-testid="selected-competition">
+              <div className="flex items-center gap-3">
+                <Trophy className="h-5 w-5 text-[#FF5A09]" />
+                <div>
+                  <p className="font-bold text-white">{selectedCompetition.title}</p>
+                  <p className="text-xs text-white/40">{selectedCompetition.category} | {selectedCompetition.status}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedCompetitionId(null)}
+                className="text-xs text-white/40 uppercase tracking-wider border border-white/10 px-3 py-1.5 transition-colors hover:text-white/60"
+                data-testid="button-change-competition"
+              >
+                Change
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[240px] overflow-y-auto">
+              {filteredCompetitions.length > 0 ? filteredCompetitions.map((comp) => (
+                <button
+                  key={comp.id}
+                  onClick={() => setSelectedCompetitionId(comp.id)}
+                  className="w-full text-left bg-white/5 border border-white/5 p-4 transition-colors hover:border-[#FF5A09]/30 hover:bg-[#FF5A09]/5 flex items-center gap-3"
+                  data-testid={`comp-option-${comp.id}`}
+                >
+                  <Trophy className="h-4 w-4 text-white/30 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-white text-sm">{comp.title}</p>
+                    <p className="text-xs text-white/30">{comp.category} | {comp.status}</p>
+                  </div>
+                </button>
+              )) : (
+                <p className="text-white/30 text-sm py-4 text-center">No competitions found.</p>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="space-y-5 mb-10">
           <p className="text-[#5f5f5f] text-sm mb-1">Your Information</p>

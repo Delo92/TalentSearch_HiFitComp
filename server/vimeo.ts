@@ -83,15 +83,29 @@ export async function getHiFitCompFolder(): Promise<VimeoFolder> {
   return findOrCreateFolder("HiFitComp");
 }
 
-export async function getTalentFolder(talentName: string): Promise<VimeoFolder> {
+export async function getCompetitionFolder(competitionName: string): Promise<VimeoFolder> {
   const root = await getHiFitCompFolder();
-  const rootUri = root.uri;
-  return findOrCreateFolder(talentName, rootUri);
+  const safeName = competitionName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+  return findOrCreateFolder(safeName, root.uri);
 }
 
-export async function listTalentVideos(talentName: string): Promise<VimeoVideo[]> {
+export async function getTalentFolderInCompetition(competitionName: string, talentName: string): Promise<VimeoFolder> {
+  const compFolder = await getCompetitionFolder(competitionName);
+  const safeTalentName = talentName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+  return findOrCreateFolder(safeTalentName, compFolder.uri);
+}
+
+export async function createCompetitionVimeoFolder(competitionName: string): Promise<VimeoFolder> {
+  return getCompetitionFolder(competitionName);
+}
+
+export async function createContestantVimeoFolder(competitionName: string, talentName: string): Promise<VimeoFolder> {
+  return getTalentFolderInCompetition(competitionName, talentName);
+}
+
+export async function listTalentVideos(competitionName: string, talentName: string): Promise<VimeoVideo[]> {
   try {
-    const folder = await getTalentFolder(talentName);
+    const folder = await getTalentFolderInCompetition(competitionName, talentName);
     const videosUri = folder.metadata?.connections?.videos?.uri;
     if (!videosUri) return [];
 
@@ -102,7 +116,42 @@ export async function listTalentVideos(talentName: string): Promise<VimeoVideo[]
   }
 }
 
+export async function listAllTalentVideos(talentName: string): Promise<(VimeoVideo & { competitionFolder: string })[]> {
+  try {
+    const root = await getHiFitCompFolder();
+    const listPath = `${root.uri}/items?type=folder&per_page=100`;
+    const data = await vimeoRequest(listPath);
+    const compFolders = data.data || [];
+
+    const allVideos: (VimeoVideo & { competitionFolder: string })[] = [];
+    const safeTalentName = talentName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+
+    for (const compFolder of compFolders) {
+      try {
+        const talentListPath = `${compFolder.uri}/items?type=folder&per_page=100`;
+        const talentData = await vimeoRequest(talentListPath);
+        const talentFolders = talentData.data || [];
+        const talentFolder = talentFolders.find((f: any) => f.name === safeTalentName);
+        if (!talentFolder) continue;
+
+        const videosUri = talentFolder.metadata?.connections?.videos?.uri;
+        if (!videosUri) continue;
+
+        const videosData = await vimeoRequest(`${videosUri}?per_page=50&sort=date&direction=desc`);
+        const videos = videosData.data || [];
+        allVideos.push(...videos.map((v: VimeoVideo) => ({ ...v, competitionFolder: compFolder.name })));
+      } catch {
+        continue;
+      }
+    }
+    return allVideos;
+  } catch {
+    return [];
+  }
+}
+
 export async function createUploadTicket(
+  competitionName: string,
   talentName: string,
   fileName: string,
   fileSize: number
@@ -111,7 +160,7 @@ export async function createUploadTicket(
   videoUri: string;
   completeUri: string;
 }> {
-  const folder = await getTalentFolder(talentName);
+  const folder = await getTalentFolderInCompetition(competitionName, talentName);
 
   const data = await vimeoRequest("/me/videos", {
     method: "POST",

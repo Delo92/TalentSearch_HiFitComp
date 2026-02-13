@@ -65,24 +65,40 @@ export async function getHiFitCompFolder(): Promise<string> {
   return findOrCreateFolder("HiFitComp");
 }
 
-export async function getTalentFolder(talentName: string): Promise<string> {
+export async function getCompetitionFolder(competitionName: string): Promise<string> {
   const rootId = await getHiFitCompFolder();
-  return findOrCreateFolder(talentName, rootId);
+  const safeName = competitionName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+  return findOrCreateFolder(safeName, rootId);
 }
 
-export async function getTalentImagesFolder(talentName: string): Promise<string> {
-  const talentId = await getTalentFolder(talentName);
-  return findOrCreateFolder("images", talentId);
+export async function getTalentFolderInCompetition(competitionName: string, talentName: string): Promise<string> {
+  const competitionFolderId = await getCompetitionFolder(competitionName);
+  const safeTalentName = talentName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+  return findOrCreateFolder(safeTalentName, competitionFolderId);
+}
+
+export async function getTalentMediaFolder(competitionName: string, talentName: string): Promise<string> {
+  const talentFolderId = await getTalentFolderInCompetition(competitionName, talentName);
+  return findOrCreateFolder("media1", talentFolderId);
+}
+
+export async function createCompetitionDriveFolder(competitionName: string): Promise<string> {
+  return getCompetitionFolder(competitionName);
+}
+
+export async function createContestantDriveFolders(competitionName: string, talentName: string): Promise<string> {
+  return getTalentMediaFolder(competitionName, talentName);
 }
 
 export async function uploadImageToDrive(
+  competitionName: string,
   talentName: string,
   fileName: string,
   mimeType: string,
   buffer: Buffer
 ): Promise<{ id: string; webViewLink: string; webContentLink: string; thumbnailLink: string }> {
   const drive = getDriveClient();
-  const folderId = await getTalentImagesFolder(talentName);
+  const folderId = await getTalentMediaFolder(competitionName, talentName);
 
   const stream = new Readable();
   stream.push(buffer);
@@ -141,7 +157,7 @@ export async function listImagesInFolder(folderId: string): Promise<Array<{
   }));
 }
 
-export async function listTalentImages(talentName: string): Promise<Array<{
+export async function listTalentImages(competitionName: string, talentName: string): Promise<Array<{
   id: string;
   name: string;
   mimeType: string;
@@ -150,8 +166,56 @@ export async function listTalentImages(talentName: string): Promise<Array<{
   thumbnailLink: string;
 }>> {
   try {
-    const folderId = await getTalentImagesFolder(talentName);
+    const folderId = await getTalentMediaFolder(competitionName, talentName);
     return listImagesInFolder(folderId);
+  } catch {
+    return [];
+  }
+}
+
+export async function listAllTalentImages(talentName: string): Promise<Array<{
+  id: string;
+  name: string;
+  mimeType: string;
+  webViewLink: string;
+  webContentLink: string;
+  thumbnailLink: string;
+  competitionFolder: string;
+}>> {
+  try {
+    const drive = getDriveClient();
+    const rootId = await getHiFitCompFolder();
+    const compFoldersRes = await drive.files.list({
+      q: `'${rootId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: "files(id, name)",
+    });
+    const allImages: Array<{
+      id: string;
+      name: string;
+      mimeType: string;
+      webViewLink: string;
+      webContentLink: string;
+      thumbnailLink: string;
+      competitionFolder: string;
+    }> = [];
+    const safeTalentName = talentName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+    for (const compFolder of compFoldersRes.data.files || []) {
+      const talentFoldersRes = await drive.files.list({
+        q: `'${compFolder.id}' in parents and name='${safeTalentName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: "files(id, name)",
+      });
+      for (const talentFolder of talentFoldersRes.data.files || []) {
+        const mediaFolderRes = await drive.files.list({
+          q: `'${talentFolder.id}' in parents and name='media1' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          fields: "files(id)",
+        });
+        for (const mediaFolder of mediaFolderRes.data.files || []) {
+          const images = await listImagesInFolder(mediaFolder.id!);
+          allImages.push(...images.map(img => ({ ...img, competitionFolder: compFolder.name! })));
+        }
+      }
+    }
+    return allImages;
   } catch {
     return [];
   }

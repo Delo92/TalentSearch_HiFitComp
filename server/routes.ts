@@ -26,16 +26,22 @@ import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import {
   uploadImageToDrive,
   listTalentImages,
+  listAllTalentImages,
   getFileStream,
   deleteFile,
   getDriveImageUrl,
   getDriveThumbnailUrl,
+  createCompetitionDriveFolder,
+  createContestantDriveFolders,
 } from "./google-drive";
 import {
   listTalentVideos,
+  listAllTalentVideos,
   createUploadTicket,
   deleteVideo,
   getVideoThumbnail,
+  createCompetitionVimeoFolder,
+  createContestantVimeoFolder,
 } from "./vimeo";
 import { z } from "zod";
 import multer from "multer";
@@ -304,6 +310,16 @@ export async function registerRoutes(
       endDate: parsed.data.endDate || null,
       createdAt: new Date().toISOString(),
     });
+
+    try {
+      await Promise.all([
+        createCompetitionDriveFolder(comp.title),
+        createCompetitionVimeoFolder(comp.title),
+      ]);
+    } catch (folderErr: any) {
+      console.error("Auto-create competition folders error (non-blocking):", folderErr.message);
+    }
+
     res.status(201).json(comp);
   });
 
@@ -462,6 +478,23 @@ export async function registerRoutes(
 
     const updated = await storage.updateContestantStatus(id, status);
     if (!updated) return res.status(404).json({ message: "Contestant not found" });
+
+    if (status === "approved") {
+      try {
+        const profile = await storage.getTalentProfile(updated.talentProfileId);
+        const comp = await storage.getCompetition(updated.competitionId);
+        if (profile && comp) {
+          const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+          await Promise.all([
+            createContestantDriveFolders(comp.title, talentName),
+            createContestantVimeoFolder(comp.title, talentName),
+          ]);
+        }
+      } catch (folderErr: any) {
+        console.error("Auto-create contestant folders error (non-blocking):", folderErr.message);
+      }
+    }
+
     res.json(updated);
   });
 
@@ -616,6 +649,186 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Update user level error:", error);
       res.status(500).json({ message: "Failed to update user level" });
+    }
+  });
+
+  app.get("/api/admin/competitions/:id/detail", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+      const comp = await storage.getCompetition(id);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const allContestantsRaw = await storage.getAllContestants();
+      const compContestants = allContestantsRaw.filter(c => c.competitionId === id);
+      const totalVotes = await storage.getTotalVotesByCompetition(id);
+
+      const hostSubs = await firestoreHostSubmissions.getAll();
+      const matchingHosts = hostSubs.filter(h =>
+        h.eventName?.toLowerCase().includes(comp.title.toLowerCase()) ||
+        comp.title.toLowerCase().includes(h.eventName?.toLowerCase() || "")
+      );
+
+      const contestantDetails = [];
+      for (const c of compContestants) {
+        const voteCount = await storage.getVoteCountForContestantInCompetition(c.id, id);
+        contestantDetails.push({
+          id: c.id,
+          talentProfileId: c.talentProfileId,
+          applicationStatus: c.applicationStatus,
+          appliedAt: c.appliedAt,
+          displayName: c.talentProfile.displayName,
+          stageName: (c.talentProfile as any).stageName || null,
+          category: c.talentProfile.category,
+          imageUrls: c.talentProfile.imageUrls,
+          bio: c.talentProfile.bio,
+          voteCount,
+        });
+      }
+
+      res.json({
+        competition: comp,
+        totalVotes,
+        hosts: matchingHosts.map(h => ({
+          id: h.id,
+          fullName: h.fullName,
+          email: h.email,
+          organization: h.organization,
+          eventName: h.eventName,
+          status: h.status,
+          amountPaid: h.amountPaid,
+        })),
+        contestants: contestantDetails,
+      });
+    } catch (error: any) {
+      console.error("Competition detail error:", error);
+      res.status(500).json({ message: "Failed to get competition detail" });
+    }
+  });
+
+  app.get("/api/admin/users/:profileId/detail", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const profileId = parseInt(req.params.profileId);
+      if (isNaN(profileId)) return res.status(400).json({ message: "Invalid profile ID" });
+
+      const profile = await storage.getTalentProfile(profileId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const firestoreUser = await getFirestoreUser(profile.userId);
+
+      const contestantEntries = await storage.getContestantsByTalent(profileId);
+
+      const votingStats = [];
+      for (const entry of contestantEntries) {
+        const comp = await storage.getCompetition(entry.competitionId);
+        if (!comp) continue;
+        const voteCount = await storage.getVoteCountForContestantInCompetition(entry.id, entry.competitionId);
+        const totalCompVotes = await storage.getTotalVotesByCompetition(entry.competitionId);
+        const allContestants = await storage.getContestantsByCompetition(entry.competitionId);
+        const sorted = allContestants.sort((a, b) => b.voteCount - a.voteCount);
+        const rank = sorted.findIndex(c => c.id === entry.id) + 1;
+
+        votingStats.push({
+          competitionId: comp.id,
+          competitionTitle: comp.title,
+          competitionStatus: comp.status,
+          applicationStatus: entry.applicationStatus,
+          voteCount,
+          totalVotes: totalCompVotes,
+          votePercentage: totalCompVotes > 0 ? Math.round((voteCount / totalCompVotes) * 10000) / 100 : 0,
+          rank: rank > 0 ? rank : null,
+          totalContestants: allContestants.length,
+        });
+      }
+
+      const talentName = ((profile as any).stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+
+      let driveImages: any[] = [];
+      let vimeoVideos: any[] = [];
+      try {
+        driveImages = await listAllTalentImages(talentName);
+        driveImages = driveImages.map(img => ({
+          ...img,
+          imageUrl: getDriveImageUrl(img.id),
+          thumbnailUrl: getDriveThumbnailUrl(img.id),
+        }));
+      } catch {}
+      try {
+        const rawVideos = await listAllTalentVideos(talentName);
+        vimeoVideos = rawVideos.map(v => ({
+          uri: v.uri,
+          name: v.name,
+          link: v.link,
+          embedUrl: v.player_embed_url,
+          duration: v.duration,
+          thumbnail: getVideoThumbnail(v),
+          competitionFolder: v.competitionFolder,
+        }));
+      } catch {}
+
+      const activeStats = votingStats.filter(s => s.competitionStatus === "active" || s.competitionStatus === "voting");
+      const pastStats = votingStats.filter(s => s.competitionStatus === "completed");
+      const upcomingEvents = votingStats.filter(s => s.competitionStatus === "draft" && s.applicationStatus === "approved");
+
+      res.json({
+        profile: {
+          ...profile,
+          email: firestoreUser?.email || null,
+          level: firestoreUser?.level || 2,
+          socialLinks: (profile as any).socialLinks || firestoreUser?.socialLinks || null,
+        },
+        activeStats,
+        pastStats,
+        upcomingEvents,
+        driveImages,
+        vimeoVideos,
+      });
+    } catch (error: any) {
+      console.error("User detail error:", error);
+      res.status(500).json({ message: "Failed to get user detail" });
+    }
+  });
+
+  app.post("/api/admin/users/:profileId/assign", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const profileId = parseInt(req.params.profileId);
+      if (isNaN(profileId)) return res.status(400).json({ message: "Invalid profile ID" });
+
+      const { competitionId } = req.body;
+      if (!competitionId) return res.status(400).json({ message: "competitionId is required" });
+
+      const compId = parseInt(competitionId);
+      const profile = await storage.getTalentProfile(profileId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      const comp = await storage.getCompetition(compId);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const existing = await storage.getContestant(compId, profileId);
+      if (existing) return res.status(400).json({ message: "Already assigned to this competition" });
+
+      const contestant = await storage.createContestant({
+        competitionId: compId,
+        talentProfileId: profileId,
+        applicationStatus: "approved",
+        appliedAt: new Date().toISOString(),
+      });
+
+      try {
+        const talentName = ((profile as any).stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+        await Promise.all([
+          createContestantDriveFolders(comp.title, talentName),
+          createContestantVimeoFolder(comp.title, talentName),
+        ]);
+      } catch (folderErr: any) {
+        console.error("Auto-create assigned contestant folders error (non-blocking):", folderErr.message);
+      }
+
+      res.status(201).json(contestant);
+    } catch (error: any) {
+      console.error("Assign user error:", error);
+      res.status(500).json({ message: "Failed to assign user to competition" });
     }
   });
 
@@ -797,6 +1010,9 @@ export async function registerRoutes(
       if (!fullName || !email) {
         return res.status(400).json({ message: "Name and email are required" });
       }
+      if (!competitionId) {
+        return res.status(400).json({ message: "Please select a competition to apply for" });
+      }
 
       let transactionId: string | null = null;
       let amountPaid = 0;
@@ -816,6 +1032,7 @@ export async function registerRoutes(
         amountPaid = settings.price;
       }
 
+      const autoApproved = settings.mode === "purchase" && amountPaid > 0;
       const submission = await firestoreJoinSubmissions.create({
         competitionId: competitionId || null,
         fullName: fullName.trim(),
@@ -833,7 +1050,25 @@ export async function registerRoutes(
         amountPaid,
       });
 
-      res.status(201).json(submission);
+      if (autoApproved) {
+        await firestoreJoinSubmissions.updateStatus(submission.id, "approved");
+        if (competitionId) {
+          try {
+            const comp = await storage.getCompetition(competitionId);
+            if (comp) {
+              const safeTalentName = fullName.trim().replace(/[^a-zA-Z0-9_\-\s]/g, "_");
+              await Promise.all([
+                createContestantDriveFolders(comp.title, safeTalentName),
+                createContestantVimeoFolder(comp.title, safeTalentName),
+              ]);
+            }
+          } catch (folderErr: any) {
+            console.error("Auto-create join contestant folders error (non-blocking):", folderErr.message);
+          }
+        }
+      }
+
+      res.status(201).json({ ...submission, status: autoApproved ? "approved" : submission.status });
     } catch (error: any) {
       console.error("Join submission error:", error);
       if (error.errorMessage) {
@@ -1140,8 +1375,15 @@ export async function registerRoutes(
 
       if (!req.file) return res.status(400).json({ message: "No image file provided" });
 
-      const talentName = profile.displayName.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const { competitionId } = req.body;
+      if (!competitionId) return res.status(400).json({ message: "competitionId is required" });
+
+      const comp = await storage.getCompetition(parseInt(competitionId));
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
       const result = await uploadImageToDrive(
+        comp.title,
         talentName,
         req.file.originalname,
         req.file.mimetype,
@@ -1174,13 +1416,26 @@ export async function registerRoutes(
       const profile = await storage.getTalentProfileByUserId(uid);
       if (!profile) return res.json([]);
 
-      const talentName = profile.displayName.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const images = await listTalentImages(talentName);
-      res.json(images.map(img => ({
-        ...img,
-        imageUrl: getDriveImageUrl(img.id),
-        thumbnailUrl: getDriveThumbnailUrl(img.id),
-      })));
+      const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : null;
+      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+
+      if (competitionId) {
+        const comp = await storage.getCompetition(competitionId);
+        if (!comp) return res.json([]);
+        const images = await listTalentImages(comp.title, talentName);
+        res.json(images.map(img => ({
+          ...img,
+          imageUrl: getDriveImageUrl(img.id),
+          thumbnailUrl: getDriveThumbnailUrl(img.id),
+        })));
+      } else {
+        const allImages = await listAllTalentImages(talentName);
+        res.json(allImages.map(img => ({
+          ...img,
+          imageUrl: getDriveImageUrl(img.id),
+          thumbnailUrl: getDriveThumbnailUrl(img.id),
+        })));
+      }
     } catch (error: any) {
       console.error("Drive list error:", error);
       res.status(500).json({ message: "Failed to list images" });
@@ -1228,19 +1483,39 @@ export async function registerRoutes(
       const profile = await storage.getTalentProfileByUserId(uid);
       if (!profile) return res.json([]);
 
-      const talentName = profile.displayName.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const videos = await listTalentVideos(talentName);
-      res.json(videos.map(v => ({
-        uri: v.uri,
-        name: v.name,
-        description: v.description,
-        link: v.link,
-        embedUrl: v.player_embed_url,
-        duration: v.duration,
-        status: v.status,
-        thumbnail: getVideoThumbnail(v),
-        createdTime: v.created_time,
-      })));
+      const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : null;
+      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+
+      if (competitionId) {
+        const comp = await storage.getCompetition(competitionId);
+        if (!comp) return res.json([]);
+        const videos = await listTalentVideos(comp.title, talentName);
+        res.json(videos.map(v => ({
+          uri: v.uri,
+          name: v.name,
+          description: v.description,
+          link: v.link,
+          embedUrl: v.player_embed_url,
+          duration: v.duration,
+          status: v.status,
+          thumbnail: getVideoThumbnail(v),
+          createdTime: v.created_time,
+        })));
+      } else {
+        const allVideos = await listAllTalentVideos(talentName);
+        res.json(allVideos.map(v => ({
+          uri: v.uri,
+          name: v.name,
+          description: v.description,
+          link: v.link,
+          embedUrl: v.player_embed_url,
+          duration: v.duration,
+          status: v.status,
+          thumbnail: getVideoThumbnail(v),
+          createdTime: v.created_time,
+          competitionFolder: v.competitionFolder,
+        })));
+      }
     } catch (error: any) {
       console.error("Vimeo list error:", error);
       res.status(500).json({ message: "Failed to list videos" });
@@ -1253,13 +1528,19 @@ export async function registerRoutes(
       const profile = await storage.getTalentProfileByUserId(uid);
       if (!profile) return res.status(400).json({ message: "Create a talent profile first" });
 
-      const { fileName, fileSize } = req.body;
+      const { fileName, fileSize, competitionId } = req.body;
       if (!fileName || !fileSize) {
         return res.status(400).json({ message: "fileName and fileSize are required" });
       }
+      if (!competitionId) {
+        return res.status(400).json({ message: "competitionId is required" });
+      }
 
-      const talentName = profile.displayName.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const ticket = await createUploadTicket(talentName, fileName, fileSize);
+      const comp = await storage.getCompetition(parseInt(competitionId));
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const ticket = await createUploadTicket(comp.title, talentName, fileName, fileSize);
 
       res.json(ticket);
     } catch (error: any) {
