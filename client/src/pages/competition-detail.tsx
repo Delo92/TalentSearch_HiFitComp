@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Calendar, Vote, Heart, Users, Crown, Award, ChevronRight } from "lucide-react";
+import { Trophy, Calendar, Vote, Heart, Users, Crown, Award, ChevronRight, ShoppingCart } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -226,19 +226,31 @@ export default function CompetitionDetailPage() {
                         Profile
                       </Link>
                       {isVotingOpen && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            voteMutation.mutate(contestant.id);
-                          }}
-                          disabled={voteMutation.isPending}
-                          className="inline-block bg-black group-hover:bg-[#111] text-white font-bold text-sm capitalize px-6 leading-[40px] border border-black transition-all duration-500 hover:bg-white hover:text-black cursor-pointer disabled:opacity-50"
-                          data-testid={`button-vote-${contestant.id}`}
-                        >
-                          <Heart className="inline h-3.5 w-3.5 mr-1.5" />
-                          {voteMutation.isPending ? "Voting..." : "Vote"}
-                        </button>
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              voteMutation.mutate(contestant.id);
+                            }}
+                            disabled={voteMutation.isPending}
+                            className="inline-block bg-black group-hover:bg-[#111] text-white font-bold text-sm capitalize px-6 leading-[40px] border border-black transition-all duration-500 hover:bg-white hover:text-black cursor-pointer disabled:opacity-50"
+                            data-testid={`button-vote-${contestant.id}`}
+                          >
+                            <Heart className="inline h-3.5 w-3.5 mr-1.5" />
+                            {voteMutation.isPending ? "Voting..." : "Vote"}
+                          </button>
+                          <Link
+                            href={`/checkout/${competition.id}/${contestant.id}`}
+                            className="inline-block bg-[#FF5A09] text-white font-bold text-sm capitalize px-6 leading-[40px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
+                            style={{ letterSpacing: "2px" }}
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`button-buy-votes-${contestant.id}`}
+                          >
+                            <ShoppingCart className="inline h-3.5 w-3.5 mr-1.5" />
+                            Buy Votes
+                          </Link>
+                        </>
                       )}
                     </div>
                   </div>

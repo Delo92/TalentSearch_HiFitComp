@@ -1,0 +1,511 @@
+import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useRoute, useLocation, Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import SiteNavbar from "@/components/site-navbar";
+import SiteFooter from "@/components/site-footer";
+import { useLivery } from "@/hooks/use-livery";
+import { ShoppingCart, CreditCard, CheckCircle, ArrowLeft, Heart, Package } from "lucide-react";
+
+declare global {
+  interface Window {
+    Accept?: {
+      dispatchData: (
+        secureData: {
+          authData: { clientKey: string; apiLoginID: string };
+          cardData: { cardNumber: string; month: string; year: string; cardCode: string };
+        },
+        callback: (response: { opaqueData?: { dataDescriptor: string; dataValue: string }; messages?: { resultCode: string; message: { code: string; text: string }[] } }) => void,
+      ) => void;
+    };
+  }
+}
+
+interface VotePackage {
+  id: string;
+  name: string;
+  voteCount: number;
+  price: number;
+  isActive: boolean;
+  description?: string;
+}
+
+interface CompetitionDetail {
+  id: number;
+  title: string;
+  category: string;
+  status: string;
+  contestants: {
+    id: number;
+    talentProfileId: number;
+    talentProfile: {
+      displayName: string;
+      imageUrls: string[] | null;
+    };
+  }[];
+}
+
+interface PaymentConfig {
+  apiLoginId: string;
+  clientKey: string;
+  environment: string;
+}
+
+export default function CheckoutPage() {
+  const [, params] = useRoute("/checkout/:competitionId/:contestantId");
+  const competitionId = params?.competitionId ? parseInt(params.competitionId) : null;
+  const contestantId = params?.contestantId ? parseInt(params.contestantId) : null;
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { getImage } = useLivery();
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [selectedPackage, setSelectedPackage] = useState<string>("");
+  const [createAccount, setCreateAccount] = useState(true);
+  const [cardNumber, setCardNumber] = useState("");
+  const [expMonth, setExpMonth] = useState("");
+  const [expYear, setExpYear] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [successData, setSuccessData] = useState<{ transactionId: string; votesAdded: number } | null>(null);
+  const [acceptLoaded, setAcceptLoaded] = useState(false);
+
+  const { data: competition, isLoading: compLoading } = useQuery<CompetitionDetail>({
+    queryKey: ["/api/competitions", competitionId?.toString()],
+    enabled: !!competitionId,
+  });
+
+  const { data: packages, isLoading: pkgLoading } = useQuery<VotePackage[]>({
+    queryKey: ["/api/shop/packages"],
+  });
+
+  const { data: paymentConfig } = useQuery<PaymentConfig>({
+    queryKey: ["/api/payment-config"],
+  });
+
+  useEffect(() => {
+    if (paymentConfig && !acceptLoaded) {
+      const scriptUrl = paymentConfig.environment === "production"
+        ? "https://js.authorize.net/v1/Accept.js"
+        : "https://jstest.authorize.net/v1/Accept.js";
+
+      const existing = document.querySelector(`script[src="${scriptUrl}"]`);
+      if (existing) {
+        setAcceptLoaded(true);
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = scriptUrl;
+      script.async = true;
+      script.onload = () => setAcceptLoaded(true);
+      document.head.appendChild(script);
+    }
+  }, [paymentConfig, acceptLoaded]);
+
+  const contestant = competition?.contestants?.find((c) => c.id === contestantId);
+  const selectedPkg = packages?.find((p) => p.id === selectedPackage);
+
+  const handleCheckout = useCallback(async () => {
+    if (!name.trim() || !email.trim()) {
+      toast({ title: "Please enter your name and email", variant: "destructive" });
+      return;
+    }
+    if (!selectedPackage) {
+      toast({ title: "Please select a vote package", variant: "destructive" });
+      return;
+    }
+    if (!cardNumber || !expMonth || !expYear || !cvv) {
+      toast({ title: "Please enter your card details", variant: "destructive" });
+      return;
+    }
+    if (!paymentConfig || !window.Accept) {
+      toast({ title: "Payment system not ready. Please try again.", variant: "destructive" });
+      return;
+    }
+
+    setProcessing(true);
+
+    const secureData = {
+      authData: {
+        clientKey: paymentConfig.clientKey,
+        apiLoginID: paymentConfig.apiLoginId,
+      },
+      cardData: {
+        cardNumber: cardNumber.replace(/\s/g, ""),
+        month: expMonth.padStart(2, "0"),
+        year: expYear.length === 2 ? `20${expYear}` : expYear,
+        cardCode: cvv,
+      },
+    };
+
+    window.Accept.dispatchData(secureData, async (tokenResponse) => {
+      if (tokenResponse.messages?.resultCode === "Error") {
+        setProcessing(false);
+        const errMsg = tokenResponse.messages.message[0]?.text || "Card tokenization failed";
+        toast({ title: "Payment Error", description: errMsg, variant: "destructive" });
+        return;
+      }
+
+      if (!tokenResponse.opaqueData) {
+        setProcessing(false);
+        toast({ title: "Payment Error", description: "Failed to tokenize card", variant: "destructive" });
+        return;
+      }
+
+      try {
+        const result = await apiRequest("POST", "/api/guest/checkout", {
+          name: name.trim(),
+          email: email.trim(),
+          competitionId,
+          contestantId,
+          packageId: selectedPackage,
+          createAccount,
+          dataDescriptor: tokenResponse.opaqueData.dataDescriptor,
+          dataValue: tokenResponse.opaqueData.dataValue,
+        });
+
+        const data = await result.json();
+        setSuccess(true);
+        setSuccessData({ transactionId: data.transactionId, votesAdded: data.votesAdded });
+        toast({ title: "Purchase successful!", description: `${data.votesAdded} votes added!` });
+      } catch (error: any) {
+        toast({ title: "Checkout Failed", description: error.message?.replace(/^\d+:\s*/, "") || "Something went wrong", variant: "destructive" });
+      } finally {
+        setProcessing(false);
+      }
+    });
+  }, [name, email, selectedPackage, cardNumber, expMonth, expYear, cvv, paymentConfig, competitionId, contestantId, createAccount, toast]);
+
+  if (success && successData) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <SiteNavbar />
+        <div className="max-w-lg mx-auto px-4 py-32 text-center">
+          <CheckCircle className="h-16 w-16 text-green-400 mx-auto mb-6" />
+          <h2
+            className="text-2xl uppercase font-normal mb-4"
+            style={{ letterSpacing: "10px" }}
+            data-testid="text-success-title"
+          >
+            PURCHASE COMPLETE
+          </h2>
+          <p className="text-white/60 mb-2" data-testid="text-votes-added">
+            {successData.votesAdded} votes have been added for {contestant?.talentProfile?.displayName || "your chosen contestant"}!
+          </p>
+          <p className="text-white/40 text-sm mb-8" data-testid="text-transaction-id">
+            Transaction ID: {successData.transactionId}
+          </p>
+          <div className="flex flex-col items-center gap-4">
+            <Link href={`/competition/${competitionId}`}>
+              <span
+                className="inline-block bg-[#FF5A09] text-white font-bold text-sm uppercase px-8 leading-[47px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
+                data-testid="button-back-competition"
+              >
+                Back to Competition
+              </span>
+            </Link>
+            <Link href="/my-purchases">
+              <span
+                className="text-white/40 text-sm hover:text-white/60 transition-colors cursor-pointer"
+                data-testid="link-view-purchases"
+              >
+                View Purchase History
+              </span>
+            </Link>
+          </div>
+        </div>
+        <SiteFooter />
+      </div>
+    );
+  }
+
+  if (compLoading || pkgLoading) {
+    return (
+      <div className="min-h-screen bg-black">
+        <SiteNavbar />
+        <div className="max-w-2xl mx-auto px-4 py-32">
+          <Skeleton className="h-8 w-1/2 mb-6 bg-white/10" />
+          <Skeleton className="h-48 mb-4 bg-white/5" />
+          <Skeleton className="h-48 bg-white/5" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!competition || !contestant) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <SiteNavbar />
+        <div className="text-center">
+          <ShoppingCart className="h-12 w-12 text-white/20 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Invalid Checkout</h3>
+          <p className="text-white/40 text-sm mb-6">Competition or contestant not found.</p>
+          <Link href="/competitions">
+            <Button variant="ghost" className="text-orange-400" data-testid="button-back">
+              Back to Competitions
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <SiteNavbar />
+
+      <section
+        className="relative h-[270px] md:h-[300px] bg-cover bg-center overflow-hidden"
+        style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcrumb-bg.jpg")}')` }}
+      >
+        <div className="absolute inset-0 bg-black/65" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
+          <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">
+            <Link href={`/competition/${competitionId}`} className="hover:text-black transition-colors" data-testid="link-back-comp">
+              {competition.title}
+            </Link>
+            <span className="mx-2">/</span>
+            Buy Votes
+          </p>
+          <h2
+            className="text-[24px] md:text-[30px] uppercase text-black font-normal leading-none"
+            style={{ letterSpacing: "10px" }}
+            data-testid="text-page-title"
+          >
+            CHECKOUT
+          </h2>
+        </div>
+      </section>
+
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+        <Link href={`/competition/${competitionId}`} className="inline-flex items-center gap-2 text-white/40 text-sm mb-8 hover:text-white/60 transition-colors" data-testid="link-back">
+          <ArrowLeft className="h-4 w-4" />
+          Back to competition
+        </Link>
+
+        <div className="flex items-center gap-4 mb-10 p-4 border border-white/10">
+          <div className="w-16 h-16 overflow-hidden flex-shrink-0">
+            <img
+              src={contestant.talentProfile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg")}
+              alt={contestant.talentProfile.displayName}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div>
+            <p className="text-white/40 text-xs uppercase tracking-wider">Voting for</p>
+            <h3 className="text-white font-bold uppercase" data-testid="text-contestant-name">
+              {contestant.talentProfile.displayName}
+            </h3>
+            <p className="text-white/40 text-xs">{competition.title}</p>
+          </div>
+        </div>
+
+        <div className="mb-10">
+          <p className="text-[#5f5f5f] text-sm mb-1">Step 1</p>
+          <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
+            SELECT PACKAGE
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {packages?.map((pkg) => (
+              <button
+                key={pkg.id}
+                onClick={() => setSelectedPackage(pkg.id)}
+                className={`p-5 border text-left transition-all duration-300 cursor-pointer ${
+                  selectedPackage === pkg.id
+                    ? "border-[#FF5A09] bg-[#FF5A09]/10"
+                    : "border-white/10 hover:border-white/30"
+                }`}
+                data-testid={`button-package-${pkg.id}`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Package className={`h-5 w-5 ${selectedPackage === pkg.id ? "text-[#FF5A09]" : "text-white/40"}`} />
+                  <span className="text-white font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
+                    {pkg.name}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-white/60 text-sm">
+                    <Heart className="inline h-3.5 w-3.5 mr-1 text-[#FF5A09]" />
+                    {pkg.voteCount} votes
+                  </span>
+                  <span className="text-white font-bold text-lg">
+                    ${(pkg.price / 100).toFixed(2)}
+                  </span>
+                </div>
+                {pkg.description && (
+                  <p className="text-white/30 text-xs mt-2">{pkg.description}</p>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-10">
+          <p className="text-[#5f5f5f] text-sm mb-1">Step 2</p>
+          <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
+            YOUR INFO
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="name" className="text-white/60 uppercase text-xs tracking-wider">
+                Full Name
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-white/5 border-white/10 text-white mt-2"
+                placeholder="Your full name"
+                required
+                data-testid="input-name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="checkout-email" className="text-white/60 uppercase text-xs tracking-wider">
+                Email
+              </Label>
+              <Input
+                id="checkout-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-white/5 border-white/10 text-white mt-2"
+                placeholder="your@email.com"
+                required
+                data-testid="input-email"
+              />
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer mt-4" data-testid="label-create-account">
+              <input
+                type="checkbox"
+                checked={createAccount}
+                onChange={(e) => setCreateAccount(e.target.checked)}
+                className="w-4 h-4 accent-[#FF5A09]"
+                data-testid="checkbox-create-account"
+              />
+              <span className="text-white/60 text-sm">
+                Save my info to track purchases and vote history
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div className="mb-10">
+          <p className="text-[#5f5f5f] text-sm mb-1">Step 3</p>
+          <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
+            PAYMENT
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="card-number" className="text-white/60 uppercase text-xs tracking-wider">
+                Card Number
+              </Label>
+              <Input
+                id="card-number"
+                type="text"
+                value={cardNumber}
+                onChange={(e) => setCardNumber(e.target.value.replace(/[^\d\s]/g, ""))}
+                className="bg-white/5 border-white/10 text-white mt-2"
+                placeholder="4111 1111 1111 1111"
+                maxLength={19}
+                data-testid="input-card-number"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="exp-month" className="text-white/60 uppercase text-xs tracking-wider">
+                  Month
+                </Label>
+                <Input
+                  id="exp-month"
+                  type="text"
+                  value={expMonth}
+                  onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                  className="bg-white/5 border-white/10 text-white mt-2"
+                  placeholder="MM"
+                  maxLength={2}
+                  data-testid="input-exp-month"
+                />
+              </div>
+              <div>
+                <Label htmlFor="exp-year" className="text-white/60 uppercase text-xs tracking-wider">
+                  Year
+                </Label>
+                <Input
+                  id="exp-year"
+                  type="text"
+                  value={expYear}
+                  onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  className="bg-white/5 border-white/10 text-white mt-2"
+                  placeholder="YYYY"
+                  maxLength={4}
+                  data-testid="input-exp-year"
+                />
+              </div>
+              <div>
+                <Label htmlFor="cvv" className="text-white/60 uppercase text-xs tracking-wider">
+                  CVV
+                </Label>
+                <Input
+                  id="cvv"
+                  type="text"
+                  value={cvv}
+                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  className="bg-white/5 border-white/10 text-white mt-2"
+                  placeholder="123"
+                  maxLength={4}
+                  data-testid="input-cvv"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {selectedPkg && (
+          <div className="border border-white/10 p-5 mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white/60 text-sm uppercase tracking-wider">Order Summary</span>
+            </div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-white">{selectedPkg.name} ({selectedPkg.voteCount} votes)</span>
+              <span className="text-white font-bold">${(selectedPkg.price / 100).toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between text-white/40 text-sm">
+              <span>For: {contestant.talentProfile.displayName}</span>
+              <span>in {competition.title}</span>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={handleCheckout}
+          disabled={processing || !selectedPackage || !acceptLoaded}
+          className="w-full bg-[#FF5A09] text-white font-bold text-base uppercase px-8 leading-[52px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          data-testid="button-checkout"
+        >
+          <CreditCard className="h-5 w-5" />
+          {processing ? "PROCESSING..." : selectedPkg ? `PAY $${(selectedPkg.price / 100).toFixed(2)}` : "SELECT A PACKAGE"}
+        </button>
+
+        <p className="text-white/30 text-xs text-center mt-4">
+          Payments processed securely via Authorize.Net. Your card info never touches our servers.
+        </p>
+      </div>
+
+      <SiteFooter />
+    </div>
+  );
+}

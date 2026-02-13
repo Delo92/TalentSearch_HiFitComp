@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -188,6 +188,17 @@ export default function LoginPage() {
               >
                 Forgot your password?
               </button>
+
+              <div className="pt-6 border-t border-white/10 mt-6">
+                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Voter?</p>
+                <Link
+                  href="/my-purchases"
+                  className="text-[#FF5A09]/80 text-sm hover:text-[#FF5A09] transition-colors"
+                  data-testid="link-guest-purchases"
+                >
+                  Look up your purchase history
+                </Link>
+              </div>
             </>
           )}
           {mode === "register" && (

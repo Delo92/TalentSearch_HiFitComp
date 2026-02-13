@@ -3,6 +3,7 @@ import { getFirestore } from "./firebase-admin";
 
 const COLLECTIONS = {
   USERS: "users",
+  VIEWER_PROFILES: "viewerProfiles",
   CATEGORIES: "categories",
   COMPETITIONS: "competitions",
   TALENT_PROFILES: "talentProfiles",
@@ -101,13 +102,27 @@ export interface FirestoreVoteCount {
   updatedAt: admin.firestore.Timestamp;
 }
 
+export interface FirestoreViewerProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  createdAt: string;
+  lastPurchaseAt: string | null;
+  totalVotesPurchased: number;
+  totalSpent: number;
+}
+
 export interface FirestoreVotePurchase {
   id: number;
-  userId: string;
+  userId: string | null;
+  viewerId: string | null;
+  guestEmail: string | null;
+  guestName: string | null;
   competitionId: number;
   contestantId: number;
   voteCount: number;
   amount: number;
+  transactionId: string | null;
   purchasedAt: string | null;
 }
 
@@ -487,6 +502,87 @@ export const firestoreVotePurchases = {
       .get();
     const purchases = snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
     return purchases.sort((a, b) => (b.purchasedAt || "").localeCompare(a.purchasedAt || ""));
+  },
+
+  async getByViewer(viewerId: string): Promise<FirestoreVotePurchase[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.VOTE_PURCHASES)
+      .where("viewerId", "==", viewerId)
+      .get();
+    const purchases = snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
+    return purchases.sort((a, b) => (b.purchasedAt || "").localeCompare(a.purchasedAt || ""));
+  },
+};
+
+export const firestoreViewerProfiles = {
+  async getByEmail(email: string): Promise<FirestoreViewerProfile | null> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const snapshot = await db()
+      .collection(COLLECTIONS.VIEWER_PROFILES)
+      .where("email", "==", normalizedEmail)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as FirestoreViewerProfile;
+  },
+
+  async get(id: string): Promise<FirestoreViewerProfile | null> {
+    const doc = await db().collection(COLLECTIONS.VIEWER_PROFILES).doc(id).get();
+    if (!doc.exists) return null;
+    return doc.data() as FirestoreViewerProfile;
+  },
+
+  async create(data: { email: string; displayName: string }): Promise<FirestoreViewerProfile> {
+    const docRef = db().collection(COLLECTIONS.VIEWER_PROFILES).doc();
+    const profile: FirestoreViewerProfile = {
+      id: docRef.id,
+      email: data.email.toLowerCase().trim(),
+      displayName: data.displayName.trim(),
+      createdAt: new Date().toISOString(),
+      lastPurchaseAt: null,
+      totalVotesPurchased: 0,
+      totalSpent: 0,
+    };
+    await docRef.set(profile);
+    return profile;
+  },
+
+  async getOrCreate(email: string, displayName: string): Promise<FirestoreViewerProfile> {
+    const existing = await this.getByEmail(email);
+    if (existing) {
+      if (existing.displayName !== displayName.trim()) {
+        await db().collection(COLLECTIONS.VIEWER_PROFILES).doc(existing.id).update({
+          displayName: displayName.trim(),
+        });
+        existing.displayName = displayName.trim();
+      }
+      return existing;
+    }
+    return this.create({ email, displayName });
+  },
+
+  async recordPurchase(id: string, voteCount: number, amount: number): Promise<void> {
+    const ref = db().collection(COLLECTIONS.VIEWER_PROFILES).doc(id);
+    await ref.update({
+      lastPurchaseAt: new Date().toISOString(),
+      totalVotesPurchased: admin.firestore.FieldValue.increment(voteCount),
+      totalSpent: admin.firestore.FieldValue.increment(amount),
+    });
+  },
+
+  async lookup(email: string, name: string): Promise<FirestoreViewerProfile | null> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const snapshot = await db()
+      .collection(COLLECTIONS.VIEWER_PROFILES)
+      .where("email", "==", normalizedEmail)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    const profile = snapshot.docs[0].data() as FirestoreViewerProfile;
+    if (profile.displayName.toLowerCase().trim() !== name.toLowerCase().trim()) {
+      return null;
+    }
+    return profile;
   },
 };
 

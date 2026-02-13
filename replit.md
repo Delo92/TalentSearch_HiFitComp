@@ -140,3 +140,11 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - Feb 13, 2026: Created 3 test accounts (viewer/talent/admin @test.com, password: TestPass123)
 - Feb 13, 2026: Added PATCH /api/auth/profile for updating user profile (name, stage name, social links, billing)
 - Feb 13, 2026: Added GET/POST /api/vote-purchases for purchase history and vote buying
+- Feb 13, 2026: Integrated Authorize.Net payment processing with Accept.js client-side tokenization (server/authorize-net.ts)
+- Feb 13, 2026: Added guest viewer system: viewerProfiles Firestore collection for passwordless Level 1 users
+- Feb 13, 2026: Built guest checkout API (POST /api/guest/checkout) with payment processing, viewer profile creation, vote purchase recording
+- Feb 13, 2026: Built guest lookup API (POST /api/guest/lookup) for purchase history retrieval by name+email
+- Feb 13, 2026: Created checkout page (client/src/pages/checkout.tsx) with Accept.js card form, package selection, account opt-in
+- Feb 13, 2026: Created my-purchases page (client/src/pages/my-purchases.tsx) for guest viewer purchase history lookup
+- Feb 13, 2026: Added "Buy Votes" button on competition detail page contestant cards
+- Feb 13, 2026: Updated login page with guest viewer purchase lookup link

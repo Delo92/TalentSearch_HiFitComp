@@ -15,7 +15,10 @@ import {
   firestoreCategories,
   firestoreVotePackages,
   firestoreSettings,
+  firestoreViewerProfiles,
+  firestoreVotePurchases,
 } from "./firestore-collections";
+import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import {
   uploadImageToDrive,
   listTalentImages,
@@ -755,6 +758,136 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Update settings error:", error);
       res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+
+  app.get("/api/payment-config", (_req, res) => {
+    const config = getPublicConfig();
+    res.json(config);
+  });
+
+  const guestCheckoutSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Valid email is required"),
+    competitionId: z.number().int().positive(),
+    contestantId: z.number().int().positive(),
+    packageId: z.string().min(1, "Package is required"),
+    createAccount: z.boolean().default(false),
+    dataDescriptor: z.string().min(1, "Payment token is required"),
+    dataValue: z.string().min(1, "Payment token is required"),
+  });
+
+  app.post("/api/guest/checkout", async (req, res) => {
+    try {
+      const parsed = guestCheckoutSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid data" });
+      }
+
+      const { name, email, competitionId, contestantId, packageId, createAccount, dataDescriptor, dataValue } = parsed.data;
+
+      const comp = await storage.getCompetition(competitionId);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+      if (comp.status !== "voting" && comp.status !== "active") {
+        return res.status(400).json({ message: "Voting is not open for this competition" });
+      }
+
+      const pkg = await firestoreVotePackages.get(packageId);
+      if (!pkg) return res.status(404).json({ message: "Vote package not found" });
+      if (!pkg.isActive) return res.status(400).json({ message: "This vote package is no longer available" });
+
+      const amountInDollars = pkg.price / 100;
+
+      const chargeResult = await chargePaymentNonce(
+        amountInDollars,
+        dataDescriptor,
+        dataValue,
+        `${pkg.voteCount} votes for ${comp.title}`,
+        email,
+        name,
+      );
+
+      let viewerId: string | null = null;
+      if (createAccount) {
+        const viewer = await firestoreViewerProfiles.getOrCreate(email, name);
+        viewerId = viewer.id;
+        await firestoreViewerProfiles.recordPurchase(viewer.id, pkg.voteCount, pkg.price);
+      }
+
+      const purchase = await firestoreVotePurchases.create({
+        userId: null,
+        viewerId,
+        guestEmail: email.toLowerCase().trim(),
+        guestName: name.trim(),
+        competitionId,
+        contestantId,
+        voteCount: pkg.voteCount,
+        amount: pkg.price,
+        transactionId: chargeResult.transactionId,
+      });
+
+      await storage.castBulkVotes({
+        contestantId,
+        competitionId,
+        userId: viewerId || `guest_${purchase.id}`,
+        purchaseId: purchase.id,
+        voteCount: pkg.voteCount,
+      });
+
+      res.status(201).json({
+        success: true,
+        purchase,
+        transactionId: chargeResult.transactionId,
+        votesAdded: pkg.voteCount,
+        accountCreated: createAccount,
+        viewerId,
+      });
+    } catch (error: any) {
+      console.error("Guest checkout error:", error);
+      if (error.errorMessage) {
+        return res.status(400).json({ message: `Payment failed: ${error.errorMessage}` });
+      }
+      res.status(500).json({ message: "Checkout failed. Please try again." });
+    }
+  });
+
+  const guestLookupSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Valid email is required"),
+  });
+
+  app.post("/api/guest/lookup", async (req, res) => {
+    try {
+      const parsed = guestLookupSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid data" });
+      }
+
+      const { name, email } = parsed.data;
+      const viewer = await firestoreViewerProfiles.lookup(email, name);
+      if (!viewer) {
+        return res.status(404).json({ message: "No account found with that name and email. Make sure they match exactly what you used at checkout." });
+      }
+
+      const purchases = await firestoreVotePurchases.getByViewer(viewer.id);
+
+      const purchaseDetails = [];
+      for (const p of purchases) {
+        const comp = await storage.getCompetition(p.competitionId);
+        purchaseDetails.push({
+          ...p,
+          competitionTitle: comp?.title || "Unknown Competition",
+        });
+      }
+
+      res.json({
+        viewer,
+        purchases: purchaseDetails,
+      });
+    } catch (error: any) {
+      console.error("Guest lookup error:", error);
+      res.status(500).json({ message: "Lookup failed" });
     }
   });
 
