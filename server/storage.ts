@@ -27,6 +27,9 @@ export interface IStorage {
   getAdminProfiles(): Promise<FirestoreTalentProfile[]>;
 
   getCompetitions(): Promise<FirestoreCompetition[]>;
+  getCompetitionsByStatus(status: string): Promise<FirestoreCompetition[]>;
+  getCompetitionsByCategory(category: string): Promise<FirestoreCompetition[]>;
+  getCompetitionsByCategoryAndStatus(category: string, status: string): Promise<FirestoreCompetition[]>;
   getCompetition(id: number): Promise<FirestoreCompetition | null>;
   createCompetition(comp: Omit<FirestoreCompetition, "id">): Promise<FirestoreCompetition>;
   updateCompetition(id: number, data: Partial<Omit<FirestoreCompetition, "id">>): Promise<FirestoreCompetition | null>;
@@ -44,8 +47,12 @@ export interface IStorage {
   getTotalVotesByCompetition(competitionId: number): Promise<number>;
   getVotesTodayByIp(competitionId: number, voterIp: string): Promise<number>;
 
+  castBulkVotes(data: { contestantId: number; competitionId: number; userId: string; purchaseId: number; voteCount: number }): Promise<void>;
+  getVoteCountForContestantInCompetition(contestantId: number, competitionId: number): Promise<number>;
+
   createVotePurchase(purchase: { userId: string; competitionId: number; contestantId: number; voteCount: number; amount: number }): Promise<FirestoreVotePurchase>;
   getVotePurchasesByUser(userId: string): Promise<FirestoreVotePurchase[]>;
+  getVotePurchasesByCompetition(competitionId: number): Promise<FirestoreVotePurchase[]>;
 
   getAllLivery(): Promise<FirestoreLiveryItem[]>;
   getLiveryByKey(imageKey: string): Promise<FirestoreLiveryItem | null>;
@@ -92,6 +99,18 @@ export class FirestoreStorage implements IStorage {
 
   async getCompetitions(): Promise<FirestoreCompetition[]> {
     return firestoreCompetitions.getAll();
+  }
+
+  async getCompetitionsByStatus(status: string): Promise<FirestoreCompetition[]> {
+    return firestoreCompetitions.getByStatus(status);
+  }
+
+  async getCompetitionsByCategory(category: string): Promise<FirestoreCompetition[]> {
+    return firestoreCompetitions.getByCategory(category);
+  }
+
+  async getCompetitionsByCategoryAndStatus(category: string, status: string): Promise<FirestoreCompetition[]> {
+    return firestoreCompetitions.getByCategoryAndStatus(category, status);
   }
 
   async getCompetition(id: number): Promise<FirestoreCompetition | null> {
@@ -191,12 +210,32 @@ export class FirestoreStorage implements IStorage {
     return firestoreVotes.getVotesTodayByIp(competitionId, voterIp);
   }
 
+  async castBulkVotes(data: { contestantId: number; competitionId: number; userId: string; purchaseId: number; voteCount: number }): Promise<void> {
+    for (let i = 0; i < data.voteCount; i++) {
+      await firestoreVotes.cast({
+        contestantId: data.contestantId,
+        competitionId: data.competitionId,
+        voterIp: null,
+        userId: data.userId,
+        purchaseId: data.purchaseId,
+      });
+    }
+  }
+
+  async getVoteCountForContestantInCompetition(contestantId: number, competitionId: number): Promise<number> {
+    return firestoreVotes.getVoteCountForContestantInCompetition(contestantId, competitionId);
+  }
+
   async createVotePurchase(purchase: { userId: string; competitionId: number; contestantId: number; voteCount: number; amount: number }): Promise<FirestoreVotePurchase> {
     return firestoreVotePurchases.create(purchase);
   }
 
   async getVotePurchasesByUser(userId: string): Promise<FirestoreVotePurchase[]> {
     return firestoreVotePurchases.getByUser(userId);
+  }
+
+  async getVotePurchasesByCompetition(competitionId: number): Promise<FirestoreVotePurchase[]> {
+    return firestoreVotePurchases.getByCompetition(competitionId);
   }
 
   async getAllLivery(): Promise<FirestoreLiveryItem[]> {

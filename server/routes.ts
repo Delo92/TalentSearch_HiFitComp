@@ -234,9 +234,24 @@ export async function registerRoutes(
   });
 
 
-  app.get("/api/competitions", async (_req, res) => {
-    const comps = await storage.getCompetitions();
-    res.json(comps);
+  app.get("/api/competitions", async (req, res) => {
+    try {
+      const { category, status } = req.query;
+      let comps;
+      if (category && status) {
+        comps = await storage.getCompetitionsByCategoryAndStatus(String(category), String(status));
+      } else if (category) {
+        comps = await storage.getCompetitionsByCategory(String(category));
+      } else if (status) {
+        comps = await storage.getCompetitionsByStatus(String(status));
+      } else {
+        comps = await storage.getCompetitions();
+      }
+      res.json(comps);
+    } catch (error: any) {
+      console.error("Get competitions error:", error);
+      res.status(500).json({ message: "Failed to get competitions" });
+    }
   });
 
   app.get("/api/competitions/:id", async (req, res) => {
@@ -444,22 +459,126 @@ export async function registerRoutes(
   });
 
   app.get("/api/admin/stats", firebaseAuth, requireAdmin, async (_req, res) => {
-    const comps = await storage.getCompetitions();
-    const profiles = await storage.getAllTalentProfiles();
-    const allContestants = await storage.getAllContestants();
+    try {
+      const comps = await storage.getCompetitions();
+      const profiles = await storage.getAllTalentProfiles();
+      const allContestants = await storage.getAllContestants();
 
-    let totalVotes = 0;
-    for (const comp of comps) {
-      totalVotes += await storage.getTotalVotesByCompetition(comp.id);
+      let totalVotes = 0;
+      const competitionStats = [];
+      for (const comp of comps) {
+        const compVotes = await storage.getTotalVotesByCompetition(comp.id);
+        totalVotes += compVotes;
+        const compContestants = allContestants.filter(c => c.competitionId === comp.id);
+        competitionStats.push({
+          id: comp.id,
+          title: comp.title,
+          category: comp.category,
+          status: comp.status,
+          totalVotes: compVotes,
+          totalContestants: compContestants.length,
+          pendingApplications: compContestants.filter(c => c.applicationStatus === "pending").length,
+          approvedContestants: compContestants.filter(c => c.applicationStatus === "approved").length,
+        });
+      }
+
+      const statusCounts: Record<string, number> = {};
+      for (const comp of comps) {
+        statusCounts[comp.status] = (statusCounts[comp.status] || 0) + 1;
+      }
+
+      const categoryCounts: Record<string, number> = {};
+      for (const comp of comps) {
+        categoryCounts[comp.category] = (categoryCounts[comp.category] || 0) + 1;
+      }
+
+      res.json({
+        totalCompetitions: comps.length,
+        totalTalentProfiles: profiles.length,
+        totalContestants: allContestants.length,
+        totalVotes,
+        pendingApplications: allContestants.filter((c) => c.applicationStatus === "pending").length,
+        competitionsByStatus: statusCounts,
+        competitionsByCategory: categoryCounts,
+        competitionStats,
+      });
+    } catch (error: any) {
+      console.error("Admin stats error:", error);
+      res.status(500).json({ message: "Failed to get stats" });
     }
+  });
 
-    res.json({
-      totalCompetitions: comps.length,
-      totalTalentProfiles: profiles.length,
-      totalContestants: allContestants.length,
-      totalVotes,
-      pendingApplications: allContestants.filter((c) => c.applicationStatus === "pending").length,
-    });
+  app.get("/api/admin/competitions/:id/report", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+      const comp = await storage.getCompetition(id);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const contestantsData = await storage.getContestantsByCompetition(id);
+      const totalVotes = await storage.getTotalVotesByCompetition(id);
+      const purchases = await storage.getVotePurchasesByCompetition(id);
+
+      const totalRevenue = purchases.reduce((sum, p) => sum + p.amount, 0);
+      const totalPurchasedVotes = purchases.reduce((sum, p) => sum + p.voteCount, 0);
+
+      const leaderboard = contestantsData
+        .sort((a, b) => b.voteCount - a.voteCount)
+        .map((c, index) => ({
+          rank: index + 1,
+          contestantId: c.id,
+          talentProfileId: c.talentProfileId,
+          displayName: c.talentProfile.displayName,
+          stageName: c.talentProfile.stageName,
+          voteCount: c.voteCount,
+          votePercentage: totalVotes > 0 ? Math.round((c.voteCount / totalVotes) * 10000) / 100 : 0,
+        }));
+
+      res.json({
+        competition: comp,
+        totalVotes,
+        totalContestants: contestantsData.length,
+        totalRevenue,
+        totalPurchasedVotes,
+        totalPurchases: purchases.length,
+        leaderboard,
+      });
+    } catch (error: any) {
+      console.error("Competition report error:", error);
+      res.status(500).json({ message: "Failed to get competition report" });
+    }
+  });
+
+  app.get("/api/competitions/:id/leaderboard", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+      const comp = await storage.getCompetition(id);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const contestantsData = await storage.getContestantsByCompetition(id);
+      const totalVotes = await storage.getTotalVotesByCompetition(id);
+
+      const leaderboard = contestantsData
+        .sort((a, b) => b.voteCount - a.voteCount)
+        .map((c, index) => ({
+          rank: index + 1,
+          contestantId: c.id,
+          talentProfileId: c.talentProfileId,
+          displayName: c.talentProfile.displayName,
+          stageName: c.talentProfile.stageName,
+          category: c.talentProfile.category,
+          voteCount: c.voteCount,
+          votePercentage: totalVotes > 0 ? Math.round((c.voteCount / totalVotes) * 10000) / 100 : 0,
+        }));
+
+      res.json({ competitionId: id, totalVotes, leaderboard });
+    } catch (error: any) {
+      console.error("Leaderboard error:", error);
+      res.status(500).json({ message: "Failed to get leaderboard" });
+    }
   });
 
   app.get("/api/admin/users", firebaseAuth, requireAdmin, async (_req, res) => {

@@ -143,18 +143,18 @@ export const firestoreCategories = {
   async getAll(): Promise<FirestoreCategory[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.CATEGORIES)
-      .orderBy("order", "asc")
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreCategory));
+    const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreCategory));
+    return categories.sort((a, b) => a.order - b.order);
   },
 
   async getActive(): Promise<FirestoreCategory[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.CATEGORIES)
       .where("isActive", "==", true)
-      .orderBy("order", "asc")
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreCategory));
+    const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreCategory));
+    return categories.sort((a, b) => a.order - b.order);
   },
 
   async get(id: string): Promise<FirestoreCategory | null> {
@@ -201,9 +201,9 @@ export const firestoreCompetitions = {
     const snapshot = await db()
       .collection(COLLECTIONS.COMPETITIONS)
       .where("status", "==", status)
-      .orderBy("createdAt", "desc")
       .get();
-    return snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    return comps.sort((a, b) => b.id - a.id);
   },
 
   async getByCategory(category: string): Promise<FirestoreCompetition[]> {
@@ -475,18 +475,18 @@ export const firestoreVotePurchases = {
     const snapshot = await db()
       .collection(COLLECTIONS.VOTE_PURCHASES)
       .where("userId", "==", userId)
-      .orderBy("purchasedAt", "desc")
       .get();
-    return snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
+    const purchases = snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
+    return purchases.sort((a, b) => (b.purchasedAt || "").localeCompare(a.purchasedAt || ""));
   },
 
   async getByCompetition(competitionId: number): Promise<FirestoreVotePurchase[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.VOTE_PURCHASES)
       .where("competitionId", "==", competitionId)
-      .orderBy("purchasedAt", "desc")
       .get();
-    return snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
+    const purchases = snapshot.docs.map(doc => doc.data() as FirestoreVotePurchase);
+    return purchases.sort((a, b) => (b.purchasedAt || "").localeCompare(a.purchasedAt || ""));
   },
 };
 
@@ -494,18 +494,18 @@ export const firestoreVotePackages = {
   async getAll(): Promise<FirestoreVotePackage[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.VOTE_PACKAGES)
-      .orderBy("order", "asc")
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
+    const packages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
+    return packages.sort((a, b) => a.order - b.order);
   },
 
   async getActive(): Promise<FirestoreVotePackage[]> {
     const snapshot = await db()
       .collection(COLLECTIONS.VOTE_PACKAGES)
       .where("isActive", "==", true)
-      .orderBy("order", "asc")
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
+    const packages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreVotePackage));
+    return packages.sort((a, b) => a.order - b.order);
   },
 
   async get(id: string): Promise<FirestoreVotePackage | null> {
@@ -543,8 +543,9 @@ export const firestoreVotePackages = {
 
 export const firestoreLivery = {
   async getAll(): Promise<FirestoreLiveryItem[]> {
-    const snapshot = await db().collection(COLLECTIONS.LIVERY).orderBy("label", "asc").get();
-    return snapshot.docs.map(doc => doc.data() as FirestoreLiveryItem);
+    const snapshot = await db().collection(COLLECTIONS.LIVERY).get();
+    const items = snapshot.docs.map(doc => doc.data() as FirestoreLiveryItem);
+    return items.sort((a, b) => a.label.localeCompare(b.label));
   },
 
   async getByKey(imageKey: string): Promise<FirestoreLiveryItem | null> {
