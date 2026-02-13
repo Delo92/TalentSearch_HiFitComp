@@ -74,6 +74,18 @@ export const votesRelations = relations(votes, ({ one }) => ({
   competition: one(competitions, { fields: [votes.competitionId], references: [competitions.id] }),
 }));
 
+export const siteLivery = pgTable("site_livery", {
+  id: serial("id").primaryKey(),
+  imageKey: text("image_key").notNull().unique(),
+  label: text("label").notNull(),
+  imageUrl: text("image_url"),
+  defaultUrl: text("default_url").notNull(),
+});
+
+export const insertSiteLiverySchema = createInsertSchema(siteLivery).omit({ id: true });
+export type InsertSiteLivery = z.infer<typeof insertSiteLiverySchema>;
+export type SiteLivery = typeof siteLivery.$inferSelect;
+
 export const insertTalentProfileSchema = createInsertSchema(talentProfiles).omit({ id: true });
 export const insertCompetitionSchema = createInsertSchema(competitions).omit({ id: true, createdAt: true });
 export const insertContestantSchema = createInsertSchema(contestants).omit({ id: true, appliedAt: true });
