@@ -7,6 +7,7 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - **Frontend**: React + TypeScript + Vite, Tailwind CSS, shadcn/ui, Framer Motion
 - **Backend**: Express.js with Replit Auth (OIDC)
 - **Database**: PostgreSQL (Neon) via Drizzle ORM
+- **Firebase**: Analytics (project: hifitcomp) - config served via `/api/firebase-config`, initialized in `client/src/lib/firebase.ts`
 - **Styling**: Dark theme with orange/amber (#FF5A09) primary colors, Poppins/Playfair Display fonts
 
 ## Project Structure
@@ -53,3 +54,5 @@ A comprehensive talent competition and voting platform where artists, models, bo
 ## Recent Changes
 - Feb 2026: Full platform implementation with database, API, and One Music dark theme UI
 - Feb 2026: Complete UI redesign to match One Music HTML template patterns (hero, breadcrumbs, event cards, section headings, navbar, footer)
+- Feb 2026: Added Livery system for admin-managed site images across all pages
+- Feb 2026: Integrated Firebase (hifitcomp project) with Analytics

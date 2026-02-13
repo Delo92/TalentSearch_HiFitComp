@@ -3,14 +3,29 @@ import { getAnalytics, type Analytics } from "firebase/analytics";
 
 let app: FirebaseApp | null = null;
 let analytics: Analytics | null = null;
+let initialized = false;
 
 export async function initFirebase() {
-  if (app) return { app, analytics };
+  if (initialized) return { app, analytics };
+  initialized = true;
 
-  const res = await fetch("/api/firebase-config");
-  const config = await res.json();
-  app = initializeApp(config);
-  analytics = getAnalytics(app);
+  try {
+    const res = await fetch("/api/firebase-config");
+    if (!res.ok) {
+      console.warn("Failed to load Firebase config");
+      return { app: null, analytics: null };
+    }
+    const config = await res.json();
+    if (!config.apiKey) {
+      console.warn("Firebase API key not configured");
+      return { app: null, analytics: null };
+    }
+
+    app = initializeApp(config);
+    analytics = getAnalytics(app);
+  } catch (err) {
+    console.warn("Firebase initialization failed:", err);
+  }
 
   return { app, analytics };
 }
