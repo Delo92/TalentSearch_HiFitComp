@@ -4,6 +4,34 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
 import { insertCompetitionSchema, insertTalentProfileSchema, insertVoteSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadsDir = path.resolve(process.cwd(), "client/public/uploads/livery");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const liveryUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadsDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+      cb(null, name);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+    if (allowed.test(path.extname(file.originalname))) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
+  },
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -289,6 +317,51 @@ export async function registerRoutes(
 
     const updated = await storage.updateContestantStatus(id, status);
     if (!updated) return res.status(404).json({ message: "Contestant not found" });
+    res.json(updated);
+  });
+
+  app.get("/api/livery", async (_req, res) => {
+    const items = await storage.getAllLivery();
+    res.json(items);
+  });
+
+  app.put("/api/admin/livery/:imageKey", isAuthenticated, liveryUpload.single("image"), async (req, res) => {
+    const userId = req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const profile = await storage.getTalentProfileByUserId(userId);
+    if (!profile || profile.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    const { imageKey } = req.params;
+    const existing = await storage.getLiveryByKey(imageKey);
+    if (!existing) return res.status(404).json({ message: "Livery item not found" });
+
+    let imageUrl: string | null = null;
+
+    if (req.file) {
+      imageUrl = `/uploads/livery/${req.file.filename}`;
+    } else if (req.body.imageUrl !== undefined) {
+      imageUrl = req.body.imageUrl || null;
+    }
+
+    const updated = await storage.updateLiveryImage(imageKey, imageUrl);
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/livery/:imageKey", isAuthenticated, async (req, res) => {
+    const userId = req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const profile = await storage.getTalentProfileByUserId(userId);
+    if (!profile || profile.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    const { imageKey } = req.params;
+    const updated = await storage.updateLiveryImage(imageKey, null);
+    if (!updated) return res.status(404).json({ message: "Livery item not found" });
     res.json(updated);
   });
 
