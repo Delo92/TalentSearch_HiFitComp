@@ -58,6 +58,7 @@ export interface IStorage {
   getLiveryByKey(imageKey: string): Promise<FirestoreLiveryItem | null>;
   upsertLivery(item: FirestoreLiveryItem): Promise<FirestoreLiveryItem>;
   updateLiveryImage(imageKey: string, imageUrl: string | null, mediaType?: "image" | "video"): Promise<FirestoreLiveryItem | null>;
+  updateLiveryText(imageKey: string, textContent: string | null): Promise<FirestoreLiveryItem | null>;
 }
 
 export class FirestoreStorage implements IStorage {
@@ -252,6 +253,10 @@ export class FirestoreStorage implements IStorage {
 
   async updateLiveryImage(imageKey: string, imageUrl: string | null, mediaType?: "image" | "video"): Promise<FirestoreLiveryItem | null> {
     return firestoreLivery.updateImage(imageKey, imageUrl, mediaType);
+  }
+
+  async updateLiveryText(imageKey: string, textContent: string | null): Promise<FirestoreLiveryItem | null> {
+    return firestoreLivery.updateText(imageKey, textContent);
   }
 }
 

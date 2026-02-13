@@ -154,3 +154,7 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - Feb 13, 2026: Added admin dashboard tabs for Join and Host management (settings configuration + submission review)
 - Feb 13, 2026: Added Join and Host links to navbar (desktop + mobile)
 - Feb 13, 2026: Updated login page with guest viewer purchase lookup link
+- Feb 13, 2026: Extended livery system with text content support (itemType, textContent, defaultText fields)
+- Feb 13, 2026: Added hero_summary text livery item displayed below hero buttons on landing page
+- Feb 13, 2026: Added text editor UI in admin livery tab with save/reset for text-type livery items
+- Feb 13, 2026: Added closed-loop navigation with deep linking via query params

@@ -6,6 +6,9 @@ interface LiveryItem {
   imageUrl: string | null;
   defaultUrl: string;
   mediaType?: "image" | "video";
+  textContent?: string | null;
+  defaultText?: string | null;
+  itemType?: "media" | "text";
 }
 
 export function useLivery() {
@@ -37,5 +40,12 @@ export function useLivery() {
     };
   };
 
-  return { items, isLoading, getImage, getMediaType, getMedia };
+  const getText = (imageKey: string, fallback?: string): string => {
+    if (!items) return fallback || "";
+    const item = items.find((i) => i.imageKey === imageKey);
+    if (!item) return fallback || "";
+    return item.textContent || item.defaultText || fallback || "";
+  };
+
+  return { items, isLoading, getImage, getMediaType, getMedia, getText };
 }

@@ -605,6 +605,19 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
   });
 
+  const updateLiveryTextMutation = useMutation({
+    mutationFn: async ({ imageKey, textContent }: { imageKey: string; textContent: string }) => {
+      await apiRequest("PUT", `/api/admin/livery/${imageKey}/text`, { textContent });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/livery"] });
+      toast({ title: "Text updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Update failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
   const updateJoinSettingsMutation = useMutation({
     mutationFn: async (data: Partial<JoinHostSettings>) => {
       await apiRequest("PUT", "/api/admin/join/settings", data);
@@ -894,7 +907,7 @@ export default function AdminDashboard({ user }: { user: any }) {
               <p className="text-white/40 text-sm">Upload replacement images or short videos (15 seconds max) for any template slot. Click "Upload" to replace or "Reset" to restore the original.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {liveryItems?.map((item: any) => {
+              {liveryItems?.filter((item: any) => item.itemType !== "text").map((item: any) => {
                 const displayUrl = item.imageUrl || item.defaultUrl;
                 const isCustom = !!item.imageUrl;
                 const isVideo = item.mediaType === "video";
@@ -971,6 +984,70 @@ export default function AdminDashboard({ user }: { user: any }) {
                 );
               })}
             </div>
+            {liveryItems?.filter((item: any) => item.itemType === "text").map((item: any) => {
+              const currentText = item.textContent || item.defaultText || "";
+              const isCustomText = !!item.textContent;
+              return (
+                <div key={item.imageKey} className="mt-6 rounded-md bg-white/5 border border-white/5 p-4" data-testid={`livery-item-${item.imageKey}`}>
+                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                    <div>
+                      <h4 className="font-medium text-sm" data-testid={`livery-label-${item.imageKey}`}>{item.label}</h4>
+                      <p className="text-xs text-white/30 font-mono">{item.imageKey}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isCustomText && (
+                        <Badge className="bg-orange-500 text-white border-0 text-xs">Custom</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Textarea
+                    key={`${item.imageKey}-${currentText}`}
+                    defaultValue={currentText}
+                    rows={4}
+                    className="bg-black/30 border-white/10 text-white text-sm mb-3"
+                    data-testid={`textarea-livery-${item.imageKey}`}
+                    onBlur={(e) => {
+                      const newText = e.target.value.trim();
+                      if (newText !== currentText) {
+                        updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
+                      }
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const textarea = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLTextAreaElement;
+                        if (textarea) {
+                          updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: textarea.value.trim() });
+                        }
+                      }}
+                      disabled={updateLiveryTextMutation.isPending}
+                      className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-xs"
+                      data-testid={`button-save-text-${item.imageKey}`}
+                    >
+                      Save Text
+                    </Button>
+                    {isCustomText && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: "" });
+                          const textarea = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLTextAreaElement;
+                          if (textarea) textarea.value = item.defaultText || "";
+                        }}
+                        disabled={updateLiveryTextMutation.isPending}
+                        className="text-white/40 text-xs"
+                        data-testid={`button-reset-text-${item.imageKey}`}
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" /> Reset to Default
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             {(!liveryItems || liveryItems.length === 0) && (
               <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
                 <Image className="h-8 w-8 text-white/10 mx-auto mb-2" />

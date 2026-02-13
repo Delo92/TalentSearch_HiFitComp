@@ -148,6 +148,9 @@ export interface FirestoreLiveryItem {
   imageUrl: string | null;
   defaultUrl: string;
   mediaType?: "image" | "video";
+  textContent?: string | null;
+  defaultText?: string | null;
+  itemType?: "media" | "text";
 }
 
 export interface FirestoreSettings {
@@ -730,6 +733,15 @@ export const firestoreLivery = {
     if (mediaType !== undefined) updateData.mediaType = mediaType;
     if (imageUrl === null) updateData.mediaType = "image";
     await ref.update(updateData);
+    const updated = await ref.get();
+    return updated.data() as FirestoreLiveryItem;
+  },
+
+  async updateText(imageKey: string, textContent: string | null): Promise<FirestoreLiveryItem | null> {
+    const ref = db().collection(COLLECTIONS.LIVERY).doc(imageKey);
+    const doc = await ref.get();
+    if (!doc.exists) return null;
+    await ref.update({ textContent });
     const updated = await ref.get();
     return updated.data() as FirestoreLiveryItem;
   },

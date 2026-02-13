@@ -24,7 +24,7 @@ export default function Landing() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-  const { getImage, getMedia } = useLivery();
+  const { getImage, getMedia, getText } = useLivery();
 
   const cats = useInView();
   const featured = useInView();
@@ -106,6 +106,19 @@ export default function Landing() {
               </span>
             </Link>
           </motion.div>
+
+          {getText("hero_summary") && (
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.3 }}
+              className="mt-8 max-w-3xl mx-auto text-white/70 text-base md:text-lg leading-relaxed"
+              style={{ letterSpacing: "1px" }}
+              data-testid="text-hero-summary"
+            >
+              {getText("hero_summary")}
+            </motion.p>
+          )}
         </motion.div>
       </section>
 

@@ -146,6 +146,7 @@ const LIVERY_DEFAULTS = [
   { imageKey: "category_dance", label: "Category Card - Dance (Landing)", defaultUrl: "/images/template/a4.jpg" },
   { imageKey: "competition_card_fallback", label: "Default Competition Card Image", defaultUrl: "/images/template/e1.jpg" },
   { imageKey: "talent_profile_fallback", label: "Default Talent Profile Image", defaultUrl: "/images/template/a1.jpg" },
+  { imageKey: "hero_summary", label: "Hero Summary / Instructions", defaultUrl: "", itemType: "text" as const, defaultText: "Welcome to HiFitComp — the ultimate talent competition platform. Browse competitions, vote for your favorites, join as a competitor, or host your own event. Get started today!" },
 ];
 
 export async function seedLivery() {
