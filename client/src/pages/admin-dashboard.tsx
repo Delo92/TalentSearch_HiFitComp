@@ -11,14 +11,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User as AuthUser } from "@shared/models/auth";
-import type { Competition } from "@shared/schema";
-import { useState } from "react";
+import type { Competition, SiteLivery } from "@shared/schema";
+import { useState, useRef } from "react";
 
 interface AdminStats {
   totalCompetitions: number;
@@ -57,6 +57,8 @@ export default function AdminDashboard({ user }: { user: AuthUser }) {
   const { data: stats } = useQuery<AdminStats>({ queryKey: ["/api/admin/stats"] });
   const { data: competitions } = useQuery<Competition[]>({ queryKey: ["/api/competitions"] });
   const { data: allContestants } = useQuery<ContestantAdmin[]>({ queryKey: ["/api/admin/contestants"] });
+  const { data: liveryItems } = useQuery<SiteLivery[]>({ queryKey: ["/api/livery"] });
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -109,6 +111,47 @@ export default function AdminDashboard({ user }: { user: AuthUser }) {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
     },
   });
+
+  const uploadLiveryMutation = useMutation({
+    mutationFn: async ({ imageKey, file }: { imageKey: string; file: File }) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch(`/api/admin/livery/${imageKey}`, {
+        method: "PUT",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Upload failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/livery"] });
+      toast({ title: "Image updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const resetLiveryMutation = useMutation({
+    mutationFn: async (imageKey: string) => {
+      await apiRequest("DELETE", `/api/admin/livery/${imageKey}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/livery"] });
+      toast({ title: "Reset to default!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Reset failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const handleFileSelect = (imageKey: string, file: File) => {
+    uploadLiveryMutation.mutate({ imageKey, file });
+  };
 
   const pending = allContestants?.filter((c) => c.applicationStatus === "pending") || [];
 
@@ -227,6 +270,9 @@ export default function AdminDashboard({ user }: { user: AuthUser }) {
             <TabsTrigger value="applications" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white">
               Applications {pending.length > 0 && <Badge className="ml-2 bg-orange-500 text-white border-0">{pending.length}</Badge>}
             </TabsTrigger>
+            <TabsTrigger value="livery" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-livery">
+              <Image className="h-4 w-4 mr-1" /> Livery
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="competitions">
@@ -305,6 +351,78 @@ export default function AdminDashboard({ user }: { user: AuthUser }) {
               <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
                 <Users className="h-8 w-8 text-white/10 mx-auto mb-2" />
                 <p className="text-sm text-white/30">No applications yet.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="livery">
+            <div className="mb-4">
+              <p className="text-white/40 text-sm">Upload replacement images for any template slot. Click "Upload" to replace or "Reset" to restore the original.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {liveryItems?.map((item) => {
+                const displayUrl = item.imageUrl || item.defaultUrl;
+                const isCustom = !!item.imageUrl;
+                return (
+                  <div key={item.imageKey} className="rounded-md bg-white/5 border border-white/5 overflow-visible" data-testid={`livery-item-${item.imageKey}`}>
+                    <div className="relative aspect-video bg-black/50">
+                      <img
+                        src={displayUrl}
+                        alt={item.label}
+                        className="w-full h-full object-cover"
+                        data-testid={`livery-img-${item.imageKey}`}
+                      />
+                      {isCustom && (
+                        <Badge className="absolute top-2 right-2 bg-orange-500 text-white border-0 text-xs">Custom</Badge>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h4 className="font-medium text-sm mb-0.5" data-testid={`livery-label-${item.imageKey}`}>{item.label}</h4>
+                      <p className="text-xs text-white/30 mb-3 font-mono">{item.imageKey}</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={(el) => { fileInputRefs.current[item.imageKey] = el; }}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileSelect(item.imageKey, file);
+                            e.target.value = "";
+                          }}
+                          data-testid={`input-livery-upload-${item.imageKey}`}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => fileInputRefs.current[item.imageKey]?.click()}
+                          disabled={uploadLiveryMutation.isPending}
+                          className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-xs"
+                          data-testid={`button-upload-${item.imageKey}`}
+                        >
+                          <Upload className="h-3 w-3 mr-1" /> Upload
+                        </Button>
+                        {isCustom && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => resetLiveryMutation.mutate(item.imageKey)}
+                            disabled={resetLiveryMutation.isPending}
+                            className="text-white/40 text-xs"
+                            data-testid={`button-reset-${item.imageKey}`}
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" /> Reset
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {(!liveryItems || liveryItems.length === 0) && (
+              <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+                <Image className="h-8 w-8 text-white/10 mx-auto mb-2" />
+                <p className="text-sm text-white/30">No livery items configured yet. Restart the app to seed defaults.</p>
               </div>
             )}
           </TabsContent>
