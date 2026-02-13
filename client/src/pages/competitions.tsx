@@ -92,44 +92,64 @@ export default function Competitions() {
 function CompetitionCard({ competition }: { competition: Competition }) {
   const { getImage } = useLivery();
   return (
-    <Link href={`/competition/${competition.id}`}>
-      <div
-        className="group cursor-pointer transition-all duration-500 hover:shadow-[0_5px_80px_0_rgba(0,0,0,0.2)]"
-        data-testid={`card-competition-${competition.id}`}
-      >
-        <div className="overflow-hidden">
-          <img
-            src={competition.coverImage || getImage("competition_card_fallback", "/images/template/e1.jpg")}
-            alt={competition.title}
-            className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-        </div>
-        <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-8 px-4 transition-all duration-500">
-          <h4
-            className="text-white group-hover:text-black uppercase font-bold text-base mb-3 transition-colors duration-500"
-            data-testid={`text-title-${competition.id}`}
-          >
-            {competition.title}
-          </h4>
-          <div className="mb-6">
-            <span className="text-white/60 group-hover:text-black/60 text-[15px] transition-colors duration-500 inline-flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              {competition.endDate ? new Date(competition.endDate).toLocaleDateString() : "Open"}
-            </span>
-            <span className="text-white/40 group-hover:text-black/40 mx-3 transition-colors duration-500">|</span>
-            <span className="text-white/60 group-hover:text-black/60 text-[15px] transition-colors duration-500 inline-flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" />
-              {competition.category}
+    <div
+      className="group transition-all duration-500 hover:shadow-[0_5px_80px_0_rgba(0,0,0,0.2)]"
+      data-testid={`card-competition-${competition.id}`}
+    >
+      <Link href={`/competition/${competition.id}`}>
+        <div className="cursor-pointer">
+          <div className="overflow-hidden">
+            <img
+              src={competition.coverImage || getImage("competition_card_fallback", "/images/template/e1.jpg")}
+              alt={competition.title}
+              className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          </div>
+          <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-6 px-4 transition-all duration-500">
+            <h4
+              className="text-white group-hover:text-black uppercase font-bold text-base mb-3 transition-colors duration-500"
+              data-testid={`text-title-${competition.id}`}
+            >
+              {competition.title}
+            </h4>
+            <div className="mb-4">
+              <span className="text-white/60 group-hover:text-black/60 text-[15px] transition-colors duration-500 inline-flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                {competition.endDate ? new Date(competition.endDate).toLocaleDateString() : "Open"}
+              </span>
+              <span className="text-white/40 group-hover:text-black/40 mx-3 transition-colors duration-500">|</span>
+              <span className="text-white/60 group-hover:text-black/60 text-[15px] transition-colors duration-500 inline-flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" />
+                {competition.category}
+              </span>
+            </div>
+            <span
+              className="text-[11px] text-white group-hover:text-black uppercase border-b border-white group-hover:border-black pb-1 transition-colors duration-500"
+              style={{ letterSpacing: "10px" }}
+            >
+              See Event
             </span>
           </div>
-          <span
-            className="text-[11px] text-white group-hover:text-black uppercase border-b border-white group-hover:border-black pb-1 transition-colors duration-500"
-            style={{ letterSpacing: "10px" }}
-          >
-            See Event
-          </span>
         </div>
+      </Link>
+      <div className="bg-black group-hover:bg-[#f5f9fa] border-t border-white/5 group-hover:border-black/10 px-4 pb-6 pt-4 flex flex-wrap items-center justify-center gap-3 transition-all duration-500">
+        <Link
+          href={`/join?competition=${competition.id}`}
+          className="inline-block bg-[#FF5A09] text-white font-bold text-xs uppercase px-5 leading-[36px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
+          style={{ letterSpacing: "2px" }}
+          data-testid={`button-join-${competition.id}`}
+        >
+          Join Competition
+        </Link>
+        <Link
+          href={`/host?competition=${competition.id}`}
+          className="inline-block bg-transparent text-white group-hover:text-black font-bold text-xs uppercase px-5 leading-[36px] border border-white/30 group-hover:border-black/30 transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
+          style={{ letterSpacing: "2px" }}
+          data-testid={`button-host-${competition.id}`}
+        >
+          Host My Own Event
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }

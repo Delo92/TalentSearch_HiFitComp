@@ -134,10 +134,29 @@ export default function CompetitionDetailPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {competition.description && (
-          <p className="text-white/40 mb-10 text-base max-w-3xl leading-relaxed" data-testid="text-description">
+          <p className="text-white/40 mb-6 text-base max-w-3xl leading-relaxed" data-testid="text-description">
             {competition.description}
           </p>
         )}
+
+        <div className="flex flex-wrap items-center gap-3 mb-10">
+          <Link
+            href={`/join?competition=${competition.id}`}
+            className="inline-block bg-[#FF5A09] text-white font-bold text-sm uppercase px-6 leading-[42px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
+            style={{ letterSpacing: "2px" }}
+            data-testid="button-join-competition"
+          >
+            Join This Competition <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+          </Link>
+          <Link
+            href={`/host?competition=${competition.id}`}
+            className="inline-block bg-transparent text-white font-bold text-sm uppercase px-6 leading-[42px] border border-white/30 transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
+            style={{ letterSpacing: "2px" }}
+            data-testid="button-host-event"
+          >
+            Host My Own Event <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+          </Link>
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-6 text-sm text-white/40">

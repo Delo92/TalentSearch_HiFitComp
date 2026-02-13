@@ -45,7 +45,7 @@ export default function Landing() {
           <div className="absolute inset-0 bg-black/35" />
         </motion.div>
 
-        <motion.div style={{ opacity: heroOpacity }} className="relative z-10 text-center px-8 w-full">
+        <motion.div style={{ opacity: heroOpacity }} className="relative z-10 text-center px-8 w-full mt-[-10vh]">
           <motion.h6
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -79,14 +79,30 @@ export default function Landing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1 }}
-            className="mt-12"
+            className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link href="/competitions">
               <span
-                className="inline-block bg-transparent border border-white text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
-                data-testid="button-hero-discover"
+                className="inline-block bg-[#FF5A09] border border-[#FF5A09] text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] transition-all duration-500 hover:bg-transparent hover:text-white cursor-pointer"
+                data-testid="button-hero-start-voting"
               >
-                Discover <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+                Start Voting <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+              </span>
+            </Link>
+            <Link href="/join">
+              <span
+                className="inline-block bg-transparent border border-white text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
+                data-testid="button-hero-become-competitor"
+              >
+                Become a Competitor <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+              </span>
+            </Link>
+            <Link href="/host">
+              <span
+                className="inline-block bg-transparent border border-white/40 text-white/80 font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
+                data-testid="button-hero-host-event"
+              >
+                Host an Event <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
               </span>
             </Link>
           </motion.div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +9,8 @@ import { apiRequest } from "@/lib/queryClient";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
-import { CheckCircle, Send, CreditCard } from "lucide-react";
+import { CheckCircle, Send, CreditCard, Trophy } from "lucide-react";
+import type { Competition } from "@shared/schema";
 
 interface HostSettings {
   mode: "request" | "purchase";
@@ -45,7 +47,17 @@ export default function HostPage() {
   const { toast } = useToast();
   const { getImage, getMedia } = useLivery();
 
+  const searchString = useSearch();
+  const [referenceCompetitionId, setReferenceCompetitionId] = useState<number | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const compId = params.get("competition");
+    if (compId) {
+      setReferenceCompetitionId(parseInt(compId, 10));
+    }
+  }, [searchString]);
   const [cardNumber, setCardNumber] = useState("");
   const [expMonth, setExpMonth] = useState("");
   const [expYear, setExpYear] = useState("");
@@ -61,6 +73,12 @@ export default function HostPage() {
   const { data: paymentConfig } = useQuery<PaymentConfig>({
     queryKey: ["/api/payment-config"],
   });
+
+  const { data: competitions } = useQuery<Competition[]>({
+    queryKey: ["/api/competitions"],
+  });
+
+  const referenceCompetition = competitions?.find(c => c.id === referenceCompetitionId) || null;
 
   useEffect(() => {
     if (paymentConfig && settings?.mode === "purchase" && !acceptLoaded) {
@@ -99,6 +117,7 @@ export default function HostPage() {
       try {
         await apiRequest("POST", "/api/host/submit", {
           ...form,
+          referenceCompetitionId,
           mediaUrls: [],
           dataDescriptor,
           dataValue,
@@ -229,6 +248,17 @@ export default function HostPage() {
         <p className="text-white/40 text-sm mb-10 max-w-xl" data-testid="text-page-description">
           {settings.pageDescription}
         </p>
+
+        {referenceCompetition && (
+          <div className="border border-[#FF5A09]/40 bg-[#FF5A09]/5 p-4 mb-8 flex flex-wrap items-center gap-3" data-testid="reference-competition">
+            <Trophy className="h-5 w-5 text-[#FF5A09]" />
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider">Inspired by competition</p>
+              <p className="font-bold text-white">{referenceCompetition.title}</p>
+              <p className="text-xs text-white/40">{referenceCompetition.category}</p>
+            </div>
+          </div>
+        )}
 
         {settings.mode === "purchase" && settings.price > 0 && (
           <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-8">

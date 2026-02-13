@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -62,8 +63,17 @@ export default function JoinPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [acceptLoaded, setAcceptLoaded] = useState(false);
+  const searchString = useSearch();
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<number | null>(null);
   const [compSearch, setCompSearch] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const compId = params.get("competition");
+    if (compId) {
+      setSelectedCompetitionId(parseInt(compId, 10));
+    }
+  }, [searchString]);
 
   const { data: settings, isLoading } = useQuery<JoinSettings>({
     queryKey: ["/api/join/settings"],
