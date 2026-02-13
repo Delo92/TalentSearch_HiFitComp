@@ -147,6 +147,7 @@ export interface FirestoreLiveryItem {
   label: string;
   imageUrl: string | null;
   defaultUrl: string;
+  mediaType?: "image" | "video";
 }
 
 export interface FirestoreSettings {
@@ -721,11 +722,14 @@ export const firestoreLivery = {
     return item;
   },
 
-  async updateImage(imageKey: string, imageUrl: string | null): Promise<FirestoreLiveryItem | null> {
+  async updateImage(imageKey: string, imageUrl: string | null, mediaType?: "image" | "video"): Promise<FirestoreLiveryItem | null> {
     const ref = db().collection(COLLECTIONS.LIVERY).doc(imageKey);
     const doc = await ref.get();
     if (!doc.exists) return null;
-    await ref.update({ imageUrl });
+    const updateData: any = { imageUrl };
+    if (mediaType !== undefined) updateData.mediaType = mediaType;
+    if (imageUrl === null) updateData.mediaType = "image";
+    await ref.update(updateData);
     const updated = await ref.get();
     return updated.data() as FirestoreLiveryItem;
   },

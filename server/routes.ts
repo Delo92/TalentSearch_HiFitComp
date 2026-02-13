@@ -62,16 +62,34 @@ const liveryUpload = multer({
       cb(null, name);
     },
   }),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
-    if (allowed.test(path.extname(file.originalname))) {
+    const allowedImages = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+    const allowedVideos = /\.(mp4|webm|mov)$/i;
+    if (allowedImages.test(path.extname(file.originalname)) || allowedVideos.test(path.extname(file.originalname))) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed"));
+      cb(new Error("Only image files (jpg, png, gif, webp, svg) and video files (mp4, webm, mov) are allowed"));
     }
   },
 });
+
+function isVideoFile(filename: string): boolean {
+  return /\.(mp4|webm|mov)$/i.test(filename);
+}
+
+async function getVideoDuration(filePath: string): Promise<number> {
+  const { execSync } = require("child_process");
+  try {
+    const output = execSync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
+      { encoding: "utf-8", timeout: 10000 }
+    );
+    return parseFloat(output.trim());
+  } catch {
+    return -1;
+  }
+}
 
 const talentImageUpload = multer({
   storage: multer.memoryStorage(),
@@ -1349,13 +1367,28 @@ export async function registerRoutes(
     if (!existing) return res.status(404).json({ message: "Livery item not found" });
 
     let imageUrl: string | null = null;
+    let mediaType: "image" | "video" = "image";
+
     if (req.file) {
+      const filePath = path.join(uploadsDir, req.file.filename);
+      if (isVideoFile(req.file.originalname)) {
+        const duration = await getVideoDuration(filePath);
+        if (duration > 15) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({ message: `Video must be 15 seconds or less. Uploaded video is ${Math.round(duration)} seconds.` });
+        }
+        if (duration < 0) {
+          console.warn("Could not determine video duration, allowing upload");
+        }
+        mediaType = "video";
+      }
       imageUrl = `/uploads/livery/${req.file.filename}`;
     } else if (req.body.imageUrl !== undefined) {
       imageUrl = req.body.imageUrl || null;
+      if (req.body.mediaType === "video") mediaType = "video";
     }
 
-    const updated = await storage.updateLiveryImage(imageKey, imageUrl);
+    const updated = await storage.updateLiveryImage(imageKey, imageUrl, mediaType);
     res.json(updated);
   });
 
