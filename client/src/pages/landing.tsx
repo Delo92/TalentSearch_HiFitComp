@@ -216,7 +216,7 @@ export default function Landing() {
           <p className="text-white/60 mb-10 text-base max-w-xl mx-auto">
             Join talented individuals competing for recognition across the globe. Your spotlight is waiting.
           </p>
-          <a href="/api/login">
+          <a href="/login">
             <span
               className="inline-block bg-black text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] border border-black transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
               data-testid="button-cta-join"

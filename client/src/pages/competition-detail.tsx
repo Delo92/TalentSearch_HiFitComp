@@ -252,7 +252,7 @@ export default function CompetitionDetailPage() {
             <h3 className="font-semibold text-lg mb-2">No contestants yet</h3>
             <p className="text-sm text-white/30 mb-6">Be the first to apply!</p>
             {!user && (
-              <a href="/api/login">
+              <a href="/login">
                 <span
                   className="inline-block bg-black text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] border border-white transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
                   data-testid="button-apply-login"

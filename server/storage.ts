@@ -1,5 +1,5 @@
 import {
-  type User, type InsertUser,
+  type User, type InsertUser, type UpsertUser,
   talentProfiles, type TalentProfile, type InsertTalentProfile,
   competitions, type Competition, type InsertCompetition,
   contestants, type Contestant, type InsertContestant,

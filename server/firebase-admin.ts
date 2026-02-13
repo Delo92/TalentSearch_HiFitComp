@@ -1,0 +1,106 @@
+import admin from "firebase-admin";
+
+let firebaseApp: admin.app.App | null = null;
+
+export function getFirebaseAdmin(): admin.app.App {
+  if (firebaseApp) return firebaseApp;
+
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!serviceAccountJson) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT secret is not set");
+  }
+
+  let serviceAccount: admin.ServiceAccount;
+  try {
+    serviceAccount = JSON.parse(serviceAccountJson);
+  } catch {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT is not valid JSON");
+  }
+
+  firebaseApp = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: "hifitcomp",
+  });
+
+  return firebaseApp;
+}
+
+export function getFirestore(): admin.firestore.Firestore {
+  return getFirebaseAdmin().firestore();
+}
+
+export function getFirebaseAuth(): admin.auth.Auth {
+  return getFirebaseAdmin().auth();
+}
+
+export async function verifyFirebaseToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
+  return getFirebaseAuth().verifyIdToken(idToken);
+}
+
+export async function getFirebaseUser(uid: string): Promise<admin.auth.UserRecord> {
+  return getFirebaseAuth().getUser(uid);
+}
+
+export async function createFirebaseUser(email: string, password: string, displayName?: string): Promise<admin.auth.UserRecord> {
+  return getFirebaseAuth().createUser({
+    email,
+    password,
+    displayName: displayName || email.split("@")[0],
+  });
+}
+
+export async function setUserLevel(uid: string, level: number): Promise<void> {
+  await getFirebaseAuth().setCustomUserClaims(uid, { level });
+}
+
+export interface FirestoreUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  level: number;
+  profileImageUrl?: string;
+  createdAt: admin.firestore.Timestamp;
+  updatedAt: admin.firestore.Timestamp;
+}
+
+export async function getFirestoreUser(uid: string): Promise<FirestoreUser | null> {
+  const doc = await getFirestore().collection("users").doc(uid).get();
+  if (!doc.exists) return null;
+  return doc.data() as FirestoreUser;
+}
+
+export async function createFirestoreUser(data: {
+  uid: string;
+  email: string;
+  displayName: string;
+  level: number;
+  profileImageUrl?: string;
+}): Promise<FirestoreUser> {
+  const now = admin.firestore.Timestamp.now();
+  const userData: FirestoreUser = {
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await getFirestore().collection("users").doc(data.uid).set(userData);
+  return userData;
+}
+
+export async function updateFirestoreUser(uid: string, data: Partial<Omit<FirestoreUser, "uid" | "createdAt">>): Promise<FirestoreUser | null> {
+  const ref = getFirestore().collection("users").doc(uid);
+  const doc = await ref.get();
+  if (!doc.exists) return null;
+
+  await ref.update({
+    ...data,
+    updatedAt: admin.firestore.Timestamp.now(),
+  });
+
+  const updated = await ref.get();
+  return updated.data() as FirestoreUser;
+}
+
+export async function getAllFirestoreUsers(): Promise<FirestoreUser[]> {
+  const snapshot = await getFirestore().collection("users").get();
+  return snapshot.docs.map(doc => doc.data() as FirestoreUser);
+}

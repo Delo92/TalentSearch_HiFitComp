@@ -3,22 +3,17 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Trophy, Shield } from "lucide-react";
-import { useEffect } from "react";
 import type { TalentProfile } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import TalentDashboard from "./talent-dashboard";
 import AdminDashboard from "./admin-dashboard";
 
 export default function Dashboard() {
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      window.location.href = "/api/login";
-    }
-  }, [authLoading, isAuthenticated]);
+  const [, setLocation] = useLocation();
 
   const { data: profile, isLoading: profileLoading } = useQuery<TalentProfile | null>({
     queryKey: ["/api/talent-profiles/me"],
@@ -27,7 +22,7 @@ export default function Dashboard() {
 
   const adminSetupMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/setup");
+      const res = await apiRequest("POST", "/api/auth/set-admin");
       return res.json();
     },
     onSuccess: () => {
@@ -51,12 +46,15 @@ export default function Dashboard() {
     );
   }
 
-  if (!user) return null;
+  if (!isAuthenticated || !user) {
+    setLocation("/login");
+    return null;
+  }
 
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = profile?.role === "admin" || user.level >= 3;
 
   if (isAdmin) {
-    return <AdminDashboard user={user} />;
+    return <AdminDashboard user={user as any} />;
   }
 
   if (!profile) {
@@ -70,6 +68,9 @@ export default function Dashboard() {
               </div>
               <span className="font-serif text-xl font-bold">StarVote</span>
             </a>
+            <Button variant="ghost" onClick={() => logout()} className="text-white/60" data-testid="button-logout">
+              Logout
+            </Button>
           </div>
         </nav>
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
@@ -91,12 +92,12 @@ export default function Dashboard() {
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
               <div className="relative flex justify-center"><span className="bg-black px-4 text-sm text-white/30">or</span></div>
             </div>
-            <TalentDashboard user={user} profile={null} />
+            <TalentDashboard user={user as any} profile={null} />
           </div>
         </div>
       </div>
     );
   }
 
-  return <TalentDashboard user={user} profile={profile} />;
+  return <TalentDashboard user={user as any} profile={profile} />;
 }

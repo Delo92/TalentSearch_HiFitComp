@@ -10,18 +10,19 @@ import { Trophy, User, Image as ImageIcon, Video, Save, Plus, LogOut, X } from "
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { User as AuthUser } from "@shared/models/auth";
 import type { TalentProfile, Competition } from "@shared/schema";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Props {
-  user: AuthUser;
+  user: any;
   profile: TalentProfile | null;
 }
 
 export default function TalentDashboard({ user, profile }: Props) {
+  const { logout } = useAuth();
   const { toast } = useToast();
-  const [displayName, setDisplayName] = useState(profile?.displayName || user.firstName || "");
+  const [displayName, setDisplayName] = useState(profile?.displayName || user.displayName || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [category, setCategory] = useState(profile?.category || "");
   const [location, setLocation] = useState(profile?.location || "");
@@ -103,15 +104,13 @@ export default function TalentDashboard({ user, profile }: Props) {
             <Avatar className="h-8 w-8 ring-2 ring-white/10">
               <AvatarImage src={user.profileImageUrl || ""} />
               <AvatarFallback className="bg-gradient-to-br from-orange-500/20 to-amber-500/20 text-orange-400 text-xs font-bold">
-                {(user.firstName || user.email || "U").charAt(0).toUpperCase()}
+                {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm font-medium hidden sm:inline text-white/70">{user.firstName || user.email}</span>
-            <a href="/api/logout">
-              <Button size="icon" variant="ghost" className="text-white/40" data-testid="button-logout">
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </a>
+            <span className="text-sm font-medium hidden sm:inline text-white/70">{user.displayName || user.email}</span>
+            <Button size="icon" variant="ghost" className="text-white/40" onClick={() => logout()} data-testid="button-logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </nav>

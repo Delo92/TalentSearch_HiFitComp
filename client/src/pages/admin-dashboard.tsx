@@ -16,9 +16,9 @@ import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { User as AuthUser } from "@shared/models/auth";
 import type { Competition, SiteLivery } from "@shared/schema";
 import { useState, useRef } from "react";
+import { useAuth, getAuthToken } from "@/hooks/use-auth";
 
 interface AdminStats {
   totalCompetitions: number;
@@ -44,7 +44,8 @@ interface ContestantAdmin {
   };
 }
 
-export default function AdminDashboard({ user }: { user: AuthUser }) {
+export default function AdminDashboard({ user }: { user: any }) {
+  const { logout } = useAuth();
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -116,10 +117,13 @@ export default function AdminDashboard({ user }: { user: AuthUser }) {
     mutationFn: async ({ imageKey, file }: { imageKey: string; file: File }) => {
       const formData = new FormData();
       formData.append("image", file);
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`/api/admin/livery/${imageKey}`, {
         method: "PUT",
         body: formData,
-        credentials: "include",
+        headers,
       });
       if (!res.ok) {
         const err = await res.json();
@@ -170,14 +174,12 @@ export default function AdminDashboard({ user }: { user: AuthUser }) {
             <Avatar className="h-8 w-8 ring-2 ring-white/10">
               <AvatarImage src={user.profileImageUrl || ""} />
               <AvatarFallback className="bg-gradient-to-br from-orange-500/20 to-amber-500/20 text-orange-400 text-xs font-bold">
-                {(user.firstName || "A").charAt(0).toUpperCase()}
+                {(user.displayName || user.email || "A").charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <a href="/api/logout">
-              <Button size="icon" variant="ghost" className="text-white/40" data-testid="button-logout">
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </a>
+            <Button size="icon" variant="ghost" className="text-white/40" onClick={() => logout()} data-testid="button-logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </nav>

@@ -25,7 +25,7 @@ export default function SiteFooter() {
             Competitions
           </Link>
           <a
-            href="/api/login"
+            href="/login"
             className="text-white/60 text-sm uppercase tracking-widest transition-colors duration-300 hover:text-white"
             data-testid="link-footer-join"
           >
