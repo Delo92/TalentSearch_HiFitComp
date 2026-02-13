@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { useLivery } from "@/hooks/use-livery";
+import { ShoppingCart } from "lucide-react";
 
 export default function SiteNavbar() {
   const { user, isAuthenticated } = useAuth();
@@ -56,7 +57,14 @@ export default function SiteNavbar() {
           </Link>
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden md:flex items-center gap-6">
+          <Link
+            href="/my-purchases"
+            className="text-white transition-colors duration-500 hover:text-[#FF5A09]"
+            data-testid="link-nav-cart"
+          >
+            <ShoppingCart className="h-5 w-5" />
+          </Link>
           {isAuthenticated ? (
             <Link
               href="/dashboard"
@@ -94,6 +102,15 @@ export default function SiteNavbar() {
             data-testid="link-mobile-competitions"
           >
             Competitions
+          </Link>
+          <Link
+            href="/my-purchases"
+            className="flex items-center gap-2 py-2 text-white font-bold uppercase tracking-wider text-sm"
+            onClick={() => setMenuOpen(false)}
+            data-testid="link-mobile-cart"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            My Purchases
           </Link>
           {isAuthenticated ? (
             <Link
