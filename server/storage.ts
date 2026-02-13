@@ -4,6 +4,7 @@ import {
   competitions, type Competition, type InsertCompetition,
   contestants, type Contestant, type InsertContestant,
   votes, type Vote, type InsertVote,
+  votePurchases, type VotePurchase, type InsertVotePurchase,
   siteLivery, type SiteLivery, type InsertSiteLivery,
   users,
 } from "@shared/schema";
@@ -40,6 +41,11 @@ export interface IStorage {
   getVoteCount(contestantId: number): Promise<number>;
   getTotalVotesByCompetition(competitionId: number): Promise<number>;
   getVotesTodayByIp(competitionId: number, voterIp: string): Promise<number>;
+
+  updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
+
+  createVotePurchase(purchase: InsertVotePurchase): Promise<VotePurchase>;
+  getVotePurchasesByUser(userId: string): Promise<VotePurchase[]>;
 
   getAllLivery(): Promise<SiteLivery[]>;
   getLiveryByKey(imageKey: string): Promise<SiteLivery | undefined>;
@@ -212,6 +218,20 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return row?.count || 0;
+  }
+
+  async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async createVotePurchase(purchase: InsertVotePurchase): Promise<VotePurchase> {
+    const [created] = await db.insert(votePurchases).values(purchase).returning();
+    return created;
+  }
+
+  async getVotePurchasesByUser(userId: string): Promise<VotePurchase[]> {
+    return db.select().from(votePurchases).where(eq(votePurchases.userId, userId)).orderBy(desc(votePurchases.purchasedAt));
   }
 
   async getAllLivery(): Promise<SiteLivery[]> {

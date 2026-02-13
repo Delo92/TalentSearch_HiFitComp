@@ -2,6 +2,14 @@ import { db } from "./db";
 import { competitions, talentProfiles, contestants, votes, users, siteLivery } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import { storage } from "./storage";
+import {
+  getFirebaseAuth,
+  createFirebaseUser,
+  setUserLevel,
+  getFirestoreUser,
+  createFirestoreUser,
+  getFirebaseAdmin,
+} from "./firebase-admin";
 
 export async function seedDatabase() {
   const existingComps = await db.select().from(competitions);
@@ -166,4 +174,111 @@ export async function seedLivery() {
     }
   }
   console.log(`Livery seeded: ${LIVERY_DEFAULTS.length} slots configured`);
+}
+
+const TEST_ACCOUNTS = [
+  {
+    email: "viewer@test.com",
+    password: "TestPass123",
+    displayName: "Test Viewer",
+    level: 1,
+    role: "viewer" as const,
+  },
+  {
+    email: "talent@test.com",
+    password: "TestPass123",
+    displayName: "Test Talent",
+    stageName: "The Star",
+    level: 2,
+    role: "talent" as const,
+    socialLinks: {
+      instagram: "https://instagram.com/testtalent",
+      twitter: "https://twitter.com/testtalent",
+      tiktok: "https://tiktok.com/@testtalent",
+    },
+  },
+  {
+    email: "admin@test.com",
+    password: "TestPass123",
+    displayName: "Test Admin",
+    level: 3,
+    role: "admin" as const,
+  },
+];
+
+export async function seedTestAccounts() {
+  try {
+    getFirebaseAdmin();
+  } catch {
+    console.log("Firebase not configured, skipping test account seeding");
+    return;
+  }
+
+  const auth = getFirebaseAuth();
+
+  for (const account of TEST_ACCOUNTS) {
+    try {
+      let firebaseUser;
+      try {
+        firebaseUser = await auth.getUserByEmail(account.email);
+        console.log(`Test account ${account.email} already exists (uid: ${firebaseUser.uid})`);
+      } catch (err: any) {
+        if (err.code === "auth/user-not-found") {
+          firebaseUser = await createFirebaseUser(account.email, account.password, account.displayName);
+          console.log(`Created test account: ${account.email} (uid: ${firebaseUser.uid})`);
+        } else {
+          throw err;
+        }
+      }
+
+      await setUserLevel(firebaseUser.uid, account.level);
+
+      let firestoreUser = await getFirestoreUser(firebaseUser.uid);
+      if (!firestoreUser) {
+        const firestoreData: any = {
+          uid: firebaseUser.uid,
+          email: account.email,
+          displayName: account.displayName,
+          level: account.level,
+        };
+        if ("stageName" in account) firestoreData.stageName = account.stageName;
+        if ("socialLinks" in account) firestoreData.socialLinks = account.socialLinks;
+        await createFirestoreUser(firestoreData);
+      }
+
+      let dbUser = await storage.getUser(firebaseUser.uid);
+      if (!dbUser) {
+        await storage.createUser({
+          id: firebaseUser.uid,
+          email: account.email,
+          firstName: account.displayName,
+          lastName: null,
+          profileImageUrl: null,
+          level: account.level,
+        });
+      }
+
+      if (account.level >= 2) {
+        const existingProfile = await storage.getTalentProfileByUserId(firebaseUser.uid);
+        if (!existingProfile) {
+          await storage.createTalentProfile({
+            userId: firebaseUser.uid,
+            displayName: account.displayName,
+            stageName: "stageName" in account ? account.stageName : null,
+            bio: account.level === 3 ? "Platform administrator" : "Test talent profile",
+            category: account.level === 2 ? "Music" : null,
+            location: null,
+            imageUrls: [],
+            videoUrls: [],
+            socialLinks: "socialLinks" in account ? JSON.stringify(account.socialLinks) : null,
+            role: account.role,
+          });
+        }
+      }
+
+      console.log(`Test account ${account.email} seeded at level ${account.level} (${account.role})`);
+    } catch (error: any) {
+      console.error(`Failed to seed test account ${account.email}:`, error.message);
+    }
+  }
 }

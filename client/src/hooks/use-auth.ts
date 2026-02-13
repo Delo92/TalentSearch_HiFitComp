@@ -15,8 +15,17 @@ export interface AuthUser {
   uid: string;
   email: string;
   displayName: string;
+  stageName: string | null;
   level: number;
   profileImageUrl: string | null;
+  socialLinks: Record<string, string> | null;
+  billingAddress: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  } | null;
   hasProfile: boolean;
   profileRole: string | null;
 }

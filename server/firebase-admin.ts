@@ -57,8 +57,17 @@ export interface FirestoreUser {
   uid: string;
   email: string;
   displayName: string;
+  stageName?: string;
   level: number;
   profileImageUrl?: string;
+  socialLinks?: Record<string, string>;
+  billingAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
   createdAt: admin.firestore.Timestamp;
   updatedAt: admin.firestore.Timestamp;
 }
@@ -75,6 +84,15 @@ export async function createFirestoreUser(data: {
   displayName: string;
   level: number;
   profileImageUrl?: string;
+  stageName?: string;
+  socialLinks?: Record<string, string>;
+  billingAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
 }): Promise<FirestoreUser> {
   const now = admin.firestore.Timestamp.now();
   const userData: FirestoreUser = {

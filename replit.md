@@ -13,7 +13,7 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - **Styling**: Dark theme with orange/amber (#FF5A09) primary colors, Poppins/Playfair Display fonts
 
 ## Project Structure
-- `shared/schema.ts` - Database models: users, sessions, talentProfiles, competitions, contestants, votes, siteLivery
+- `shared/schema.ts` - Database models: users, sessions, talentProfiles, competitions, contestants, votes, votePurchases, siteLivery
 - `shared/models/auth.ts` - User and session table definitions
 - `server/firebase-admin.ts` - Firebase Admin SDK initialization, Firestore CRUD for users
 - `server/auth-middleware.ts` - Firebase JWT auth middleware, role/level guards (requireAdmin, requireTalent)
@@ -21,7 +21,7 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `server/vimeo.ts` - Vimeo API: list videos, create TUS upload tickets, delete videos
 - `server/storage.ts` - DatabaseStorage class with all PostgreSQL CRUD operations
 - `server/routes.ts` - API routes with Firebase auth middleware
-- `server/seed.ts` - Sample data seeder (runs on startup)
+- `server/seed.ts` - Sample data seeder + test account seeder (runs on startup)
 - `client/src/lib/firebase.ts` - Firebase client SDK: Auth + Analytics initialization
 - `client/src/hooks/use-auth.ts` - Firebase Auth hook with login/register/logout/resetPassword
 - `client/src/lib/queryClient.ts` - TanStack Query client with auth token injection
@@ -37,9 +37,14 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - **Auth**: Firebase Auth (email/password) - JWT Bearer tokens, password reset via Firebase
 
 ## User Levels
-- Level 1: Team Member (basic access)
-- Level 2: Talent/Creator (profile management, competition applications)
+- Level 1: Viewer (voter registration, name/email, billing address, purchase votes, purchase history)
+- Level 2: Talent/Creator (profile management with stage name & social links, competition applications)
 - Level 3: Admin (full platform management)
+
+## Test Accounts (seeded on startup)
+- viewer@test.com / TestPass123 (Level 1 - Viewer)
+- talent@test.com / TestPass123 (Level 2 - Talent, stage name: "The Star")
+- admin@test.com / TestPass123 (Level 3 - Admin)
 
 ## API Routes
 ### Auth
@@ -126,3 +131,10 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - Feb 13, 2026: Added Vimeo integration (server/vimeo.ts) for talent video management
 - Feb 13, 2026: Created login/register page with password reset support
 - Feb 13, 2026: Updated all dashboard components to use Firebase auth (Bearer tokens, logout)
+- Feb 13, 2026: Updated user levels: Level 1=Viewer, Level 2=Talent, Level 3=Admin
+- Feb 13, 2026: Added stageName field to talent profiles, enhanced social links support
+- Feb 13, 2026: Added vote_purchases table for tracking vote purchases with billing history
+- Feb 13, 2026: Added billing address fields to users table and Firestore user model
+- Feb 13, 2026: Created 3 test accounts (viewer/talent/admin @test.com, password: TestPass123)
+- Feb 13, 2026: Added PATCH /api/auth/profile for updating user profile (name, stage name, social links, billing)
+- Feb 13, 2026: Added GET/POST /api/vote-purchases for purchase history and vote buying

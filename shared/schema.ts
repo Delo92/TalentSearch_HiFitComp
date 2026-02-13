@@ -6,7 +6,7 @@ import { z } from "zod";
 export * from "./models/auth";
 import { users } from "./models/auth";
 
-export const userRoleEnum = pgEnum("user_role", ["public", "talent", "admin"]);
+export const userRoleEnum = pgEnum("user_role", ["public", "talent", "admin", "viewer"]);
 export const competitionStatusEnum = pgEnum("competition_status", ["draft", "active", "voting", "completed"]);
 export const applicationStatusEnum = pgEnum("application_status", ["pending", "approved", "rejected"]);
 
@@ -14,6 +14,7 @@ export const talentProfiles = pgTable("talent_profiles", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
   displayName: text("display_name").notNull(),
+  stageName: text("stage_name"),
   bio: text("bio"),
   category: text("category"),
   location: text("location"),
@@ -50,7 +51,19 @@ export const votes = pgTable("votes", {
   contestantId: integer("contestant_id").notNull().references(() => contestants.id),
   competitionId: integer("competition_id").notNull().references(() => competitions.id),
   voterIp: text("voter_ip"),
+  userId: varchar("user_id"),
+  purchaseId: integer("purchase_id"),
   votedAt: timestamp("voted_at").defaultNow(),
+});
+
+export const votePurchases = pgTable("vote_purchases", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  competitionId: integer("competition_id").notNull().references(() => competitions.id),
+  contestantId: integer("contestant_id").notNull().references(() => contestants.id),
+  voteCount: integer("vote_count").notNull().default(1),
+  amount: integer("amount").notNull().default(0),
+  purchasedAt: timestamp("purchased_at").defaultNow(),
 });
 
 export const talentProfilesRelations = relations(talentProfiles, ({ one, many }) => ({
@@ -74,6 +87,12 @@ export const votesRelations = relations(votes, ({ one }) => ({
   competition: one(competitions, { fields: [votes.competitionId], references: [competitions.id] }),
 }));
 
+export const votePurchasesRelations = relations(votePurchases, ({ one }) => ({
+  user: one(users, { fields: [votePurchases.userId], references: [users.id] }),
+  competition: one(competitions, { fields: [votePurchases.competitionId], references: [competitions.id] }),
+  contestant: one(contestants, { fields: [votePurchases.contestantId], references: [contestants.id] }),
+}));
+
 export const siteLivery = pgTable("site_livery", {
   id: serial("id").primaryKey(),
   imageKey: text("image_key").notNull().unique(),
@@ -90,6 +109,7 @@ export const insertTalentProfileSchema = createInsertSchema(talentProfiles).omit
 export const insertCompetitionSchema = createInsertSchema(competitions).omit({ id: true, createdAt: true });
 export const insertContestantSchema = createInsertSchema(contestants).omit({ id: true, appliedAt: true });
 export const insertVoteSchema = createInsertSchema(votes).omit({ id: true, votedAt: true });
+export const insertVotePurchaseSchema = createInsertSchema(votePurchases).omit({ id: true, purchasedAt: true });
 
 export type InsertTalentProfile = z.infer<typeof insertTalentProfileSchema>;
 export type TalentProfile = typeof talentProfiles.$inferSelect;
@@ -99,3 +119,5 @@ export type InsertContestant = z.infer<typeof insertContestantSchema>;
 export type Contestant = typeof contestants.$inferSelect;
 export type InsertVote = z.infer<typeof insertVoteSchema>;
 export type Vote = typeof votes.$inferSelect;
+export type InsertVotePurchase = z.infer<typeof insertVotePurchaseSchema>;
+export type VotePurchase = typeof votePurchases.$inferSelect;

@@ -88,19 +88,24 @@ export async function registerRoutes(
 
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { email, password, displayName } = req.body;
+      const { email, password, displayName, stageName, level: requestedLevel, socialLinks, billingAddress } = req.body;
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
+      const level = [1, 2].includes(requestedLevel) ? requestedLevel : 1;
+
       const firebaseUser = await createFirebaseUser(email, password, displayName);
-      await setUserLevel(firebaseUser.uid, 2);
+      await setUserLevel(firebaseUser.uid, level);
 
       await createFirestoreUser({
         uid: firebaseUser.uid,
         email,
         displayName: displayName || email.split("@")[0],
-        level: 2,
+        stageName: stageName || undefined,
+        level,
+        socialLinks: socialLinks || undefined,
+        billingAddress: billingAddress || undefined,
       });
 
       let dbUser = await storage.getUser(firebaseUser.uid);
@@ -111,6 +116,8 @@ export async function registerRoutes(
           firstName: displayName || email.split("@")[0],
           lastName: null,
           profileImageUrl: null,
+          level,
+          billingAddress: billingAddress ? JSON.stringify(billingAddress) : null,
         });
       }
 
@@ -118,7 +125,7 @@ export async function registerRoutes(
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: firebaseUser.displayName,
-        level: 2,
+        level,
       });
     } catch (error: any) {
       if (error.code === "auth/email-already-exists") {
@@ -142,7 +149,7 @@ export async function registerRoutes(
           uid,
           email,
           displayName: email.split("@")[0],
-          level: 2,
+          level: 1,
         });
       }
 
@@ -154,15 +161,23 @@ export async function registerRoutes(
           firstName: firestoreUser.displayName || email.split("@")[0],
           lastName: null,
           profileImageUrl: firestoreUser.profileImageUrl || null,
+          level: firestoreUser.level,
         });
       }
+
+      const profile = await storage.getTalentProfileByUserId(uid);
 
       res.json({
         uid,
         email: firestoreUser.email,
         displayName: firestoreUser.displayName,
+        stageName: firestoreUser.stageName || null,
         level: firestoreUser.level,
         profileImageUrl: firestoreUser.profileImageUrl || null,
+        socialLinks: firestoreUser.socialLinks || null,
+        billingAddress: firestoreUser.billingAddress || null,
+        hasProfile: !!profile,
+        profileRole: profile?.role || null,
       });
     } catch (error: any) {
       console.error("Auth sync error:", error);
@@ -184,8 +199,11 @@ export async function registerRoutes(
         uid: firestoreUser.uid,
         email: firestoreUser.email,
         displayName: firestoreUser.displayName,
+        stageName: firestoreUser.stageName || null,
         level: firestoreUser.level,
         profileImageUrl: firestoreUser.profileImageUrl || null,
+        socialLinks: firestoreUser.socialLinks || null,
+        billingAddress: firestoreUser.billingAddress || null,
         hasProfile: !!profile,
         profileRole: profile?.role || null,
       });
@@ -369,6 +387,7 @@ export async function registerRoutes(
 
   const createProfileSchema = z.object({
     displayName: z.string().min(1, "Display name is required"),
+    stageName: z.string().optional().nullable(),
     bio: z.string().optional().default(""),
     category: z.string().optional().default(""),
     location: z.string().optional().default(""),
@@ -480,7 +499,7 @@ export async function registerRoutes(
       await setUserLevel(uid, level);
       await updateFirestoreUser(uid, { level });
 
-      const roleMap: Record<number, string> = { 1: "public", 2: "talent", 3: "admin" };
+      const roleMap: Record<number, string> = { 1: "viewer", 2: "talent", 3: "admin" };
       await storage.updateTalentProfile(uid, { role: roleMap[level] as any });
 
       res.json({ message: "User level updated", uid, level });
@@ -664,6 +683,91 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Vimeo delete error:", error);
       res.status(500).json({ message: "Failed to delete video" });
+    }
+  });
+
+
+  app.patch("/api/auth/profile", firebaseAuth, async (req, res) => {
+    try {
+      const { uid } = req.firebaseUser!;
+      const { displayName, stageName, socialLinks, billingAddress } = req.body;
+
+      const updateData: Record<string, any> = {};
+      if (displayName !== undefined) updateData.displayName = displayName;
+      if (stageName !== undefined) updateData.stageName = stageName;
+      if (socialLinks !== undefined) updateData.socialLinks = socialLinks;
+      if (billingAddress !== undefined) updateData.billingAddress = billingAddress;
+
+      if (Object.keys(updateData).length > 0) {
+        await updateFirestoreUser(uid, updateData);
+      }
+
+      const dbUpdate: Record<string, any> = {};
+      if (displayName !== undefined) dbUpdate.firstName = displayName;
+      if (billingAddress !== undefined) dbUpdate.billingAddress = JSON.stringify(billingAddress);
+      if (Object.keys(dbUpdate).length > 0) {
+        await storage.updateUser(uid, dbUpdate);
+      }
+
+      const firestoreUser = await getFirestoreUser(uid);
+      res.json({
+        uid: firestoreUser?.uid,
+        email: firestoreUser?.email,
+        displayName: firestoreUser?.displayName,
+        stageName: firestoreUser?.stageName || null,
+        level: firestoreUser?.level,
+        profileImageUrl: firestoreUser?.profileImageUrl || null,
+        socialLinks: firestoreUser?.socialLinks || null,
+        billingAddress: firestoreUser?.billingAddress || null,
+      });
+    } catch (error: any) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.get("/api/vote-purchases", firebaseAuth, async (req, res) => {
+    try {
+      const { uid } = req.firebaseUser!;
+      const purchases = await storage.getVotePurchasesByUser(uid);
+      res.json(purchases);
+    } catch (error: any) {
+      console.error("Get vote purchases error:", error);
+      res.status(500).json({ message: "Failed to get purchase history" });
+    }
+  });
+
+  app.post("/api/vote-purchases", firebaseAuth, async (req, res) => {
+    try {
+      const { uid } = req.firebaseUser!;
+      const { competitionId, contestantId, voteCount, amount } = req.body;
+
+      if (!competitionId || !contestantId || !voteCount) {
+        return res.status(400).json({ message: "competitionId, contestantId, and voteCount are required" });
+      }
+
+      const purchase = await storage.createVotePurchase({
+        userId: uid,
+        competitionId,
+        contestantId,
+        voteCount,
+        amount: amount || 0,
+      });
+
+      for (let i = 0; i < voteCount; i++) {
+        await storage.castVote({
+          contestantId,
+          competitionId,
+          voterIp: null,
+          userId: uid,
+          purchaseId: purchase.id,
+        });
+      }
+
+      res.status(201).json(purchase);
+    } catch (error: any) {
+      console.error("Vote purchase error:", error);
+      res.status(500).json({ message: "Failed to process vote purchase" });
     }
   });
 

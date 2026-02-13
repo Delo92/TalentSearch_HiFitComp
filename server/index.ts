@@ -62,9 +62,10 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  const { seedDatabase, seedLivery } = await import("./seed");
+  const { seedDatabase, seedLivery, seedTestAccounts } = await import("./seed");
   await seedDatabase().catch((err) => console.error("Seed error:", err));
   await seedLivery().catch((err) => console.error("Livery seed error:", err));
+  await seedTestAccounts().catch((err) => console.error("Test accounts seed error:", err));
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
