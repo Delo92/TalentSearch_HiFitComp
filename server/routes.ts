@@ -12,6 +12,11 @@ import {
   getFirebaseAuth,
 } from "./firebase-admin";
 import {
+  firestoreCategories,
+  firestoreVotePackages,
+  firestoreSettings,
+} from "./firestore-collections";
+import {
   uploadImageToDrive,
   listTalentImages,
   getFileStream,
@@ -25,7 +30,6 @@ import {
   deleteVideo,
   getVideoThumbnail,
 } from "./vimeo";
-import { insertCompetitionSchema, insertTalentProfileSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -108,19 +112,6 @@ export async function registerRoutes(
         billingAddress: billingAddress || undefined,
       });
 
-      let dbUser = await storage.getUser(firebaseUser.uid);
-      if (!dbUser) {
-        dbUser = await storage.createUser({
-          id: firebaseUser.uid,
-          email,
-          firstName: displayName || email.split("@")[0],
-          lastName: null,
-          profileImageUrl: null,
-          level,
-          billingAddress: billingAddress ? JSON.stringify(billingAddress) : null,
-        });
-      }
-
       res.status(201).json({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -150,18 +141,6 @@ export async function registerRoutes(
           email,
           displayName: email.split("@")[0],
           level: 1,
-        });
-      }
-
-      let dbUser = await storage.getUser(uid);
-      if (!dbUser) {
-        dbUser = await storage.createUser({
-          id: uid,
-          email,
-          firstName: firestoreUser.displayName || email.split("@")[0],
-          lastName: null,
-          profileImageUrl: firestoreUser.profileImageUrl || null,
-          level: firestoreUser.level,
         });
       }
 
@@ -236,6 +215,7 @@ export async function registerRoutes(
         profile = await storage.createTalentProfile({
           userId: uid,
           displayName: firestoreUser?.displayName || "Admin",
+          stageName: null,
           bio: "Platform administrator",
           category: null,
           location: null,
@@ -296,8 +276,11 @@ export async function registerRoutes(
 
     const comp = await storage.createCompetition({
       ...parsed.data,
-      startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : null,
-      endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
+      description: parsed.data.description || null,
+      coverImage: parsed.data.coverImage || null,
+      startDate: parsed.data.startDate || null,
+      endDate: parsed.data.endDate || null,
+      createdAt: new Date().toISOString(),
     });
     res.status(201).json(comp);
   });
@@ -374,6 +357,7 @@ export async function registerRoutes(
       competitionId: compId,
       talentProfileId: profile.id,
       applicationStatus: "pending",
+      appliedAt: new Date().toISOString(),
     });
     res.status(201).json(contestant);
   });
@@ -506,6 +490,152 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Update user level error:", error);
       res.status(500).json({ message: "Failed to update user level" });
+    }
+  });
+
+
+  app.get("/api/categories", async (_req, res) => {
+    try {
+      const categories = await firestoreCategories.getAll();
+      res.json(categories);
+    } catch (error: any) {
+      console.error("Get categories error:", error);
+      res.status(500).json({ message: "Failed to get categories" });
+    }
+  });
+
+  app.post("/api/admin/categories", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { name, description, imageUrl, order, isActive } = req.body;
+      if (!name) return res.status(400).json({ message: "Category name is required" });
+
+      const category = await firestoreCategories.create({
+        name,
+        description: description || "",
+        imageUrl: imageUrl || null,
+        order: order || 0,
+        isActive: isActive !== false,
+      });
+      res.status(201).json(category);
+    } catch (error: any) {
+      console.error("Create category error:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.patch("/api/admin/categories/:id", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await firestoreCategories.update(id, req.body);
+      if (!updated) return res.status(404).json({ message: "Category not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update category error:", error);
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/admin/categories/:id", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await firestoreCategories.delete(id);
+      res.json({ message: "Category deleted" });
+    } catch (error: any) {
+      console.error("Delete category error:", error);
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
+
+  app.get("/api/shop/packages", async (_req, res) => {
+    try {
+      const packages = await firestoreVotePackages.getActive();
+      res.json(packages);
+    } catch (error: any) {
+      console.error("Get vote packages error:", error);
+      res.status(500).json({ message: "Failed to get vote packages" });
+    }
+  });
+
+  app.get("/api/admin/shop/packages", firebaseAuth, requireAdmin, async (_req, res) => {
+    try {
+      const packages = await firestoreVotePackages.getAll();
+      res.json(packages);
+    } catch (error: any) {
+      console.error("Get all vote packages error:", error);
+      res.status(500).json({ message: "Failed to get vote packages" });
+    }
+  });
+
+  app.post("/api/admin/shop/packages", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { name, description, voteCount, price, isActive, order } = req.body;
+      if (!name || !voteCount || price === undefined) {
+        return res.status(400).json({ message: "name, voteCount, and price are required" });
+      }
+
+      const pkg = await firestoreVotePackages.create({
+        name,
+        description: description || "",
+        voteCount,
+        price,
+        isActive: isActive !== false,
+        order: order || 0,
+      });
+      res.status(201).json(pkg);
+    } catch (error: any) {
+      console.error("Create vote package error:", error);
+      res.status(500).json({ message: "Failed to create vote package" });
+    }
+  });
+
+  app.patch("/api/admin/shop/packages/:id", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await firestoreVotePackages.update(id, req.body);
+      if (!updated) return res.status(404).json({ message: "Vote package not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update vote package error:", error);
+      res.status(500).json({ message: "Failed to update vote package" });
+    }
+  });
+
+  app.delete("/api/admin/shop/packages/:id", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await firestoreVotePackages.delete(id);
+      res.json({ message: "Vote package deleted" });
+    } catch (error: any) {
+      console.error("Delete vote package error:", error);
+      res.status(500).json({ message: "Failed to delete vote package" });
+    }
+  });
+
+
+  app.get("/api/settings", async (_req, res) => {
+    try {
+      const settings = await firestoreSettings.get();
+      res.json(settings || {
+        siteName: "StarVote",
+        siteDescription: "Talent Competition & Voting Platform",
+        contactEmail: "admin@starvote.com",
+        defaultVoteCost: 0,
+        defaultMaxVotesPerDay: 10,
+      });
+    } catch (error: any) {
+      console.error("Get settings error:", error);
+      res.status(500).json({ message: "Failed to get settings" });
+    }
+  });
+
+  app.put("/api/admin/settings", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const updated = await firestoreSettings.update(req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update settings error:", error);
+      res.status(500).json({ message: "Failed to update settings" });
     }
   });
 
@@ -702,14 +832,9 @@ export async function registerRoutes(
         await updateFirestoreUser(uid, updateData);
       }
 
-      const dbUpdate: Record<string, any> = {};
-      if (displayName !== undefined) dbUpdate.firstName = displayName;
-      if (billingAddress !== undefined) dbUpdate.billingAddress = JSON.stringify(billingAddress);
-      if (Object.keys(dbUpdate).length > 0) {
-        await storage.updateUser(uid, dbUpdate);
-      }
-
       const firestoreUser = await getFirestoreUser(uid);
+      const profile = await storage.getTalentProfileByUserId(uid);
+
       res.json({
         uid: firestoreUser?.uid,
         email: firestoreUser?.email,
@@ -719,6 +844,8 @@ export async function registerRoutes(
         profileImageUrl: firestoreUser?.profileImageUrl || null,
         socialLinks: firestoreUser?.socialLinks || null,
         billingAddress: firestoreUser?.billingAddress || null,
+        hasProfile: !!profile,
+        profileRole: profile?.role || null,
       });
     } catch (error: any) {
       console.error("Update profile error:", error);

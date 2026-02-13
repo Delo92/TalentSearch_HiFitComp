@@ -1,6 +1,3 @@
-import { db } from "./db";
-import { competitions, talentProfiles, contestants, votes, users, siteLivery } from "@shared/schema";
-import { sql } from "drizzle-orm";
 import { storage } from "./storage";
 import {
   getFirebaseAuth,
@@ -10,35 +7,45 @@ import {
   createFirestoreUser,
   getFirebaseAdmin,
 } from "./firebase-admin";
+import {
+  firestoreCategories,
+  firestoreVotePackages,
+  firestoreSettings,
+  firestoreLivery,
+  firestoreVotes,
+} from "./firestore-collections";
 
 export async function seedDatabase() {
-  const existingComps = await db.select().from(competitions);
-  if (existingComps.length > 0) return;
+  const comps = await storage.getCompetitions();
+  if (comps.length > 0) return;
 
-  const seedUserId = "seed-system-user";
-  const existingUsers = await db.select().from(users);
-  let systemUser = existingUsers.find((u) => u.id === seedUserId);
+  const systemUid = "seed-system-user";
+  let systemUser = await getFirestoreUser(systemUid);
   if (!systemUser) {
-    [systemUser] = await db.insert(users).values({
-      id: seedUserId,
+    systemUser = await createFirestoreUser({
+      uid: systemUid,
       email: "system@starvote.com",
-      firstName: "System",
-      lastName: "Admin",
-    }).returning();
+      displayName: "System",
+      level: 1,
+    });
   }
 
   const profileData = [
-    { userId: seedUserId, displayName: "Marcus Steel", bio: "Professional bodybuilder and fitness model with over 10 years of competition experience. IFBB Pro League competitor.", category: "Bodybuilding", location: "Los Angeles, CA", imageUrls: ["/images/template/b1.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
-    { userId: seedUserId, displayName: "Aria Velvet", bio: "R&B vocalist and songwriter. Known for soulful performances and captivating stage presence. Two-time regional singing champion.", category: "Music", location: "Atlanta, GA", imageUrls: ["/images/template/a1.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
-    { userId: seedUserId, displayName: "Jade Monroe", bio: "International fashion model represented by Elite Models. Runway experience in Paris, Milan, and New York Fashion Week.", category: "Modeling", location: "New York, NY", imageUrls: ["/images/template/a2.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
-    { userId: seedUserId, displayName: "DJ Phoenix", bio: "Award-winning electronic music producer and DJ. Headlined festivals across the country with high-energy sets.", category: "Music", location: "Miami, FL", imageUrls: ["/images/template/a3.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
-    { userId: seedUserId, displayName: "Titan Brooks", bio: "Classic physique competitor. Natural athlete dedicated to the art of bodybuilding. Multiple state champion.", category: "Bodybuilding", location: "Houston, TX", imageUrls: ["/images/template/b2.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
-    { userId: seedUserId, displayName: "Luna Ray", bio: "Contemporary dancer and choreographer specializing in modern and hip-hop fusion. Viral performance artist.", category: "Dance", location: "Chicago, IL", imageUrls: ["/images/template/a4.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
-    { userId: seedUserId, displayName: "Crystal Vega", bio: "Swimwear and fitness model with a passion for wellness. Brand ambassador for major sportswear companies.", category: "Modeling", location: "San Diego, CA", imageUrls: ["/images/template/a5.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
-    { userId: seedUserId, displayName: "Rico Blaze", bio: "Hip-hop artist and battle rapper from the streets of Brooklyn. Raw talent with lyrical precision.", category: "Music", location: "Brooklyn, NY", imageUrls: ["/images/template/a6.jpg"], videoUrls: [], socialLinks: null, role: "talent" as const },
+    { userId: systemUid, displayName: "Marcus Steel", stageName: null, bio: "Professional bodybuilder and fitness model with over 10 years of competition experience. IFBB Pro League competitor.", category: "Bodybuilding", location: "Los Angeles, CA", imageUrls: ["/images/template/b1.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
+    { userId: systemUid, displayName: "Aria Velvet", stageName: null, bio: "R&B vocalist and songwriter. Known for soulful performances and captivating stage presence. Two-time regional singing champion.", category: "Music", location: "Atlanta, GA", imageUrls: ["/images/template/a1.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
+    { userId: systemUid, displayName: "Jade Monroe", stageName: null, bio: "International fashion model represented by Elite Models. Runway experience in Paris, Milan, and New York Fashion Week.", category: "Modeling", location: "New York, NY", imageUrls: ["/images/template/a2.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
+    { userId: systemUid, displayName: "DJ Phoenix", stageName: null, bio: "Award-winning electronic music producer and DJ. Headlined festivals across the country with high-energy sets.", category: "Music", location: "Miami, FL", imageUrls: ["/images/template/a3.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
+    { userId: systemUid, displayName: "Titan Brooks", stageName: null, bio: "Classic physique competitor. Natural athlete dedicated to the art of bodybuilding. Multiple state champion.", category: "Bodybuilding", location: "Houston, TX", imageUrls: ["/images/template/b2.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
+    { userId: systemUid, displayName: "Luna Ray", stageName: null, bio: "Contemporary dancer and choreographer specializing in modern and hip-hop fusion. Viral performance artist.", category: "Dance", location: "Chicago, IL", imageUrls: ["/images/template/a4.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
+    { userId: systemUid, displayName: "Crystal Vega", stageName: null, bio: "Swimwear and fitness model with a passion for wellness. Brand ambassador for major sportswear companies.", category: "Modeling", location: "San Diego, CA", imageUrls: ["/images/template/a5.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
+    { userId: systemUid, displayName: "Rico Blaze", stageName: null, bio: "Hip-hop artist and battle rapper from the streets of Brooklyn. Raw talent with lyrical precision.", category: "Music", location: "Brooklyn, NY", imageUrls: ["/images/template/a6.jpg"], videoUrls: [], socialLinks: null, role: "talent" },
   ];
 
-  const profiles = await db.insert(talentProfiles).values(profileData).returning();
+  const profiles = [];
+  for (const p of profileData) {
+    const profile = await storage.createTalentProfile(p);
+    profiles.push(profile);
+  }
 
   const compData = [
     {
@@ -46,81 +53,83 @@ export async function seedDatabase() {
       description: "The ultimate singing and music performance competition. Show the world your vocal talent and stage presence. Open to all genres including R&B, pop, hip-hop, rock, and more.",
       category: "Music",
       coverImage: "/images/template/bg-1.jpg",
-      status: "active" as const,
+      status: "active",
       voteCost: 0,
       maxVotesPerDay: 10,
-      startDate: new Date("2026-02-01"),
-      endDate: new Date("2026-04-30"),
+      startDate: "2026-02-01T00:00:00.000Z",
+      endDate: "2026-04-30T00:00:00.000Z",
+      createdAt: new Date().toISOString(),
     },
     {
       title: "Iron Physique Championship",
       description: "The premier bodybuilding competition showcasing the best physiques. Categories include Classic Physique, Men's Open, and Women's Fitness.",
       category: "Bodybuilding",
       coverImage: "/images/template/breadcumb3.jpg",
-      status: "active" as const,
+      status: "active",
       voteCost: 0,
       maxVotesPerDay: 5,
-      startDate: new Date("2026-02-15"),
-      endDate: new Date("2026-05-15"),
+      startDate: "2026-02-15T00:00:00.000Z",
+      endDate: "2026-05-15T00:00:00.000Z",
+      createdAt: new Date().toISOString(),
     },
     {
       title: "Top Model Search",
       description: "Are you the next top model? Show off your runway walk, photogenic qualities, and unique style in this nationwide modeling competition.",
       category: "Modeling",
       coverImage: "/images/template/breadcumb.jpg",
-      status: "active" as const,
+      status: "active",
       voteCost: 0,
       maxVotesPerDay: 10,
-      startDate: new Date("2026-03-01"),
-      endDate: new Date("2026-06-01"),
+      startDate: "2026-03-01T00:00:00.000Z",
+      endDate: "2026-06-01T00:00:00.000Z",
+      createdAt: new Date().toISOString(),
     },
     {
       title: "Dance Battle Royale",
       description: "Bring your best moves to the biggest dance competition of the year. All styles welcome: hip-hop, contemporary, breakdancing, and more.",
       category: "Dance",
       coverImage: "/images/template/breadcumb2.jpg",
-      status: "voting" as const,
+      status: "voting",
       voteCost: 0,
       maxVotesPerDay: 15,
-      startDate: new Date("2026-01-15"),
-      endDate: new Date("2026-03-30"),
+      startDate: "2026-01-15T00:00:00.000Z",
+      endDate: "2026-03-30T00:00:00.000Z",
+      createdAt: new Date().toISOString(),
     },
   ];
 
-  const comps = await db.insert(competitions).values(compData).returning();
-
-  const contestantData = [
-    { competitionId: comps[0].id, talentProfileId: profiles[1].id, applicationStatus: "approved" as const },
-    { competitionId: comps[0].id, talentProfileId: profiles[3].id, applicationStatus: "approved" as const },
-    { competitionId: comps[0].id, talentProfileId: profiles[7].id, applicationStatus: "approved" as const },
-    { competitionId: comps[1].id, talentProfileId: profiles[0].id, applicationStatus: "approved" as const },
-    { competitionId: comps[1].id, talentProfileId: profiles[4].id, applicationStatus: "approved" as const },
-    { competitionId: comps[2].id, talentProfileId: profiles[2].id, applicationStatus: "approved" as const },
-    { competitionId: comps[2].id, talentProfileId: profiles[6].id, applicationStatus: "approved" as const },
-    { competitionId: comps[3].id, talentProfileId: profiles[5].id, applicationStatus: "approved" as const },
-    { competitionId: comps[3].id, talentProfileId: profiles[1].id, applicationStatus: "approved" as const },
-  ];
-
-  const createdContestants = await db.insert(contestants).values(contestantData).returning();
-
-  const voteData: { contestantId: number; competitionId: number; voterIp: string }[] = [];
-  const voteDistribution = [47, 32, 28, 65, 41, 53, 39, 72, 18];
-  createdContestants.forEach((c, i) => {
-    const count = voteDistribution[i] || 10;
-    for (let v = 0; v < count; v++) {
-      voteData.push({
-        contestantId: c.id,
-        competitionId: c.competitionId,
-        voterIp: `seed-${v}-${i}`,
-      });
-    }
-  });
-
-  if (voteData.length > 0) {
-    await db.insert(votes).values(voteData);
+  const compsCreated = [];
+  for (const c of compData) {
+    const comp = await storage.createCompetition(c);
+    compsCreated.push(comp);
   }
 
-  console.log("Database seeded successfully with sample data");
+  const contestantData = [
+    { competitionId: compsCreated[0].id, talentProfileId: profiles[1].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[0].id, talentProfileId: profiles[3].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[0].id, talentProfileId: profiles[7].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[1].id, talentProfileId: profiles[0].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[1].id, talentProfileId: profiles[4].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[2].id, talentProfileId: profiles[2].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[2].id, talentProfileId: profiles[6].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[3].id, talentProfileId: profiles[5].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+    { competitionId: compsCreated[3].id, talentProfileId: profiles[1].id, applicationStatus: "approved", appliedAt: new Date().toISOString() },
+  ];
+
+  const createdContestants = [];
+  for (const c of contestantData) {
+    const contestant = await storage.createContestant(c);
+    createdContestants.push(contestant);
+  }
+
+  const voteDistribution = [47, 32, 28, 65, 41, 53, 39, 72, 18];
+  for (let i = 0; i < createdContestants.length; i++) {
+    const c = createdContestants[i];
+    const count = voteDistribution[i] || 10;
+    await firestoreVotes.syncVoteCount(c.id, c.competitionId, count);
+  }
+
+  console.log("Database seeded successfully with sample data (all in Firestore)");
 }
 
 const LIVERY_DEFAULTS = [
@@ -165,15 +174,66 @@ const LIVERY_DEFAULTS = [
 ];
 
 export async function seedLivery() {
-  const existing = await storage.getAllLivery();
+  const existing = await firestoreLivery.getAll();
   const existingKeys = new Set(existing.map((l) => l.imageKey));
 
   for (const item of LIVERY_DEFAULTS) {
     if (!existingKeys.has(item.imageKey)) {
-      await storage.upsertLivery({ ...item, imageUrl: null });
+      await firestoreLivery.upsert({ ...item, imageUrl: null });
     }
   }
-  console.log(`Livery seeded: ${LIVERY_DEFAULTS.length} slots configured`);
+  console.log(`Livery seeded: ${LIVERY_DEFAULTS.length} slots configured (Firestore)`);
+}
+
+const DEFAULT_CATEGORIES = [
+  { name: "Music", description: "Singing, rapping, DJing, and all musical performances", imageUrl: "/images/template/a1.jpg", order: 1, isActive: true },
+  { name: "Modeling", description: "Fashion, runway, commercial, and fitness modeling", imageUrl: "/images/template/a2.jpg", order: 2, isActive: true },
+  { name: "Bodybuilding", description: "Classic physique, men's open, women's fitness, and athletic physique", imageUrl: "/images/template/b1.jpg", order: 3, isActive: true },
+  { name: "Dance", description: "Hip-hop, contemporary, breakdancing, ballroom, and all dance styles", imageUrl: "/images/template/a4.jpg", order: 4, isActive: true },
+  { name: "Comedy", description: "Stand-up, sketch, improv, and comedic performances", imageUrl: "/images/template/e1.jpg", order: 5, isActive: true },
+  { name: "Acting", description: "Dramatic, comedic, and theatrical acting performances", imageUrl: "/images/template/e2.jpg", order: 6, isActive: true },
+];
+
+export async function seedCategories() {
+  const existing = await firestoreCategories.getAll();
+  if (existing.length > 0) return;
+
+  for (const cat of DEFAULT_CATEGORIES) {
+    await firestoreCategories.create(cat);
+  }
+  console.log(`Categories seeded: ${DEFAULT_CATEGORIES.length} categories (Firestore)`);
+}
+
+const DEFAULT_VOTE_PACKAGES = [
+  { name: "Starter Pack", description: "Perfect for showing your support", voteCount: 5, price: 199, isActive: true, order: 1 },
+  { name: "Fan Pack", description: "Give your favorite contestant a boost", voteCount: 25, price: 799, isActive: true, order: 2 },
+  { name: "Super Fan Pack", description: "Make a real impact on the competition", voteCount: 50, price: 1499, isActive: true, order: 3 },
+  { name: "Champion Pack", description: "The ultimate show of support", voteCount: 100, price: 2499, isActive: true, order: 4 },
+  { name: "Legend Pack", description: "Become a legend in the voting arena", voteCount: 250, price: 4999, isActive: true, order: 5 },
+];
+
+export async function seedVotePackages() {
+  const existing = await firestoreVotePackages.getAll();
+  if (existing.length > 0) return;
+
+  for (const pkg of DEFAULT_VOTE_PACKAGES) {
+    await firestoreVotePackages.create(pkg);
+  }
+  console.log(`Vote packages seeded: ${DEFAULT_VOTE_PACKAGES.length} packages (Firestore)`);
+}
+
+export async function seedSettings() {
+  const existing = await firestoreSettings.get();
+  if (existing) return;
+
+  await firestoreSettings.update({
+    siteName: "StarVote",
+    siteDescription: "Talent Competition & Voting Platform",
+    contactEmail: "admin@starvote.com",
+    defaultVoteCost: 0,
+    defaultMaxVotesPerDay: 10,
+  });
+  console.log("Settings seeded (Firestore)");
 }
 
 const TEST_ACCOUNTS = [
@@ -246,25 +306,13 @@ export async function seedTestAccounts() {
         await createFirestoreUser(firestoreData);
       }
 
-      let dbUser = await storage.getUser(firebaseUser.uid);
-      if (!dbUser) {
-        await storage.createUser({
-          id: firebaseUser.uid,
-          email: account.email,
-          firstName: account.displayName,
-          lastName: null,
-          profileImageUrl: null,
-          level: account.level,
-        });
-      }
-
       if (account.level >= 2) {
         const existingProfile = await storage.getTalentProfileByUserId(firebaseUser.uid);
         if (!existingProfile) {
           await storage.createTalentProfile({
             userId: firebaseUser.uid,
             displayName: account.displayName,
-            stageName: "stageName" in account ? account.stageName : null,
+            stageName: "stageName" in account ? account.stageName || null : null,
             bio: account.level === 3 ? "Platform administrator" : "Test talent profile",
             category: account.level === 2 ? "Music" : null,
             location: null,
