@@ -187,3 +187,6 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - Feb 14, 2026: Added invite dialog UI to all dashboards (admin, host, talent) with sent invitations list
 - Feb 14, 2026: Added /register route with invite token support, pre-fills name/email from invitation
 - Feb 14, 2026: Registration accepts inviteToken to set user level from invitation
+- Feb 14, 2026: Redesigned hosting packages: maxContestants + revenueSharePercent (no event limits). Tiers: Starter($49, 5 contestants, 20%), Pro($149, 15 contestants, 35%), Premium($399, 25+ contestants, 50%)
+- Feb 14, 2026: Redesigned voting packages with bonusVotes system: 500/$10, 1000+300 bonus/$15, 2000+600 bonus/$30
+- Feb 14, 2026: Guest checkout now correctly counts totalVotes = base + bonus for all vote purchases
