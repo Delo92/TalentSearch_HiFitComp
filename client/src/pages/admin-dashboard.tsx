@@ -292,6 +292,20 @@ function TalentDetailModal({ profileId, competitions }: { profileId: number; com
     },
   });
 
+  const levelMutation = useMutation({
+    mutationFn: async ({ userId, level }: { userId: string; level: number }) => {
+      await apiRequest("PATCH", `/api/admin/users/${userId}/level`, { level });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users", profileId, "detail"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "User level updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12" data-testid="user-detail-loading">
@@ -325,7 +339,9 @@ function TalentDetailModal({ profileId, competitions }: { profileId: number; com
             {profile.email && <p className="text-xs text-white/30 mt-1" data-testid="user-detail-email">{profile.email}</p>}
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {profile.category && <Badge className="bg-orange-500/20 text-orange-400 border-0" data-testid="user-detail-category">{profile.category}</Badge>}
-              <Badge className="bg-white/10 text-white/60 border-0" data-testid="user-detail-level">Level {profile.level}</Badge>
+              <Badge className={`border-0 ${profile.level === 4 ? "bg-red-500/20 text-red-400" : profile.level === 3 ? "bg-purple-500/20 text-purple-300" : profile.level === 2 ? "bg-blue-500/20 text-blue-400" : "bg-white/10 text-white/60"}`} data-testid="user-detail-level">
+                {profile.level === 4 ? "Admin" : profile.level === 3 ? "Host" : profile.level === 2 ? "Talent" : "Viewer"} (Level {profile.level})
+              </Badge>
             </div>
             {profile.bio && <p className="text-xs text-white/40 mt-2 line-clamp-3" data-testid="user-detail-bio">{profile.bio}</p>}
             {Object.keys(socialLinksObj).length > 0 && (
@@ -338,6 +354,32 @@ function TalentDetailModal({ profileId, competitions }: { profileId: number; com
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="user-detail-level-mgmt">
+        <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Change User Level</h3>
+        <div className="flex items-center gap-3">
+          <Select
+            value={String(profile.level)}
+            onValueChange={(v) => {
+              const newLevel = parseInt(v);
+              if (newLevel !== profile.level) {
+                levelMutation.mutate({ userId: profile.userId, level: newLevel });
+              }
+            }}
+          >
+            <SelectTrigger className="flex-1 bg-white/5 border-white/10 text-white" data-testid="select-user-level">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-900 border-white/10">
+              <SelectItem value="1">Level 1 - Viewer</SelectItem>
+              <SelectItem value="2">Level 2 - Talent</SelectItem>
+              <SelectItem value="3">Level 3 - Host</SelectItem>
+              <SelectItem value="4">Level 4 - Admin</SelectItem>
+            </SelectContent>
+          </Select>
+          {levelMutation.isPending && <span className="text-xs text-white/40">Updating...</span>}
         </div>
       </div>
 
@@ -1379,6 +1421,9 @@ export default function AdminDashboard({ user }: { user: any }) {
                           <div className="flex flex-wrap items-center gap-2">
                             {u.stageName && <span className="text-xs text-white/40">{u.stageName}</span>}
                             {u.category && <Badge className="bg-orange-500/10 text-orange-400/80 border-0 text-xs">{u.category}</Badge>}
+                            <Badge className={`border-0 text-xs ${u.role === "admin" ? "bg-red-500/20 text-red-400" : u.role === "host" ? "bg-purple-500/20 text-purple-300" : u.role === "talent" ? "bg-blue-500/20 text-blue-400" : "bg-white/10 text-white/50"}`}>
+                              {u.role === "admin" ? "Admin" : u.role === "host" ? "Host" : u.role === "talent" ? "Talent" : "Viewer"}
+                            </Badge>
                           </div>
                         </div>
                         <Eye className="h-4 w-4 text-white/20 shrink-0" />
@@ -1409,7 +1454,7 @@ export default function AdminDashboard({ user }: { user: any }) {
       <Dialog open={userDetailId !== null} onOpenChange={(open) => { if (!open) setUserDetailId(null); }}>
         <DialogContent className="bg-zinc-900 border-white/10 text-white sm:max-w-2xl" data-testid="user-detail-dialog">
           <DialogHeader>
-            <DialogTitle className="font-serif text-xl">Talent Profile</DialogTitle>
+            <DialogTitle className="font-serif text-xl">User Profile</DialogTitle>
           </DialogHeader>
           {userDetailId !== null && <TalentDetailModal profileId={userDetailId} competitions={competitions} />}
         </DialogContent>

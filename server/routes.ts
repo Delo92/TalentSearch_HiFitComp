@@ -790,14 +790,14 @@ export async function registerRoutes(
     try {
       const { uid } = req.params;
       const { level } = req.body;
-      if (![1, 2, 3].includes(level)) {
-        return res.status(400).json({ message: "Level must be 1, 2, or 3" });
+      if (![1, 2, 3, 4].includes(level)) {
+        return res.status(400).json({ message: "Level must be 1, 2, 3, or 4" });
       }
 
       await setUserLevel(uid, level);
       await updateFirestoreUser(uid, { level });
 
-      const roleMap: Record<number, string> = { 1: "viewer", 2: "talent", 3: "admin" };
+      const roleMap: Record<number, string> = { 1: "viewer", 2: "talent", 3: "host", 4: "admin" };
       await storage.updateTalentProfile(uid, { role: roleMap[level] as any });
 
       res.json({ message: "User level updated", uid, level });
