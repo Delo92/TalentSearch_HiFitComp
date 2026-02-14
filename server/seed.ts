@@ -193,11 +193,9 @@ export async function seedCategories() {
 }
 
 const DEFAULT_VOTE_PACKAGES = [
-  { name: "Starter Pack", description: "Perfect for showing your support", voteCount: 5, price: 199, isActive: true, order: 1 },
-  { name: "Fan Pack", description: "Give your favorite contestant a boost", voteCount: 25, price: 799, isActive: true, order: 2 },
-  { name: "Super Fan Pack", description: "Make a real impact on the competition", voteCount: 50, price: 1499, isActive: true, order: 3 },
-  { name: "Champion Pack", description: "The ultimate show of support", voteCount: 100, price: 2499, isActive: true, order: 4 },
-  { name: "Legend Pack", description: "Become a legend in the voting arena", voteCount: 250, price: 4999, isActive: true, order: 5 },
+  { name: "Starter Pack", description: "500 votes to support your favorite", voteCount: 500, bonusVotes: 0, price: 1000, isActive: true, order: 1 },
+  { name: "Fan Pack", description: "1,000 votes + 300 bonus votes", voteCount: 1000, bonusVotes: 300, price: 1500, isActive: true, order: 2 },
+  { name: "Super Fan Pack", description: "2,000 votes + 600 bonus votes", voteCount: 2000, bonusVotes: 600, price: 3000, isActive: true, order: 3 },
 ];
 
 export async function seedVotePackages() {

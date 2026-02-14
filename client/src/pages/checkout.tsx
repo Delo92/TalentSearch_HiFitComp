@@ -30,6 +30,7 @@ interface VotePackage {
   id: string;
   name: string;
   voteCount: number;
+  bonusVotes: number;
   price: number;
   isActive: boolean;
   description?: string;
@@ -337,7 +338,10 @@ export default function CheckoutPage() {
                 <div className="flex items-baseline justify-between">
                   <span className="text-white/60 text-sm">
                     <Heart className="inline h-3.5 w-3.5 mr-1 text-[#FF5A09]" />
-                    {pkg.voteCount} votes
+                    {pkg.voteCount.toLocaleString()} votes
+                    {pkg.bonusVotes > 0 && (
+                      <span className="text-[#FF5A09] font-bold ml-1">+{pkg.bonusVotes.toLocaleString()} bonus</span>
+                    )}
                   </span>
                   <span className="text-white font-bold text-lg">
                     ${(pkg.price / 100).toFixed(2)}
@@ -482,7 +486,7 @@ export default function CheckoutPage() {
               <span className="text-white/60 text-sm uppercase tracking-wider">Order Summary</span>
             </div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-white">{selectedPkg.name} ({selectedPkg.voteCount} votes)</span>
+              <span className="text-white">{selectedPkg.name} ({selectedPkg.voteCount.toLocaleString()}{selectedPkg.bonusVotes > 0 ? ` + ${selectedPkg.bonusVotes.toLocaleString()} bonus` : ""} votes)</span>
               <span className="text-white font-bold">${(selectedPkg.price / 100).toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between text-white/40 text-sm">

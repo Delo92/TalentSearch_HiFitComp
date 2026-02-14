@@ -1443,7 +1443,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/shop/packages", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      const { name, description, voteCount, price, isActive, order } = req.body;
+      const { name, description, voteCount, bonusVotes, price, isActive, order } = req.body;
       if (!name || !voteCount || price === undefined) {
         return res.status(400).json({ message: "name, voteCount, and price are required" });
       }
@@ -1452,6 +1452,7 @@ export async function registerRoutes(
         name,
         description: description || "",
         voteCount,
+        bonusVotes: bonusVotes || 0,
         price,
         isActive: isActive !== false,
         order: order || 0,
@@ -1778,13 +1779,14 @@ export async function registerRoutes(
       if (!pkg) return res.status(404).json({ message: "Vote package not found" });
       if (!pkg.isActive) return res.status(400).json({ message: "This vote package is no longer available" });
 
+      const totalVotes = pkg.voteCount + (pkg.bonusVotes || 0);
       const amountInDollars = pkg.price / 100;
 
       const chargeResult = await chargePaymentNonce(
         amountInDollars,
         dataDescriptor,
         dataValue,
-        `${pkg.voteCount} votes for ${comp.title}`,
+        `${totalVotes} votes for ${comp.title}`,
         email,
         name,
       );
@@ -1793,7 +1795,7 @@ export async function registerRoutes(
       if (createAccount) {
         const viewer = await firestoreViewerProfiles.getOrCreate(email, name);
         viewerId = viewer.id;
-        await firestoreViewerProfiles.recordPurchase(viewer.id, pkg.voteCount, pkg.price);
+        await firestoreViewerProfiles.recordPurchase(viewer.id, totalVotes, pkg.price);
       }
 
       const purchase = await firestoreVotePurchases.create({
@@ -1803,7 +1805,7 @@ export async function registerRoutes(
         guestName: name.trim(),
         competitionId,
         contestantId,
-        voteCount: pkg.voteCount,
+        voteCount: totalVotes,
         amount: pkg.price,
         transactionId: chargeResult.transactionId,
       });
@@ -1813,7 +1815,7 @@ export async function registerRoutes(
         competitionId,
         userId: viewerId || `guest_${purchase.id}`,
         purchaseId: purchase.id,
-        voteCount: pkg.voteCount,
+        voteCount: totalVotes,
       });
 
       res.status(201).json({
@@ -1879,10 +1881,10 @@ export async function registerRoutes(
       const doc = await db.collection("platformSettings").doc("global").get();
       if (!doc.exists) {
         res.json({
-          eventPackages: [
-            { name: "Starter", price: 49, maxEvents: 1, description: "Perfect for your first competition" },
-            { name: "Pro", price: 149, maxEvents: 5, description: "For experienced hosts running multiple events" },
-            { name: "Enterprise", price: 399, maxEvents: 0, description: "Unlimited events with premium support" },
+          hostingPackages: [
+            { name: "Starter", price: 49, maxContestants: 5, revenueSharePercent: 20, description: "Up to 5 competitors per event" },
+            { name: "Pro", price: 149, maxContestants: 15, revenueSharePercent: 35, description: "Up to 15 competitors per event" },
+            { name: "Premium", price: 399, maxContestants: 25, revenueSharePercent: 50, description: "25+ competitors with top revenue share" },
           ],
           maxVotesPerDay: 10,
           defaultVoteCost: 0,

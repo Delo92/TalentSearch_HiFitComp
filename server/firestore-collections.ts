@@ -142,6 +142,7 @@ export interface FirestoreVotePackage {
   name: string;
   description: string;
   voteCount: number;
+  bonusVotes: number;
   price: number;
   isActive: boolean;
   order: number;

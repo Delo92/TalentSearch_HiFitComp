@@ -2347,21 +2347,21 @@ export default function AdminDashboard({ user }: { user: any }) {
               const updateForm = (key: string, value: any) => {
                 setSettingsForm((prev: any) => ({ ...(prev || platformSettings || {}), [key]: value }));
               };
-              const packages = form.eventPackages || [
-                { name: "Starter", price: 49, maxEvents: 1, description: "Perfect for your first competition" },
-                { name: "Pro", price: 149, maxEvents: 5, description: "For experienced hosts running multiple events" },
-                { name: "Enterprise", price: 399, maxEvents: 0, description: "Unlimited events with premium support" },
+              const packages = form.hostingPackages || [
+                { name: "Starter", price: 49, maxContestants: 5, revenueSharePercent: 20, description: "Up to 5 competitors per event" },
+                { name: "Pro", price: 149, maxContestants: 15, revenueSharePercent: 35, description: "Up to 15 competitors per event" },
+                { name: "Premium", price: 399, maxContestants: 25, revenueSharePercent: 50, description: "25+ competitors with top revenue share" },
               ];
               const updatePackage = (index: number, field: string, value: any) => {
                 const updated = [...packages];
                 updated[index] = { ...updated[index], [field]: value };
-                updateForm("eventPackages", updated);
+                updateForm("hostingPackages", updated);
               };
               const addPackage = () => {
-                updateForm("eventPackages", [...packages, { name: "New Package", price: 0, maxEvents: 1, description: "" }]);
+                updateForm("hostingPackages", [...packages, { name: "New Package", price: 0, maxContestants: 5, revenueSharePercent: 10, description: "" }]);
               };
               const removePackage = (index: number) => {
-                updateForm("eventPackages", packages.filter((_: any, i: number) => i !== index));
+                updateForm("hostingPackages", packages.filter((_: any, i: number) => i !== index));
               };
 
               return (
@@ -2463,7 +2463,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                         <Plus className="h-3 w-3 mr-1" /> Add Package
                       </Button>
                     </div>
-                    <p className="text-[10px] text-white/25">Packages shown to hosts when they click "New Event". Set maxEvents to 0 for unlimited.</p>
+                    <p className="text-[10px] text-white/25">Packages determine max competitors per event and the host's share of vote revenue. Unlimited events at every tier.</p>
                     <div className="space-y-4">
                       {packages.map((pkg: any, idx: number) => (
                         <div key={idx} className="rounded-md bg-white/[0.03] border border-white/5 p-4 space-y-3" data-testid={`settings-package-${idx}`}>
@@ -2475,7 +2475,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                               </Button>
                             )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                             <div>
                               <Label className="text-white/40 text-[10px]">Name</Label>
                               <Input value={pkg.name} onChange={(e) => updatePackage(idx, "name", e.target.value)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-name-${idx}`} />
@@ -2485,8 +2485,13 @@ export default function AdminDashboard({ user }: { user: any }) {
                               <Input type="number" step="0.01" value={pkg.price} onChange={(e) => updatePackage(idx, "price", parseFloat(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-price-${idx}`} />
                             </div>
                             <div>
-                              <Label className="text-white/40 text-[10px]">Max Events (0=unlimited)</Label>
-                              <Input type="number" value={pkg.maxEvents} onChange={(e) => updatePackage(idx, "maxEvents", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-max-${idx}`} />
+                              <Label className="text-white/40 text-[10px]">Max Competitors</Label>
+                              <Input type="number" value={pkg.maxContestants} onChange={(e) => updatePackage(idx, "maxContestants", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-max-${idx}`} />
+                            </div>
+                            <div>
+                              <Label className="text-white/40 text-[10px]">Revenue Share (%)</Label>
+                              <Input type="number" step="1" value={pkg.revenueSharePercent} onChange={(e) => updatePackage(idx, "revenueSharePercent", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-revenue-${idx}`} />
+                              <p className="text-[10px] text-white/25 mt-0.5">% of vote revenue host receives</p>
                             </div>
                             <div>
                               <Label className="text-white/40 text-[10px]">Description</Label>
