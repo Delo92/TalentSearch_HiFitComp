@@ -835,6 +835,68 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/hosts", firebaseAuth, requireAdmin, async (_req, res) => {
+    try {
+      const hostProfiles = await storage.getHostProfiles();
+      const allComps = await storage.getCompetitions();
+      const hosts = hostProfiles.map(h => {
+        const hostComps = allComps.filter(c => c.createdBy === h.userId);
+        return {
+          ...h,
+          competitionCount: hostComps.length,
+          activeCompetitions: hostComps.filter(c => c.status === "active" || c.status === "voting").length,
+        };
+      });
+      res.json(hosts);
+    } catch (error: any) {
+      console.error("Get hosts error:", error);
+      res.status(500).json({ message: "Failed to get hosts" });
+    }
+  });
+
+  app.get("/api/admin/hosts/:uid/competitions", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { uid } = req.params;
+      const comps = await storage.getCompetitionsByCreator(uid);
+      const result = [];
+      for (const comp of comps) {
+        const contestants = await storage.getContestantsByCompetition(comp.id);
+        result.push({
+          ...comp,
+          contestants: contestants.map(c => ({
+            id: c.id,
+            talentProfileId: c.talentProfileId,
+            applicationStatus: c.applicationStatus,
+            displayName: c.talentProfile.displayName,
+            stageName: c.talentProfile.stageName,
+            category: c.talentProfile.category,
+            imageUrls: c.talentProfile.imageUrls,
+            voteCount: c.voteCount,
+          })),
+        });
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Get host competitions error:", error);
+      res.status(500).json({ message: "Failed to get host competitions" });
+    }
+  });
+
+  app.patch("/api/admin/competitions/:id/assign-host", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+      const { hostUid } = req.body;
+      if (!hostUid) return res.status(400).json({ message: "hostUid is required" });
+      const updated = await storage.updateCompetition(id, { createdBy: hostUid });
+      if (!updated) return res.status(404).json({ message: "Competition not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Assign host error:", error);
+      res.status(500).json({ message: "Failed to assign host" });
+    }
+  });
+
   app.patch("/api/admin/users/:uid/level", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const { uid } = req.params;

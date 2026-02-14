@@ -25,6 +25,7 @@ export interface IStorage {
   updateTalentProfile(userId: string, data: Partial<Omit<FirestoreTalentProfile, "id" | "userId">>): Promise<FirestoreTalentProfile | null>;
   getAllTalentProfiles(): Promise<FirestoreTalentProfile[]>;
   getAdminProfiles(): Promise<FirestoreTalentProfile[]>;
+  getHostProfiles(): Promise<FirestoreTalentProfile[]>;
 
   getCompetitions(): Promise<FirestoreCompetition[]>;
   getCompetitionsByStatus(status: string): Promise<FirestoreCompetition[]>;
@@ -97,6 +98,10 @@ export class FirestoreStorage implements IStorage {
 
   async getAdminProfiles(): Promise<FirestoreTalentProfile[]> {
     return firestoreTalentProfiles.getByRole("admin");
+  }
+
+  async getHostProfiles(): Promise<FirestoreTalentProfile[]> {
+    return firestoreTalentProfiles.getByRole("host");
   }
 
   async getCompetitions(): Promise<FirestoreCompetition[]> {

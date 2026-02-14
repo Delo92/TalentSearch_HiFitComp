@@ -85,6 +85,39 @@ interface HostSubmission {
   createdAt: string;
 }
 
+interface HostProfile {
+  id: number;
+  userId: string;
+  displayName: string;
+  stageName: string | null;
+  bio: string | null;
+  category: string | null;
+  imageUrls: string[];
+  role: string;
+  competitionCount: number;
+  activeCompetitions: number;
+}
+
+interface HostCompetitionDetail {
+  id: number;
+  title: string;
+  category: string;
+  status: string;
+  coverImage: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  contestants: {
+    id: number;
+    talentProfileId: number;
+    applicationStatus: string;
+    displayName: string;
+    stageName: string | null;
+    category: string | null;
+    imageUrls: string[];
+    voteCount: number;
+  }[];
+}
+
 interface CompDetailContestant {
   id: number;
   talentProfileId: number;
@@ -625,6 +658,73 @@ function InlineCompDetail({ compId }: { compId: number }) {
   );
 }
 
+function ExpandedHostComps({ hostUid, hostName }: { hostUid: string; hostName: string }) {
+  const { data, isLoading } = useQuery<HostCompetitionDetail[]>({
+    queryKey: ["/api/admin/hosts", hostUid, "competitions"],
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center py-6"><span className="text-white/40 text-sm">Loading competitions...</span></div>;
+  if (!data || data.length === 0) return <div className="text-center py-4 text-white/30 text-sm">No competitions assigned to {hostName}.</div>;
+
+  return (
+    <div className="space-y-4 p-4 pt-0" data-testid={`host-comps-${hostUid}`}>
+      {data.map(comp => (
+        <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`host-comp-${comp.id}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div>
+              <h4 className="font-bold text-sm">{comp.title}</h4>
+              <span className="text-xs text-white/40">{comp.category}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className={`border-0 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`}>
+                {comp.status}
+              </Badge>
+              <Link href={`/competitions/${comp.id}`}>
+                <Button variant="ghost" size="icon" className="text-white/40" data-testid={`link-comp-page-${comp.id}`}>
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+          <h5 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-2">Contestants ({comp.contestants.length})</h5>
+          {comp.contestants.length > 0 ? (
+            <div className="space-y-2">
+              {comp.contestants.map(c => (
+                <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/[0.03] border border-white/5 p-3" data-testid={`host-contestant-${c.id}`}>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={c.imageUrls?.[0] || ""} />
+                      <AvatarFallback className="bg-orange-500/20 text-orange-400 text-xs font-bold">
+                        {c.displayName?.charAt(0) || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <Link href={`/talent/${c.talentProfileId}`}>
+                        <span className="font-medium text-sm text-orange-400 underline underline-offset-2 cursor-pointer" data-testid={`link-talent-${c.talentProfileId}`}>
+                          {c.displayName}
+                        </span>
+                      </Link>
+                      {c.stageName && <span className="text-xs text-white/40 ml-2">{c.stageName}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`border-0 ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                      {c.applicationStatus}
+                    </Badge>
+                    <span className="text-xs text-white/40">{c.voteCount} votes</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-white/30">No contestants yet.</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminDashboard({ user }: { user: any }) {
   const { logout } = useAuth();
   const { toast } = useToast();
@@ -648,13 +748,21 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
   const [compPage, setCompPage] = useState(1);
   const COMPS_PER_PAGE = 10;
+  const [hostSearch, setHostSearch] = useState("");
+  const [hostPage, setHostPage] = useState(1);
+  const [expandedHostId, setExpandedHostId] = useState<string | null>(null);
+  const [hostSettingsOpen, setHostSettingsOpen] = useState(false);
+  const [assignHostDialogOpen, setAssignHostDialogOpen] = useState(false);
+  const [assignHostUid, setAssignHostUid] = useState<string | null>(null);
+  const [assignCompId, setAssignCompId] = useState("");
+  const HOSTS_PER_PAGE = 10;
 
   const { data: stats } = useQuery<AdminStats>({ queryKey: ["/api/admin/stats"] });
   const { data: competitions } = useQuery<Competition[]>({ queryKey: ["/api/competitions"] });
 
   const compCategories = useMemo(() => {
     if (!competitions) return [];
-    const cats = [...new Set(competitions.map(c => c.category).filter(Boolean))];
+    const cats = Array.from(new Set(competitions.map(c => c.category).filter(Boolean)));
     return cats.sort();
   }, [competitions]);
 
@@ -676,6 +784,7 @@ export default function AdminDashboard({ user }: { user: any }) {
     const start = (compPage - 1) * COMPS_PER_PAGE;
     return filteredComps.slice(start, start + COMPS_PER_PAGE);
   }, [filteredComps, compPage]);
+
   const { data: allContestants } = useQuery<ContestantAdmin[]>({ queryKey: ["/api/admin/contestants"] });
   const { data: liveryItems } = useQuery<SiteLivery[]>({ queryKey: ["/api/livery"] });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -684,7 +793,23 @@ export default function AdminDashboard({ user }: { user: any }) {
   const { data: joinSubmissions } = useQuery<JoinSubmission[]>({ queryKey: ["/api/admin/join/submissions"] });
   const { data: hostSettings } = useQuery<JoinHostSettings>({ queryKey: ["/api/host/settings"] });
   const { data: hostSubmissions } = useQuery<HostSubmission[]>({ queryKey: ["/api/admin/host/submissions"] });
+  const { data: hostUsers } = useQuery<HostProfile[]>({ queryKey: ["/api/admin/hosts"] });
 
+  const filteredHosts = useMemo(() => {
+    if (!hostUsers) return [];
+    let filtered = hostUsers;
+    if (hostSearch.trim()) {
+      const q = hostSearch.toLowerCase();
+      filtered = filtered.filter(h => h.displayName.toLowerCase().includes(q) || (h.stageName && h.stageName.toLowerCase().includes(q)));
+    }
+    return filtered;
+  }, [hostUsers, hostSearch]);
+
+  const totalHostPages = Math.max(1, Math.ceil(filteredHosts.length / HOSTS_PER_PAGE));
+  const paginatedHosts = useMemo(() => {
+    const start = (hostPage - 1) * HOSTS_PER_PAGE;
+    return filteredHosts.slice(start, start + HOSTS_PER_PAGE);
+  }, [filteredHosts, hostPage]);
   const { data: talentUsers, isLoading: usersLoading } = useQuery<TalentUser[]>({ queryKey: ["/api/admin/users"] });
 
   const createMutation = useMutation({
@@ -848,6 +973,25 @@ export default function AdminDashboard({ user }: { user: any }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/host/submissions"] });
       toast({ title: "Submission updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const assignHostMutation = useMutation({
+    mutationFn: async ({ compId, hostUid }: { compId: number; hostUid: string }) => {
+      await apiRequest("PATCH", `/api/admin/competitions/${compId}/assign-host`, { hostUid });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/hosts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      if (assignHostUid) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/hosts", assignHostUid, "competitions"] });
+      }
+      setAssignHostDialogOpen(false);
+      setAssignCompId("");
+      toast({ title: "Competition assigned to host!" });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
@@ -1505,145 +1649,249 @@ export default function AdminDashboard({ user }: { user: any }) {
           <TabsContent value="host">
             <div className="space-y-6">
               {hostSettings && (
-                <div className="rounded-md bg-white/5 border border-white/5 p-5" data-testid="host-settings-panel">
-                  <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+                <div className="rounded-md bg-white/5 border border-white/5" data-testid="host-settings-panel">
+                  <button
+                    onClick={() => setHostSettingsOpen(!hostSettingsOpen)}
+                    className="w-full flex items-center justify-between gap-4 p-5"
+                    data-testid="button-toggle-host-settings"
+                  >
                     <div className="flex items-center gap-3">
                       <Settings className="h-5 w-5 text-orange-400" />
-                      <h3 className="font-bold text-lg">Host Settings</h3>
+                      <h3 className="font-bold text-lg">Host Page Settings</h3>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-white/40">Active</span>
-                      <Switch
-                        checked={hostSettings.isActive}
-                        onCheckedChange={(val) => updateHostSettingsMutation.mutate({ isActive: val })}
-                        data-testid="switch-host-active"
-                      />
+                      <Badge className={`border-0 ${hostSettings.isActive ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/40"}`}>
+                        {hostSettings.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                      {hostSettingsOpen ? <ChevronUp className="h-5 w-5 text-white/40" /> : <ChevronDown className="h-5 w-5 text-white/40" />}
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-white/60">Mode</Label>
-                      <Select value={hostSettings.mode} onValueChange={(val) => updateHostSettingsMutation.mutate({ mode: val as "request" | "purchase" })}>
-                        <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-host-mode">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-white/10">
-                          <SelectItem value="request">Free Application</SelectItem>
-                          <SelectItem value="purchase">Paid Entry</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {hostSettings.mode === "purchase" && (
-                      <div className="space-y-1.5">
-                        <Label className="text-white/60">Price (cents)</Label>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-white/30" />
-                          <Input
-                            type="number"
-                            defaultValue={hostSettings.price}
-                            onBlur={(e) => updateHostSettingsMutation.mutate({ price: parseInt(e.target.value) || 0 })}
-                            className="bg-white/5 border-white/10 text-white"
-                            data-testid="input-host-price"
-                          />
-                        </div>
-                        <p className="text-xs text-white/30">${((hostSettings.price || 0) / 100).toFixed(2)}</p>
+                  </button>
+                  {hostSettingsOpen && (
+                    <div className="px-5 pb-5 space-y-5 border-t border-white/5 pt-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm text-white/60">Enable Host Page</span>
+                        <Switch
+                          checked={hostSettings.isActive}
+                          onCheckedChange={(val) => updateHostSettingsMutation.mutate({ isActive: val })}
+                          data-testid="switch-host-active"
+                        />
                       </div>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-white/60">Page Title</Label>
-                      <Input
-                        defaultValue={hostSettings.pageTitle}
-                        onBlur={(e) => updateHostSettingsMutation.mutate({ pageTitle: e.target.value })}
-                        className="bg-white/5 border-white/10 text-white"
-                        data-testid="input-host-title"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-white/60">Page Description</Label>
-                      <Textarea
-                        defaultValue={hostSettings.pageDescription}
-                        onBlur={(e) => updateHostSettingsMutation.mutate({ pageDescription: e.target.value })}
-                        className="bg-white/5 border-white/10 text-white resize-none min-h-[80px]"
-                        data-testid="input-host-description"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-white/60">Required Fields</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {["fullName", "email", "phone", "organization", "address", "city", "state", "zip", "eventName", "eventDescription", "eventCategory", "eventDate", "socialLinks"].map((field) => {
-                          const active = hostSettings.requiredFields?.includes(field);
-                          return (
-                            <button
-                              key={field}
-                              onClick={() => {
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-white/60">Mode</Label>
+                          <Select value={hostSettings.mode} onValueChange={(val) => updateHostSettingsMutation.mutate({ mode: val as "request" | "purchase" })}>
+                            <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-host-mode">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-white/10">
+                              <SelectItem value="request">Free Application</SelectItem>
+                              <SelectItem value="purchase">Paid Entry</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {hostSettings.mode === "purchase" && (
+                          <div className="space-y-1.5">
+                            <Label className="text-white/60">Price (cents)</Label>
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-white/30" />
+                              <Input type="number" defaultValue={hostSettings.price}
+                                onBlur={(e) => updateHostSettingsMutation.mutate({ price: parseInt(e.target.value) || 0 })}
+                                className="bg-white/5 border-white/10 text-white" data-testid="input-host-price" />
+                            </div>
+                            <p className="text-xs text-white/30">${((hostSettings.price || 0) / 100).toFixed(2)}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-white/60">Page Title</Label>
+                        <Input defaultValue={hostSettings.pageTitle}
+                          onBlur={(e) => updateHostSettingsMutation.mutate({ pageTitle: e.target.value })}
+                          className="bg-white/5 border-white/10 text-white" data-testid="input-host-title" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-white/60">Page Description</Label>
+                        <Textarea defaultValue={hostSettings.pageDescription}
+                          onBlur={(e) => updateHostSettingsMutation.mutate({ pageDescription: e.target.value })}
+                          className="bg-white/5 border-white/10 text-white resize-none min-h-[80px]" data-testid="input-host-description" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-white/60">Required Fields</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {["fullName", "email", "phone", "organization", "address", "city", "state", "zip", "eventName", "eventDescription", "eventCategory", "eventDate", "socialLinks"].map((field) => {
+                            const active = hostSettings.requiredFields?.includes(field);
+                            return (
+                              <button key={field} onClick={() => {
                                 const current = hostSettings.requiredFields || [];
                                 const updated = active ? current.filter((f) => f !== field) : [...current, field];
                                 updateHostSettingsMutation.mutate({ requiredFields: updated });
                               }}
-                              className={`text-xs px-3 py-1.5 border transition-colors ${active ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-white/5 border-white/10 text-white/40 hover:text-white/60"}`}
-                              data-testid={`toggle-host-field-${field}`}
-                            >
-                              {field}
-                            </button>
-                          );
-                        })}
+                                className={`text-xs px-3 py-1.5 border transition-colors ${active ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-white/5 border-white/10 text-white/40 hover:text-white/60"}`}
+                                data-testid={`toggle-host-field-${field}`}>{field}</button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-white/20 mt-1">Click to toggle required fields on the host form.</p>
                       </div>
-                      <p className="text-xs text-white/20 mt-1">Click to toggle required fields on the host form.</p>
+                      {hostSubmissions && hostSubmissions.length > 0 && (
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-bold text-sm mb-3">Host Submissions ({hostSubmissions.length})</h4>
+                          <div className="space-y-3">
+                            {hostSubmissions.map((sub) => (
+                              <div key={sub.id} className="rounded-md bg-white/[0.03] border border-white/5 p-4" data-testid={`host-sub-${sub.id}`}>
+                                <div className="flex flex-wrap items-center justify-between gap-4">
+                                  <div>
+                                    <h4 className="font-medium">{sub.eventName}</h4>
+                                    <p className="text-xs text-white/30">{sub.fullName} | {sub.email}</p>
+                                    {sub.organization && <p className="text-xs text-white/40">{sub.organization}</p>}
+                                    {sub.eventCategory && <p className="text-xs text-white/40 mt-1">Category: {sub.eventCategory}</p>}
+                                    {sub.eventDate && <p className="text-xs text-white/40">Date: {sub.eventDate}</p>}
+                                    {sub.eventDescription && <p className="text-xs text-white/40 mt-1 line-clamp-2">{sub.eventDescription}</p>}
+                                    {sub.amountPaid > 0 && (
+                                      <p className="text-xs text-green-400 mt-1">Paid ${(sub.amountPaid / 100).toFixed(2)} {sub.transactionId && `(${sub.transactionId})`}</p>
+                                    )}
+                                    <p className="text-xs text-white/20 mt-1">{new Date(sub.createdAt).toLocaleDateString()}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={`border-0 ${sub.status === "approved" ? "bg-green-500/20 text-green-400" : sub.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                                      {sub.status}
+                                    </Badge>
+                                    {sub.status === "pending" && (
+                                      <>
+                                        <Button size="icon" onClick={() => updateHostSubmissionMutation.mutate({ id: sub.id, status: "approved" })}
+                                          className="bg-green-500/20 text-green-400 border-0" data-testid={`button-approve-host-${sub.id}`}>
+                                          <Check className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="icon" onClick={() => updateHostSubmissionMutation.mutate({ id: sub.id, status: "rejected" })}
+                                          className="bg-red-500/20 text-red-400 border-0" data-testid={`button-reject-host-${sub.id}`}>
+                                          <XIcon className="h-4 w-4" />
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
               <div>
-                <h3 className="font-bold text-lg mb-3">Host Submissions ({hostSubmissions?.length || 0})</h3>
-                {hostSubmissions && hostSubmissions.length > 0 ? (
-                  <div className="space-y-3">
-                    {hostSubmissions.map((sub) => (
-                      <div key={sub.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`host-sub-${sub.id}`}>
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div>
-                            <h4 className="font-medium">{sub.eventName}</h4>
-                            <p className="text-xs text-white/30">{sub.fullName} | {sub.email}</p>
-                            {sub.organization && <p className="text-xs text-white/40">{sub.organization}</p>}
-                            {sub.eventCategory && <p className="text-xs text-white/40 mt-1">Category: {sub.eventCategory}</p>}
-                            {sub.eventDate && <p className="text-xs text-white/40">Date: {sub.eventDate}</p>}
-                            {sub.eventDescription && <p className="text-xs text-white/40 mt-1 line-clamp-2">{sub.eventDescription}</p>}
-                            {sub.amountPaid > 0 && (
-                              <p className="text-xs text-green-400 mt-1">Paid ${(sub.amountPaid / 100).toFixed(2)} {sub.transactionId && `(${sub.transactionId})`}</p>
-                            )}
-                            <p className="text-xs text-white/20 mt-1">{new Date(sub.createdAt).toLocaleDateString()}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={`border-0 ${sub.status === "approved" ? "bg-green-500/20 text-green-400" : sub.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                              {sub.status}
-                            </Badge>
-                            {sub.status === "pending" && (
-                              <>
-                                <Button size="icon" onClick={() => updateHostSubmissionMutation.mutate({ id: sub.id, status: "approved" })}
-                                  className="bg-green-500/20 text-green-400 border-0" data-testid={`button-approve-host-${sub.id}`}>
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button size="icon" onClick={() => updateHostSubmissionMutation.mutate({ id: sub.id, status: "rejected" })}
-                                  className="bg-red-500/20 text-red-400 border-0" data-testid={`button-reject-host-${sub.id}`}>
-                                  <XIcon className="h-4 w-4" />
-                                </Button>
-                              </>
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                    <Input
+                      placeholder="Search hosts..."
+                      value={hostSearch}
+                      onChange={(e) => { setHostSearch(e.target.value); setHostPage(1); }}
+                      className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      data-testid="input-host-search"
+                    />
+                  </div>
+                  <span className="text-xs text-white/30" data-testid="text-host-count">{filteredHosts.length} host{filteredHosts.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {paginatedHosts.map((host) => (
+                    <div key={host.userId} className="rounded-md bg-white/5 border border-white/5 overflow-visible" data-testid={`host-card-${host.userId}`}>
+                      <div className="relative h-[200px] rounded-t-md flex flex-col justify-end bg-gradient-to-b from-purple-900/40 to-black">
+                        <div className="absolute inset-0 rounded-t-md flex items-center justify-center">
+                          <Users className="h-16 w-16 text-white/10" />
+                        </div>
+                        <div className="absolute inset-0 rounded-t-md bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                        <div className="relative z-10 p-4">
+                          <h3 className="font-bold text-lg text-white drop-shadow-md">{host.displayName}</h3>
+                          {host.stageName && <p className="text-xs text-white/50">{host.stageName}</p>}
+                          <div className="flex flex-wrap items-center gap-3 mt-1">
+                            <Badge className="border-0 bg-purple-500/20 text-purple-300">Host</Badge>
+                            <span className="text-xs text-white/60">{host.competitionCount} competition{host.competitionCount !== 1 ? "s" : ""}</span>
+                            {host.activeCompetitions > 0 && (
+                              <span className="text-xs text-green-400">{host.activeCompetitions} active</span>
                             )}
                           </div>
                         </div>
                       </div>
-                    ))}
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setExpandedHostId(expandedHostId === host.userId ? null : host.userId)}
+                          className="text-orange-400"
+                          data-testid={`button-expand-host-${host.userId}`}
+                        >
+                          {expandedHostId === host.userId ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                          {expandedHostId === host.userId ? "Hide Competitions" : "View Competitions"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setAssignHostUid(host.userId); setAssignHostDialogOpen(true); }}
+                          className="text-white/40"
+                          data-testid={`button-assign-comp-${host.userId}`}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Assign Competition
+                        </Button>
+                      </div>
+                      {expandedHostId === host.userId && <ExpandedHostComps hostUid={host.userId} hostName={host.displayName} />}
+                    </div>
+                  ))}
+                </div>
+                {filteredHosts.length === 0 && (
+                  <div className="text-center py-12 text-white/30 text-sm" data-testid="text-no-hosts">
+                    {hostUsers && hostUsers.length === 0 ? "No host users yet. Promote users to Host level from the Users tab." : "No hosts found matching your search."}
                   </div>
-                ) : (
-                  <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
-                    <Megaphone className="h-8 w-8 text-white/10 mx-auto mb-2" />
-                    <p className="text-sm text-white/30">No host submissions yet.</p>
+                )}
+                {totalHostPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-6" data-testid="host-pagination">
+                    <Button variant="ghost" size="sm" disabled={hostPage <= 1} onClick={() => setHostPage(p => p - 1)}
+                      className="text-white/60" data-testid="button-host-prev">Previous</Button>
+                    {Array.from({ length: totalHostPages }, (_, i) => i + 1).map(page => (
+                      <Button key={page} variant={page === hostPage ? "default" : "ghost"} size="sm" onClick={() => setHostPage(page)}
+                        className={page === hostPage ? "bg-orange-500 border-0 text-white" : "text-white/40"}
+                        data-testid={`button-host-page-${page}`}>{page}</Button>
+                    ))}
+                    <Button variant="ghost" size="sm" disabled={hostPage >= totalHostPages} onClick={() => setHostPage(p => p + 1)}
+                      className="text-white/60" data-testid="button-host-next">Next</Button>
                   </div>
                 )}
               </div>
             </div>
+
+            <Dialog open={assignHostDialogOpen} onOpenChange={setAssignHostDialogOpen}>
+              <DialogContent className="bg-zinc-900 border-white/10 text-white">
+                <DialogHeader>
+                  <DialogTitle className="font-serif text-xl">Assign Competition to Host</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-2">
+                  <p className="text-sm text-white/60">
+                    Assigning to: <span className="text-white font-medium">{hostUsers?.find(h => h.userId === assignHostUid)?.displayName || "Unknown"}</span>
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60">Select Competition</Label>
+                    <Select value={assignCompId} onValueChange={setAssignCompId}>
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-assign-comp">
+                        <SelectValue placeholder="Choose a competition..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10">
+                        {competitions?.map(c => (
+                          <SelectItem key={c.id} value={String(c.id)}>{c.title} ({c.status})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={() => assignHostUid && assignCompId && assignHostMutation.mutate({ compId: parseInt(assignCompId), hostUid: assignHostUid })}
+                    disabled={!assignCompId || assignHostMutation.isPending}
+                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                    data-testid="button-confirm-assign"
+                  >
+                    {assignHostMutation.isPending ? "Assigning..." : "Assign Competition"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="users">
