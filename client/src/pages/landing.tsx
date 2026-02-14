@@ -45,13 +45,12 @@ export default function Landing() {
           <div className="absolute inset-0 bg-black/35" />
         </motion.div>
 
-        <motion.div style={{ opacity: heroOpacity }} className="relative z-10 text-center px-8 w-full mt-[-10vh]">
+        <motion.div style={{ opacity: heroOpacity }} className="relative z-10 text-center px-4 sm:px-8 w-full mt-[-10vh]">
           <motion.h6
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-white text-lg uppercase mb-5 block"
-            style={{ letterSpacing: "20px" }}
+            className="text-white text-sm sm:text-lg uppercase mb-5 block tracking-[8px] sm:tracking-[20px]"
           >
             The Ultimate
           </motion.h6>
@@ -60,8 +59,7 @@ export default function Landing() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="relative text-5xl md:text-6xl lg:text-7xl text-white font-normal capitalize inline-block"
-            style={{ letterSpacing: "30px" }}
+            className="relative text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-white font-normal capitalize inline-block tracking-[8px] sm:tracking-[15px] md:tracking-[30px]"
           >
             <span
               className="absolute top-0 left-0 w-full h-full"
@@ -83,7 +81,7 @@ export default function Landing() {
           >
             <Link href="/competitions">
               <span
-                className="inline-block bg-[#FF5A09] border border-[#FF5A09] text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] transition-all duration-500 hover:bg-transparent hover:text-white cursor-pointer"
+                className="inline-block bg-[#FF5A09] border border-[#FF5A09] text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-transparent hover:text-white cursor-pointer"
                 data-testid="button-hero-start-voting"
               >
                 Start Voting <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
@@ -91,7 +89,7 @@ export default function Landing() {
             </Link>
             <Link href="/join">
               <span
-                className="inline-block bg-transparent border border-white text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
+                className="inline-block bg-transparent border border-white text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
                 data-testid="button-hero-become-competitor"
               >
                 Become a Competitor <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
@@ -99,7 +97,7 @@ export default function Landing() {
             </Link>
             <Link href="/host">
               <span
-                className="inline-block bg-transparent border border-white/40 text-white/80 font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
+                className="inline-block bg-transparent border border-white/40 text-white/80 font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
                 data-testid="button-hero-host-event"
               >
                 Host an Event <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
@@ -112,7 +110,7 @@ export default function Landing() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1.3 }}
-              className="mt-8 max-w-3xl mx-auto text-white/70 text-base md:text-lg leading-relaxed"
+              className="mt-8 max-w-3xl mx-auto text-white/70 text-sm sm:text-base md:text-lg leading-relaxed px-2 sm:px-0"
               style={{ letterSpacing: "1px" }}
               data-testid="text-hero-summary"
             >
@@ -126,7 +124,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div ref={cats.ref} className={`text-center mb-24 transition-all duration-1000 ${cats.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
             <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>
-            <h2 className="text-lg uppercase text-white font-normal" style={{ letterSpacing: "10px" }}>
+            <h2 className="text-lg uppercase text-white font-normal tracking-[5px] sm:tracking-[10px]">
               Competition Categories
             </h2>
           </div>
@@ -182,7 +180,7 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div ref={featured.ref} className={`text-center mb-24 transition-all duration-1000 ${featured.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
             <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>
-            <h2 className="text-lg uppercase text-white font-normal" style={{ letterSpacing: "10px" }}>
+            <h2 className="text-lg uppercase text-white font-normal tracking-[5px] sm:tracking-[10px]">
               Why HiFitComp
             </h2>
           </div>
@@ -212,7 +210,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div ref={steps.ref} className={`text-center mb-24 transition-all duration-1000 ${steps.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
             <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>
-            <h2 className="text-lg uppercase text-white font-normal" style={{ letterSpacing: "10px" }}>
+            <h2 className="text-lg uppercase text-white font-normal tracking-[5px] sm:tracking-[10px]">
               How It Works
             </h2>
           </div>
@@ -253,7 +251,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-black/65" />
         <div ref={cta.ref} className={`relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-1000 ${cta.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
           <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>
-          <h2 className="text-lg uppercase text-white font-normal mb-8" style={{ letterSpacing: "10px" }}>
+          <h2 className="text-lg uppercase text-white font-normal mb-8 tracking-[5px] sm:tracking-[10px]">
             Ready to Shine
           </h2>
           <p className="text-white/60 mb-10 text-base max-w-xl mx-auto">

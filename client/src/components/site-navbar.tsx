@@ -94,9 +94,9 @@ export default function SiteNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-20">
         <Link href="/" className="flex items-center gap-3" data-testid="link-home">
           {getMedia("logo", "/images/template/logo.png").type === "video" ? (
-            <video src={getMedia("logo", "/images/template/logo.png").url} className="h-40" autoPlay muted loop playsInline />
+            <video src={getMedia("logo", "/images/template/logo.png").url} className="h-12 sm:h-16 md:h-20" autoPlay muted loop playsInline />
           ) : (
-            <img src={getImage("logo", "/images/template/logo.png")} alt="HiFitComp" className="h-40" />
+            <img src={getImage("logo", "/images/template/logo.png")} alt="HiFitComp" className="h-12 sm:h-16 md:h-20" />
           )}
         </Link>
 
