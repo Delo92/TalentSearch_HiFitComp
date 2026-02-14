@@ -2379,6 +2379,24 @@ export default function AdminDashboard({ user }: { user: any }) {
                   </div>
 
                   <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Sales Tax</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-white/50 text-xs">Sales Tax Rate (%)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={form.salesTaxPercent ?? 0}
+                          onChange={(e) => updateForm("salesTaxPercent", parseFloat(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-sales-tax"
+                        />
+                        <p className="text-[10px] text-white/25 mt-1">Applied to all purchases (vote packages, hosting packages, join/host fees)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
                     <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Voting Rules</h4>
                     <p className="text-[10px] text-white/25">Purchased votes are unlimited. Only free votes have a daily cap.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

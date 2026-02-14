@@ -492,21 +492,37 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {selectedPkg && (
-          <div className="border border-white/10 p-5 mb-8">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white/60 text-sm uppercase tracking-wider">Order Summary</span>
+        {selectedPkg && (() => {
+          const subtotal = selectedPkg.price / 100;
+          const taxRate = platformSettings?.salesTaxPercent || 0;
+          const taxAmount = subtotal * (taxRate / 100);
+          const total = subtotal + taxAmount;
+          return (
+            <div className="border border-white/10 p-5 mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white/60 text-sm uppercase tracking-wider">Order Summary</span>
+              </div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-white">{selectedPkg.name} ({selectedPkg.voteCount.toLocaleString()}{selectedPkg.bonusVotes > 0 ? ` + ${selectedPkg.bonusVotes.toLocaleString()} bonus` : ""} votes)</span>
+                <span className="text-white">${subtotal.toFixed(2)}</span>
+              </div>
+              {taxRate > 0 && (
+                <div className="flex items-center justify-between mb-1 text-white/50 text-sm">
+                  <span>Sales Tax ({taxRate}%)</span>
+                  <span>${taxAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10">
+                <span className="text-white font-bold">Total</span>
+                <span className="text-orange-400 font-bold text-lg">${total.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between text-white/40 text-sm mt-1">
+                <span>For: {contestant.talentProfile.displayName}</span>
+                <span>in {competition.title}</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-white">{selectedPkg.name} ({selectedPkg.voteCount.toLocaleString()}{selectedPkg.bonusVotes > 0 ? ` + ${selectedPkg.bonusVotes.toLocaleString()} bonus` : ""} votes)</span>
-              <span className="text-white font-bold">${(selectedPkg.price / 100).toFixed(2)}</span>
-            </div>
-            <div className="flex items-center justify-between text-white/40 text-sm">
-              <span>For: {contestant.talentProfile.displayName}</span>
-              <span>in {competition.title}</span>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         <button
           onClick={handleCheckout}
@@ -515,7 +531,7 @@ export default function CheckoutPage() {
           data-testid="button-checkout"
         >
           <CreditCard className="h-5 w-5" />
-          {processing ? "PROCESSING..." : selectedPkg ? `PAY $${(selectedPkg.price / 100).toFixed(2)}` : "SELECT A PACKAGE"}
+          {processing ? "PROCESSING..." : selectedPkg ? `PAY $${((selectedPkg.price / 100) * (1 + (platformSettings?.salesTaxPercent || 0) / 100)).toFixed(2)}` : "SELECT A PACKAGE"}
         </button>
 
         <p className="text-white/30 text-xs text-center mt-4">

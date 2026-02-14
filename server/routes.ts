@@ -1802,7 +1802,12 @@ export async function registerRoutes(
       if (!pkg) return res.status(404).json({ message: "Vote package not found" });
 
       const totalVotes = pkg.voteCount + (pkg.bonusVotes || 0);
-      const amountInDollars = pkg.price / 100;
+      const subtotalDollars = pkg.price / 100;
+
+      const settingsForTax = await getFirestore().collection("platformSettings").doc("global").get();
+      const salesTaxPercent = settingsForTax.exists ? (settingsForTax.data()?.salesTaxPercent || 0) : 0;
+      const taxAmount = subtotalDollars * (salesTaxPercent / 100);
+      const amountInDollars = Math.round((subtotalDollars + taxAmount) * 100) / 100;
 
       const chargeResult = await chargePaymentNonce(
         amountInDollars,
@@ -1913,6 +1918,7 @@ export async function registerRoutes(
             { name: "Fan Pack", voteCount: 1000, bonusVotes: 300, price: 15, description: "1,000 votes + 300 bonus votes" },
             { name: "Super Fan Pack", voteCount: 2000, bonusVotes: 600, price: 30, description: "2,000 votes + 600 bonus votes" },
           ],
+          salesTaxPercent: 0,
           defaultVoteCost: 0,
           freeVotesPerDay: 5,
           votePricePerVote: 1,
