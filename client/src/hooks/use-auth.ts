@@ -32,6 +32,7 @@ export interface AuthUser {
 }
 
 const AUTH_CACHE_KEY = "hifitcomp_auth_user";
+const AUTH_TIMEOUT_MS = 10000;
 
 function getCachedUser(): AuthUser | null {
   try {
@@ -88,6 +89,19 @@ export function useAuth() {
     let cancelled = false;
     let tokenRefreshInterval: ReturnType<typeof setInterval> | null = null;
     let hasSynced = false;
+    let loadingResolved = false;
+
+    const authTimeout = setTimeout(() => {
+      if (!loadingResolved && !cancelled) {
+        loadingResolved = true;
+        console.warn("Auth timeout: forcing session clear after", AUTH_TIMEOUT_MS, "ms");
+        firebaseLogout().catch(() => {});
+        setUser(null);
+        setCachedUser(null);
+        globalToken = null;
+        setIsLoading(false);
+      }
+    }, AUTH_TIMEOUT_MS);
 
     async function init() {
       await initFirebase();
@@ -97,15 +111,24 @@ export function useAuth() {
 
         if (firebaseUser) {
           try {
-            const token = await firebaseUser.getIdToken();
+            const token = await firebaseUser.getIdToken(!hasSynced);
             globalToken = token;
 
             if (!hasSynced) {
               hasSynced = true;
               const userData = await syncUserWithBackend(token);
               if (!cancelled) {
-                setUser(userData);
-                setCachedUser(userData);
+                if (userData) {
+                  setUser(userData);
+                  setCachedUser(userData);
+                } else {
+                  await firebaseLogout().catch(() => {});
+                  setUser(null);
+                  setCachedUser(null);
+                  globalToken = null;
+                }
+                loadingResolved = true;
+                clearTimeout(authTimeout);
                 setIsLoading(false);
                 if (!hasInvalidatedAfterRestore) {
                   hasInvalidatedAfterRestore = true;
@@ -113,13 +136,21 @@ export function useAuth() {
                 }
               }
             } else {
-              if (!cancelled) setIsLoading(false);
+              if (!cancelled) {
+                loadingResolved = true;
+                clearTimeout(authTimeout);
+                setIsLoading(false);
+              }
             }
-          } catch {
+          } catch (err) {
+            console.warn("Token refresh failed, clearing session:", err);
             if (!cancelled) {
+              await firebaseLogout().catch(() => {});
               setUser(null);
               setCachedUser(null);
               globalToken = null;
+              loadingResolved = true;
+              clearTimeout(authTimeout);
               setIsLoading(false);
             }
           }
@@ -129,6 +160,8 @@ export function useAuth() {
             setUser(null);
             setCachedUser(null);
             globalToken = null;
+            loadingResolved = true;
+            clearTimeout(authTimeout);
             setIsLoading(false);
           }
         }
@@ -141,6 +174,11 @@ export function useAuth() {
             const freshToken = await auth.currentUser.getIdToken(true);
             globalToken = freshToken;
           } catch {
+            console.warn("Background token refresh failed, logging out");
+            await firebaseLogout().catch(() => {});
+            setUser(null);
+            setCachedUser(null);
+            globalToken = null;
           }
         }
       }, 45 * 60 * 1000);
@@ -151,6 +189,7 @@ export function useAuth() {
     const cleanup = init();
     return () => {
       cancelled = true;
+      clearTimeout(authTimeout);
       if (tokenRefreshInterval) clearInterval(tokenRefreshInterval);
       cleanup.then(unsub => unsub?.());
     };

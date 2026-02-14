@@ -14,35 +14,38 @@ import {
 let app: FirebaseApp | null = null;
 let analytics: Analytics | null = null;
 let auth: Auth | null = null;
-let initialized = false;
+let initPromise: Promise<{ app: FirebaseApp | null; analytics: Analytics | null; auth: Auth | null }> | null = null;
 
 export async function initFirebase() {
-  if (initialized) return { app, analytics, auth };
-  initialized = true;
+  if (initPromise) return initPromise;
 
-  try {
-    const res = await fetch("/api/firebase-config");
-    if (!res.ok) {
-      console.warn("Failed to load Firebase config");
-      return { app: null, analytics: null, auth: null };
-    }
-    const config = await res.json();
-    if (!config.apiKey) {
-      console.warn("Firebase API key not configured");
-      return { app: null, analytics: null, auth: null };
-    }
-
-    app = initializeApp(config);
-    auth = getAuth(app);
+  initPromise = (async () => {
     try {
-      analytics = getAnalytics(app);
-    } catch {
-    }
-  } catch (err) {
-    console.warn("Firebase initialization failed:", err);
-  }
+      const res = await fetch("/api/firebase-config");
+      if (!res.ok) {
+        console.warn("Failed to load Firebase config");
+        return { app: null, analytics: null, auth: null };
+      }
+      const config = await res.json();
+      if (!config.apiKey) {
+        console.warn("Firebase API key not configured");
+        return { app: null, analytics: null, auth: null };
+      }
 
-  return { app, analytics, auth };
+      app = initializeApp(config);
+      auth = getAuth(app);
+      try {
+        analytics = getAnalytics(app);
+      } catch {
+      }
+    } catch (err) {
+      console.warn("Firebase initialization failed:", err);
+    }
+
+    return { app, analytics, auth };
+  })();
+
+  return initPromise;
 }
 
 export function getFirebaseApp() {
@@ -89,8 +92,8 @@ export function onFirebaseIdTokenChanged(callback: (user: User | null) => void) 
   return onIdTokenChanged(a, callback);
 }
 
-export async function getIdToken(): Promise<string | null> {
+export async function getIdToken(forceRefresh?: boolean): Promise<string | null> {
   const a = getFirebaseAuth();
   if (!a || !a.currentUser) return null;
-  return a.currentUser.getIdToken();
+  return a.currentUser.getIdToken(forceRefresh);
 }
