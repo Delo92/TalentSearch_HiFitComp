@@ -2404,7 +2404,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                         />
                       </div>
                       <div>
-                        <Label className="text-white/50 text-xs">Price Per Purchased Vote ($)</Label>
+                        <Label className="text-white/50 text-xs">Price of 1 Vote ($)</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -2415,6 +2415,75 @@ export default function AdminDashboard({ user }: { user: any }) {
                         />
                       </div>
                     </div>
+
+                    {(() => {
+                      const votePackages = form.votePackages || [
+                        { name: "Starter Pack", voteCount: 500, bonusVotes: 0, price: 10, description: "500 votes to support your favorite" },
+                        { name: "Fan Pack", voteCount: 1000, bonusVotes: 300, price: 15, description: "1,000 votes + 300 bonus votes" },
+                        { name: "Super Fan Pack", voteCount: 2000, bonusVotes: 600, price: 30, description: "2,000 votes + 600 bonus votes" },
+                      ];
+                      const updateVotePkg = (index: number, field: string, value: any) => {
+                        const updated = [...votePackages];
+                        updated[index] = { ...updated[index], [field]: value };
+                        updateForm("votePackages", updated);
+                      };
+                      const addVotePkg = () => {
+                        updateForm("votePackages", [...votePackages, { name: "New Package", voteCount: 100, bonusVotes: 0, price: 5, description: "" }]);
+                      };
+                      const removeVotePkg = (index: number) => {
+                        updateForm("votePackages", votePackages.filter((_: any, i: number) => i !== index));
+                      };
+
+                      return (
+                        <div className="mt-5 pt-5 border-t border-white/10 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Vote Packages</h4>
+                            <Button variant="ghost" size="sm" onClick={addVotePkg} className="text-orange-400 text-xs" data-testid="button-add-vote-package">
+                              <Plus className="h-3 w-3 mr-1" /> Add Package
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-white/25">Bulk vote packages with bonus votes. Buyers get base votes + bonus votes for better value.</p>
+                          <div className="space-y-4">
+                            {votePackages.map((vpkg: any, idx: number) => (
+                              <div key={idx} className="rounded-md bg-white/[0.03] border border-white/5 p-4 space-y-3" data-testid={`vote-package-${idx}`}>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-white/60">Tier {idx + 1}</span>
+                                  {votePackages.length > 1 && (
+                                    <Button variant="ghost" size="icon" onClick={() => removeVotePkg(idx)} className="text-red-400/60" data-testid={`button-remove-vote-package-${idx}`}>
+                                      <XIcon className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                                  <div>
+                                    <Label className="text-white/40 text-[10px]">Name</Label>
+                                    <Input value={vpkg.name} onChange={(e) => updateVotePkg(idx, "name", e.target.value)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-name-${idx}`} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-white/40 text-[10px]">Base Votes</Label>
+                                    <Input type="number" value={vpkg.voteCount} onChange={(e) => updateVotePkg(idx, "voteCount", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-count-${idx}`} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-white/40 text-[10px]">Bonus Votes</Label>
+                                    <Input type="number" value={vpkg.bonusVotes} onChange={(e) => updateVotePkg(idx, "bonusVotes", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-bonus-${idx}`} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-white/40 text-[10px]">Price ($)</Label>
+                                    <Input type="number" step="0.01" value={vpkg.price} onChange={(e) => updateVotePkg(idx, "price", parseFloat(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-price-${idx}`} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-white/40 text-[10px]">Total Votes</Label>
+                                    <div className="bg-white/[0.04] border border-white/10 rounded-md px-3 py-2 text-sm text-orange-400 font-bold">
+                                      {((vpkg.voteCount || 0) + (vpkg.bonusVotes || 0)).toLocaleString()}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">

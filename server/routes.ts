@@ -1755,6 +1755,7 @@ export async function registerRoutes(
     competitionId: z.number().int().positive(),
     contestantId: z.number().int().positive(),
     packageId: z.string().min(1, "Package is required"),
+    packageIndex: z.number().int().min(0).optional(),
     createAccount: z.boolean().default(false),
     dataDescriptor: z.string().min(1, "Payment token is required"),
     dataValue: z.string().min(1, "Payment token is required"),
@@ -1767,7 +1768,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid data" });
       }
 
-      const { name, email, competitionId, contestantId, packageId, createAccount, dataDescriptor, dataValue } = parsed.data;
+      const { name, email, competitionId, contestantId, packageId, packageIndex, createAccount, dataDescriptor, dataValue } = parsed.data;
 
       const comp = await storage.getCompetition(competitionId);
       if (!comp) return res.status(404).json({ message: "Competition not found" });
@@ -1775,9 +1776,30 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Voting is not open for this competition" });
       }
 
-      const pkg = await firestoreVotePackages.get(packageId);
+      let pkg: { voteCount: number; bonusVotes: number; price: number; name: string } | null = null;
+
+      if (packageIndex !== undefined) {
+        const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+        const settings = settingsDoc.exists ? settingsDoc.data() : null;
+        const votePackages = settings?.votePackages || [
+          { name: "Starter Pack", voteCount: 500, bonusVotes: 0, price: 10 },
+          { name: "Fan Pack", voteCount: 1000, bonusVotes: 300, price: 15 },
+          { name: "Super Fan Pack", voteCount: 2000, bonusVotes: 600, price: 30 },
+        ];
+        if (packageIndex >= 0 && packageIndex < votePackages.length) {
+          const vpkg = votePackages[packageIndex];
+          pkg = { voteCount: vpkg.voteCount, bonusVotes: vpkg.bonusVotes || 0, price: vpkg.price * 100, name: vpkg.name };
+        }
+      }
+
+      if (!pkg) {
+        const firestorePkg = await firestoreVotePackages.get(packageId);
+        if (firestorePkg && firestorePkg.isActive) {
+          pkg = { voteCount: firestorePkg.voteCount, bonusVotes: firestorePkg.bonusVotes || 0, price: firestorePkg.price, name: firestorePkg.name };
+        }
+      }
+
       if (!pkg) return res.status(404).json({ message: "Vote package not found" });
-      if (!pkg.isActive) return res.status(400).json({ message: "This vote package is no longer available" });
 
       const totalVotes = pkg.voteCount + (pkg.bonusVotes || 0);
       const amountInDollars = pkg.price / 100;
@@ -1886,7 +1908,11 @@ export async function registerRoutes(
             { name: "Pro", price: 149, maxContestants: 15, revenueSharePercent: 35, description: "Up to 15 competitors per event" },
             { name: "Premium", price: 399, maxContestants: 25, revenueSharePercent: 50, description: "25+ competitors with top revenue share" },
           ],
-          maxVotesPerDay: 10,
+          votePackages: [
+            { name: "Starter Pack", voteCount: 500, bonusVotes: 0, price: 10, description: "500 votes to support your favorite" },
+            { name: "Fan Pack", voteCount: 1000, bonusVotes: 300, price: 15, description: "1,000 votes + 300 bonus votes" },
+            { name: "Super Fan Pack", voteCount: 2000, bonusVotes: 600, price: 30, description: "2,000 votes + 600 bonus votes" },
+          ],
           defaultVoteCost: 0,
           freeVotesPerDay: 5,
           votePricePerVote: 1,

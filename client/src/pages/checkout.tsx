@@ -83,9 +83,19 @@ export default function CheckoutPage() {
     enabled: !!competitionId,
   });
 
-  const { data: packages, isLoading: pkgLoading } = useQuery<VotePackage[]>({
-    queryKey: ["/api/shop/packages"],
+  const { data: platformSettings } = useQuery<any>({
+    queryKey: ["/api/platform-settings"],
   });
+  const packages: VotePackage[] | undefined = platformSettings?.votePackages?.map((pkg: any, idx: number) => ({
+    id: `pkg_${idx}`,
+    name: pkg.name,
+    voteCount: pkg.voteCount,
+    bonusVotes: pkg.bonusVotes || 0,
+    price: pkg.price * 100,
+    isActive: true,
+    description: pkg.description,
+  }));
+  const pkgLoading = !platformSettings;
 
   const { data: paymentConfig } = useQuery<PaymentConfig>({
     queryKey: ["/api/payment-config"],
@@ -162,12 +172,14 @@ export default function CheckoutPage() {
       }
 
       try {
+        const pkgIndex = selectedPackage?.startsWith("pkg_") ? parseInt(selectedPackage.replace("pkg_", "")) : undefined;
         const result = await apiRequest("POST", "/api/guest/checkout", {
           name: name.trim(),
           email: email.trim(),
           competitionId,
           contestantId,
           packageId: selectedPackage,
+          packageIndex: pkgIndex,
           createAccount,
           dataDescriptor: tokenResponse.opaqueData.dataDescriptor,
           dataValue: tokenResponse.opaqueData.dataValue,
