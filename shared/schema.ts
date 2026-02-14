@@ -35,6 +35,9 @@ export const competitions = pgTable("competitions", {
   maxVotesPerDay: integer("max_votes_per_day").notNull().default(10),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
+  votingStartDate: timestamp("voting_start_date"),
+  votingEndDate: timestamp("voting_end_date"),
+  expectedContestants: integer("expected_contestants"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
