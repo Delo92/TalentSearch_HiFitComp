@@ -187,10 +187,10 @@ export default function HostDashboard({ user }: { user: any }) {
     mutationFn: async () => {
       const payload = {
         ...newComp,
-        startDate: newComp.startDate || null,
-        endDate: newComp.endDate || null,
-        votingStartDate: newComp.votingStartDate || null,
-        votingEndDate: newComp.votingEndDate || null,
+        startDate: newComp.startDate ? new Date(newComp.startDate).toISOString() : null,
+        endDate: newComp.endDate ? new Date(newComp.endDate).toISOString() : null,
+        votingStartDate: newComp.votingStartDate ? new Date(newComp.votingStartDate).toISOString() : null,
+        votingEndDate: newComp.votingEndDate ? new Date(newComp.votingEndDate).toISOString() : null,
         expectedContestants: newComp.expectedContestants ? parseInt(newComp.expectedContestants) : null,
       };
       const res = await apiRequest("POST", "/api/competitions", payload);
@@ -329,22 +329,22 @@ export default function HostDashboard({ user }: { user: any }) {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-white/60 text-xs">Start Date</Label>
-                    <Input type="date" value={newComp.startDate} onChange={(e) => setNewComp(p => ({ ...p, startDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-start-date" />
+                    <Label className="text-white/60 text-xs">Start Date & Time</Label>
+                    <Input type="datetime-local" value={newComp.startDate} onChange={(e) => setNewComp(p => ({ ...p, startDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-start-date" />
                   </div>
                   <div>
-                    <Label className="text-white/60 text-xs">End Date</Label>
-                    <Input type="date" value={newComp.endDate} onChange={(e) => setNewComp(p => ({ ...p, endDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-end-date" />
+                    <Label className="text-white/60 text-xs">End Date & Time</Label>
+                    <Input type="datetime-local" value={newComp.endDate} onChange={(e) => setNewComp(p => ({ ...p, endDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-end-date" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-white/60 text-xs">Voting Start Date</Label>
-                    <Input type="date" value={newComp.votingStartDate} onChange={(e) => setNewComp(p => ({ ...p, votingStartDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-start-date" />
+                    <Label className="text-white/60 text-xs">Voting Start</Label>
+                    <Input type="datetime-local" value={newComp.votingStartDate} onChange={(e) => setNewComp(p => ({ ...p, votingStartDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-start-date" />
                   </div>
                   <div>
-                    <Label className="text-white/60 text-xs">Voting End Date</Label>
-                    <Input type="date" value={newComp.votingEndDate} onChange={(e) => setNewComp(p => ({ ...p, votingEndDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-end-date" />
+                    <Label className="text-white/60 text-xs">Voting End</Label>
+                    <Input type="datetime-local" value={newComp.votingEndDate} onChange={(e) => setNewComp(p => ({ ...p, votingEndDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-end-date" />
                   </div>
                 </div>
                 <div>

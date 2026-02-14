@@ -696,10 +696,10 @@ export default function AdminDashboard({ user }: { user: any }) {
         status: compStatus,
         maxVotesPerDay: parseInt(maxVotes) || 10,
         voteCost: parseInt(voteCost) || 0,
-        startDate: startDate || null,
-        endDate: endDate || null,
-        votingStartDate: votingStartDate || null,
-        votingEndDate: votingEndDate || null,
+        startDate: startDate ? new Date(startDate).toISOString() : null,
+        endDate: endDate ? new Date(endDate).toISOString() : null,
+        votingStartDate: votingStartDate ? new Date(votingStartDate).toISOString() : null,
+        votingEndDate: votingEndDate ? new Date(votingEndDate).toISOString() : null,
         expectedContestants: expectedContestants ? parseInt(expectedContestants) : null,
       });
     },
@@ -962,25 +962,25 @@ export default function AdminDashboard({ user }: { user: any }) {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-white/60">Start Date</Label>
-                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                    <Label className="text-white/60">Start Date & Time</Label>
+                    <Input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                       className="bg-white/5 border-white/10 text-white" data-testid="input-start-date" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-white/60">End Date</Label>
-                    <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                    <Label className="text-white/60">End Date & Time</Label>
+                    <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                       className="bg-white/5 border-white/10 text-white" data-testid="input-end-date" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-white/60">Voting Start Date</Label>
-                    <Input type="date" value={votingStartDate} onChange={(e) => setVotingStartDate(e.target.value)}
+                    <Label className="text-white/60">Voting Start</Label>
+                    <Input type="datetime-local" value={votingStartDate} onChange={(e) => setVotingStartDate(e.target.value)}
                       className="bg-white/5 border-white/10 text-white" data-testid="input-voting-start-date" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-white/60">Voting End Date</Label>
-                    <Input type="date" value={votingEndDate} onChange={(e) => setVotingEndDate(e.target.value)}
+                    <Label className="text-white/60">Voting End</Label>
+                    <Input type="datetime-local" value={votingEndDate} onChange={(e) => setVotingEndDate(e.target.value)}
                       className="bg-white/5 border-white/10 text-white" data-testid="input-voting-end-date" />
                   </div>
                 </div>
