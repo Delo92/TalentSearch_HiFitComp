@@ -2147,9 +2147,10 @@ export default function AdminDashboard({ user }: { user: any }) {
                 return calendarComps.filter((c) => {
                   const start = c.startDate ? new Date(c.startDate) : null;
                   const end = c.endDate ? new Date(c.endDate) : null;
-                  if (start && end) return date >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) && date <= new Date(end.getFullYear(), end.getMonth(), end.getDate());
-                  if (start) return date.getDate() === start.getDate() && date.getMonth() === start.getMonth() && date.getFullYear() === start.getFullYear();
-                  if (end) return date.getDate() === end.getDate() && date.getMonth() === end.getMonth() && date.getFullYear() === end.getFullYear();
+                  const dateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                  const dayTime = dateOnly(date);
+                  if (start && dayTime === dateOnly(start)) return true;
+                  if (end && dayTime === dateOnly(end)) return true;
                   return false;
                 });
               };
@@ -2175,10 +2176,11 @@ export default function AdminDashboard({ user }: { user: any }) {
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-white/40">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Active</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Upcoming</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500 inline-block" /> Voting</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-500 inline-block" /> Other</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> Active</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" /> Upcoming</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" /> Voting</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-zinc-500 inline-block" /> Other</span>
+                    <span className="ml-2 text-white/25">Dots show start & end dates only</span>
                   </div>
 
                   <div className="grid grid-cols-7 gap-px bg-white/5 rounded-md overflow-hidden">
@@ -2194,18 +2196,21 @@ export default function AdminDashboard({ user }: { user: any }) {
                           key={i}
                           onClick={() => { if (day && comps.length > 0) { setCalendarSelectedDay(isSelected ? null : day); setCalendarSelectedComp(null); } }}
                           disabled={!day || comps.length === 0}
-                          className={`bg-zinc-900/80 min-h-[60px] p-2 text-left transition-colors ${!day ? "bg-zinc-950/50 cursor-default" : comps.length > 0 ? "cursor-pointer hover:bg-white/5" : "cursor-default"} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""} ${isSelected ? "bg-orange-500/10" : ""}`}
+                          className={`bg-zinc-900/80 min-h-[100px] p-3 text-left transition-colors ${!day ? "bg-zinc-950/50 cursor-default" : comps.length > 0 ? "cursor-pointer hover:bg-white/5" : "cursor-default"} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""} ${isSelected ? "bg-orange-500/10" : ""}`}
                           data-testid={day ? `calendar-day-${day}` : undefined}
                         >
                           {day && (
-                            <div className="flex flex-col items-start gap-1">
-                              <span className={`text-xs ${isToday ? "text-orange-400 font-bold" : isSelected ? "text-orange-300" : "text-white/40"}`}>{day}</span>
-                              {comps.length > 0 && (
-                                <div className="flex items-center gap-0.5 flex-wrap">
+                            <div className="flex flex-col items-start gap-2">
+                              <span className={`text-sm font-medium ${isToday ? "text-orange-400 font-bold" : isSelected ? "text-orange-300" : "text-white/50"}`}>{day}</span>
+                              {comps.length > 0 && comps.length <= 3 && (
+                                <div className="flex items-center gap-1 flex-wrap">
                                   {comps.map((c) => (
-                                    <span key={c.id} className={`w-2 h-2 rounded-full ${statusColor(c.status)}`} title={c.title} />
+                                    <span key={c.id} className={`w-2.5 h-2.5 rounded-full ${statusColor(c.status)}`} title={c.title} />
                                   ))}
                                 </div>
+                              )}
+                              {comps.length > 3 && (
+                                <span className="text-[10px] font-semibold text-orange-400/80">3+</span>
                               )}
                             </div>
                           )}
