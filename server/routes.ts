@@ -17,6 +17,7 @@ import {
   firestoreSettings,
   firestoreViewerProfiles,
   firestoreVotePurchases,
+  firestoreVotes,
   firestoreJoinSettings,
   firestoreJoinSubmissions,
   firestoreHostSettings,
@@ -296,6 +297,16 @@ export async function registerRoutes(
     }
   });
 
+
+  app.get("/api/stats/total-votes", async (req, res) => {
+    try {
+      const total = await firestoreVotes.getTotalPlatformVotes();
+      res.json({ totalVotes: total });
+    } catch (error: any) {
+      console.error("Total votes error:", error);
+      res.status(500).json({ message: "Failed to get total votes" });
+    }
+  });
 
   app.get("/api/competitions", async (req, res) => {
     try {

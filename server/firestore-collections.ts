@@ -553,6 +553,15 @@ export const firestoreVotes = {
     if (!doc.exists) return 0;
     return (doc.data() as FirestoreVoteCount).count;
   },
+
+  async getTotalPlatformVotes(): Promise<number> {
+    const snapshot = await db().collection(COLLECTIONS.VOTE_COUNTS).get();
+    let total = 0;
+    snapshot.docs.forEach(doc => {
+      total += (doc.data() as FirestoreVoteCount).count;
+    });
+    return total;
+  },
 };
 
 export const firestoreVotePurchases = {

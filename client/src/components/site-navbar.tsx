@@ -1,8 +1,75 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useLivery } from "@/hooks/use-livery";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Radio } from "lucide-react";
+
+function useAnimatedCounter(targetValue: number, duration: number = 800) {
+  const [displayValue, setDisplayValue] = useState(targetValue);
+  const animFrameRef = useRef<number>(0);
+
+  useEffect(() => {
+    const startValue = displayValue;
+    const diff = targetValue - startValue;
+    if (diff === 0) return;
+
+    const startTime = performance.now();
+
+    const step = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.round(startValue + diff * eased));
+
+      if (progress < 1) {
+        animFrameRef.current = requestAnimationFrame(step);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animFrameRef.current);
+  }, [targetValue, duration]);
+
+  return displayValue;
+}
+
+function LiveVoteCounter() {
+  const [totalVotes, setTotalVotes] = useState<number | null>(null);
+  const animatedCount = useAnimatedCounter(totalVotes ?? 0);
+
+  const fetchVotes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/stats/total-votes");
+      if (res.ok) {
+        const data = await res.json();
+        setTotalVotes(data.totalVotes);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchVotes();
+    const interval = setInterval(fetchVotes, 5000);
+    return () => clearInterval(interval);
+  }, [fetchVotes]);
+
+  if (totalVotes === null) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 text-white" data-testid="live-vote-counter">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+      </span>
+      <span className="text-xs font-bold uppercase tracking-wider tabular-nums">
+        {animatedCount.toLocaleString()}
+      </span>
+      <span className="text-[10px] text-white/60 uppercase tracking-wider hidden sm:inline">
+        votes
+      </span>
+    </div>
+  );
+}
 
 export default function SiteNavbar() {
   const { user, isAuthenticated } = useAuth();
@@ -21,6 +88,9 @@ export default function SiteNavbar() {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "bg-black/95 backdrop-blur-sm" : "bg-transparent"}`}
       data-testid="site-navbar"
     >
+      <div className="flex items-center justify-center h-7 bg-black/60 backdrop-blur-sm border-b border-white/5">
+        <LiveVoteCounter />
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-20">
         <Link href="/" className="flex items-center gap-3" data-testid="link-home">
           {getMedia("logo", "/images/template/logo.png").type === "video" ? (
