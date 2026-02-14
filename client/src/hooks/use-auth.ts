@@ -138,7 +138,7 @@ export function useAuth() {
     }
   }, []);
 
-  const register = useCallback(async (email: string, password: string, displayName?: string, inviteToken?: string) => {
+  const register = useCallback(async (email: string, password: string, displayName?: string, inviteToken?: string, level?: number) => {
     setError(null);
     try {
       await firebaseRegister(email, password);
@@ -150,7 +150,7 @@ export function useAuth() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ email, password, displayName, inviteToken }),
+          body: JSON.stringify({ email, password, displayName, inviteToken, level }),
         });
       }
     } catch (err: any) {

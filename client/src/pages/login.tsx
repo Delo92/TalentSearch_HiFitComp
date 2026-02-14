@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
@@ -44,6 +45,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState<number>(1);
   const [loading, setLoading] = useState(false);
 
   const { data: inviteInfo } = useQuery<InviteInfo>({
@@ -83,7 +85,8 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
-        await register(email, password, displayName, inviteToken || undefined);
+        const registerLevel = inviteToken ? undefined : selectedLevel;
+        await register(email, password, displayName, inviteToken || undefined, registerLevel);
         toast({ title: "Account created!", description: "Welcome to the platform." });
         setLocation("/dashboard");
       } else if (mode === "reset") {
@@ -151,6 +154,41 @@ export default function LoginPage() {
                 placeholder="Your stage name"
                 data-testid="input-display-name"
               />
+            </div>
+          )}
+
+          {mode === "register" && !inviteToken && (
+            <div>
+              <Label className="text-white/60 uppercase text-xs tracking-wider">
+                Account Type
+              </Label>
+              <Select
+                value={String(selectedLevel)}
+                onValueChange={(val) => setSelectedLevel(Number(val))}
+              >
+                <SelectTrigger
+                  className="bg-white/[0.08] border-white/20 text-white mt-2"
+                  data-testid="select-account-type"
+                >
+                  <SelectValue placeholder="Select account type" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1a1a] border-white/20">
+                  <SelectItem value="1" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-viewer">
+                    Viewer - Vote on competitions
+                  </SelectItem>
+                  <SelectItem value="2" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-talent">
+                    Talent - Compete in events
+                  </SelectItem>
+                  <SelectItem value="3" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-host">
+                    Host - Create & manage events
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-white/30 text-xs mt-1.5">
+                {selectedLevel === 1 && "Browse and vote on your favorite contestants"}
+                {selectedLevel === 2 && "Create a talent profile and apply to competitions"}
+                {selectedLevel === 3 && "Organize and manage your own competitions"}
+              </p>
             </div>
           )}
 

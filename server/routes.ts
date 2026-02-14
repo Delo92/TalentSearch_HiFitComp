@@ -130,7 +130,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Email and password are required" });
       }
 
-      let level = [1, 2].includes(requestedLevel) ? requestedLevel : 1;
+      let level = [1, 2, 3].includes(requestedLevel) ? requestedLevel : 1;
       let invitation = null;
 
       if (inviteToken) {
