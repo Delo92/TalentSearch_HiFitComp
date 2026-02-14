@@ -443,7 +443,7 @@ function TalentDetailModal({ profileId, competitions }: { profileId: number; com
           {driveImages.length > 0 && (
             <div className="mb-3">
               <p className="text-xs text-white/40 mb-2 flex items-center gap-1"><Image className="h-3 w-3" /> Photos ({driveImages.length})</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {driveImages.slice(0, 8).map((img) => (
                   <a key={img.id} href={img.imageUrl} target="_blank" rel="noopener noreferrer" className="block" data-testid={`drive-img-${img.id}`}>
                     <img src={img.thumbnailUrl} alt={img.name} className="w-full aspect-square object-cover rounded-md" />
@@ -1141,8 +1141,8 @@ export default function AdminDashboard({ user }: { user: any }) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="font-serif text-3xl font-bold" data-testid="text-admin-title">Admin Dashboard</h1>
-            <p className="text-white/40 mt-1">Manage competitions, applications, and analytics.</p>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold" data-testid="text-admin-title">Admin Dashboard</h1>
+            <p className="text-white/40 mt-1 text-sm sm:text-base">Manage competitions, applications, and analytics.</p>
           </div>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
@@ -1237,7 +1237,7 @@ export default function AdminDashboard({ user }: { user: any }) {
         </div>
 
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
             {[
               { label: "Competitions", value: stats.totalCompetitions, icon: Trophy },
               { label: "Talent Profiles", value: stats.totalTalentProfiles, icon: Users },
@@ -1255,32 +1255,34 @@ export default function AdminDashboard({ user }: { user: any }) {
         )}
 
         <Tabs defaultValue="competitions">
-          <TabsList className="mb-6 bg-white/5 border border-white/5">
-            <TabsTrigger value="competitions" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white">
-              Competitions
-            </TabsTrigger>
-            <TabsTrigger value="livery" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-livery">
-              <Image className="h-4 w-4 mr-1" /> Livery
-            </TabsTrigger>
-            <TabsTrigger value="join" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-join">
-              <UserPlus className="h-4 w-4 mr-1" /> Join
-            </TabsTrigger>
-            <TabsTrigger value="host" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-host">
-              <Megaphone className="h-4 w-4 mr-1" /> Host
-            </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-users">
-              <Users className="h-4 w-4 mr-1" /> Users {pending.length > 0 && <Badge className="ml-1 bg-orange-500 text-white border-0 text-[10px] px-1.5 py-0">{pending.length}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-calendar">
-              <Calendar className="h-4 w-4 mr-1" /> Calendar
-            </TabsTrigger>
-            <TabsTrigger value="storage" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-storage">
-              <HardDrive className="h-4 w-4 mr-1" /> Storage
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-settings">
-              <Settings className="h-4 w-4 mr-1" /> Settings
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
+            <TabsList className="bg-white/5 border border-white/5 inline-flex w-max sm:w-auto">
+              <TabsTrigger value="competitions" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white">
+                <Trophy className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Competitions</span>
+              </TabsTrigger>
+              <TabsTrigger value="livery" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-livery">
+                <Image className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Livery</span>
+              </TabsTrigger>
+              <TabsTrigger value="join" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-join">
+                <UserPlus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Join</span>
+              </TabsTrigger>
+              <TabsTrigger value="host" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-host">
+                <Megaphone className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Host</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-users">
+                <Users className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Users</span> {pending.length > 0 && <Badge className="ml-1 bg-orange-500 text-white border-0 text-[10px] px-1.5 py-0">{pending.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-calendar">
+                <Calendar className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Calendar</span>
+              </TabsTrigger>
+              <TabsTrigger value="storage" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-storage">
+                <HardDrive className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Storage</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-settings">
+                <Settings className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="competitions">
             <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -2202,7 +2204,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                       <Button size="icon" variant="ghost" onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} data-testid="button-calendar-prev">
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <h3 className="text-lg font-serif tracking-wider uppercase text-white min-w-[200px] text-center">{monthName}</h3>
+                      <h3 className="text-sm sm:text-lg font-serif tracking-wider uppercase text-white min-w-[140px] sm:min-w-[200px] text-center">{monthName}</h3>
                       <Button size="icon" variant="ghost" onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} data-testid="button-calendar-next">
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -2210,17 +2212,17 @@ export default function AdminDashboard({ user }: { user: any }) {
                     <Button variant="ghost" onClick={() => setCalendarMonth(new Date())} className="text-xs text-white/50" data-testid="button-calendar-today">Today</Button>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs text-white/40">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> Active</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" /> Upcoming</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" /> Voting</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-zinc-500 inline-block" /> Other</span>
-                    <span className="ml-2 text-white/25">Dots show start & end dates only</span>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-white/40">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-green-500 inline-block" /> Active</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500 inline-block" /> Upcoming</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-orange-500 inline-block" /> Voting</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-zinc-500 inline-block" /> Other</span>
+                    <span className="text-white/25 hidden sm:inline">Dots show start & end dates only</span>
                   </div>
 
                   <div className="grid grid-cols-7 gap-px bg-white/5 rounded-md overflow-hidden">
                     {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                      <div key={d} className="bg-zinc-900 p-2 text-center text-xs font-semibold text-white/40 uppercase tracking-wider">{d}</div>
+                      <div key={d} className="bg-zinc-900 p-1 sm:p-2 text-center text-[10px] sm:text-xs font-semibold text-white/40 uppercase tracking-wider">{d}</div>
                     ))}
                     {days.map((day, i) => {
                       const comps = day ? getCompsForDay(day) : [];
@@ -2231,12 +2233,12 @@ export default function AdminDashboard({ user }: { user: any }) {
                           key={i}
                           onClick={() => { if (day && comps.length > 0) { setCalendarSelectedDay(isSelected ? null : day); setCalendarSelectedComp(null); } }}
                           disabled={!day || comps.length === 0}
-                          className={`bg-zinc-900/80 min-h-[100px] p-3 text-left transition-colors ${!day ? "bg-zinc-950/50 cursor-default" : comps.length > 0 ? "cursor-pointer hover:bg-white/5" : "cursor-default"} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""} ${isSelected ? "bg-orange-500/10" : ""}`}
+                          className={`bg-zinc-900/80 min-h-[56px] sm:min-h-[100px] p-1.5 sm:p-3 text-left transition-colors ${!day ? "bg-zinc-950/50 cursor-default" : comps.length > 0 ? "cursor-pointer hover:bg-white/5" : "cursor-default"} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""} ${isSelected ? "bg-orange-500/10" : ""}`}
                           data-testid={day ? `calendar-day-${day}` : undefined}
                         >
                           {day && (
                             <div className="flex flex-col items-start gap-2">
-                              <span className={`text-sm font-medium ${isToday ? "text-orange-400 font-bold" : isSelected ? "text-orange-300" : "text-white/50"}`}>{day}</span>
+                              <span className={`text-xs sm:text-sm font-medium ${isToday ? "text-orange-400 font-bold" : isSelected ? "text-orange-300" : "text-white/50"}`}>{day}</span>
                               {comps.length > 0 && comps.length <= 3 && (
                                 <div className="flex items-center gap-1 flex-wrap">
                                   {comps.map((c) => (
@@ -2623,7 +2625,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                                     </Button>
                                   )}
                                 </div>
-                                <div className="grid grid-cols-4 gap-2 items-end">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
                                   <div>
                                     <Label className="text-white/30 text-[10px]">Votes</Label>
                                     <Input type="number" value={vpkg.voteCount} onChange={(e) => updateVotePkg(idx, "voteCount", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white text-sm" data-testid={`input-vote-pkg-count-${idx}`} />
