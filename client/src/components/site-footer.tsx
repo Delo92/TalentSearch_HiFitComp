@@ -40,6 +40,9 @@ export default function SiteFooter() {
           &copy; {new Date().getFullYear()} HiFitComp
         </p>
       </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 border-t border-white/5 pt-4">
+        <p className="text-[10px] text-white/20 text-center" data-testid="text-designed-by">Designed by : Oraginal Concepts</p>
+      </div>
     </footer>
   );
 }
