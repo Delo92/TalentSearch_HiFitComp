@@ -22,6 +22,8 @@ import type { Competition, SiteLivery } from "@shared/schema";
 import { useState, useRef, useMemo } from "react";
 import { useAuth, getAuthToken } from "@/hooks/use-auth";
 
+type CompetitionWithCreator = Competition & { createdBy?: string | null };
+
 interface AdminStats {
   totalCompetitions: number;
   totalTalentProfiles: number;
@@ -758,7 +760,7 @@ export default function AdminDashboard({ user }: { user: any }) {
   const HOSTS_PER_PAGE = 10;
 
   const { data: stats } = useQuery<AdminStats>({ queryKey: ["/api/admin/stats"] });
-  const { data: competitions } = useQuery<Competition[]>({ queryKey: ["/api/competitions"] });
+  const { data: competitions } = useQuery<CompetitionWithCreator[]>({ queryKey: ["/api/competitions"] });
 
   const compCategories = useMemo(() => {
     if (!competitions) return [];
@@ -989,9 +991,8 @@ export default function AdminDashboard({ user }: { user: any }) {
       if (assignHostUid) {
         queryClient.invalidateQueries({ queryKey: ["/api/admin/hosts", assignHostUid, "competitions"] });
       }
-      setAssignHostDialogOpen(false);
       setAssignCompId("");
-      toast({ title: "Competition assigned to host!" });
+      toast({ title: "Competition assigned! You can assign another or close this dialog." });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
@@ -1862,32 +1863,59 @@ export default function AdminDashboard({ user }: { user: any }) {
             <Dialog open={assignHostDialogOpen} onOpenChange={setAssignHostDialogOpen}>
               <DialogContent className="bg-zinc-900 border-white/10 text-white">
                 <DialogHeader>
-                  <DialogTitle className="font-serif text-xl">Assign Competition to Host</DialogTitle>
+                  <DialogTitle className="font-serif text-xl">Assign Competitions to Host</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 mt-2">
                   <p className="text-sm text-white/60">
                     Assigning to: <span className="text-white font-medium">{hostUsers?.find(h => h.userId === assignHostUid)?.displayName || "Unknown"}</span>
                   </p>
-                  <div className="space-y-1.5">
-                    <Label className="text-white/60">Select Competition</Label>
-                    <Select value={assignCompId} onValueChange={setAssignCompId}>
-                      <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-assign-comp">
-                        <SelectValue placeholder="Choose a competition..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-white/10">
-                        {competitions?.map(c => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.title} ({c.status})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    onClick={() => assignHostUid && assignCompId && assignHostMutation.mutate({ compId: parseInt(assignCompId), hostUid: assignHostUid })}
-                    disabled={!assignCompId || assignHostMutation.isPending}
-                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
-                    data-testid="button-confirm-assign"
-                  >
-                    {assignHostMutation.isPending ? "Assigning..." : "Assign Competition"}
+                  {(() => {
+                    const alreadyAssigned = competitions?.filter(c => c.createdBy === assignHostUid) || [];
+                    const available = competitions?.filter(c => c.createdBy !== assignHostUid) || [];
+                    return (
+                      <>
+                        {alreadyAssigned.length > 0 && (
+                          <div className="space-y-1.5">
+                            <Label className="text-white/40 text-xs uppercase tracking-wider">Currently Assigned ({alreadyAssigned.length})</Label>
+                            <div className="space-y-1">
+                              {alreadyAssigned.map(c => (
+                                <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white/5 p-2">
+                                  <span className="text-sm">{c.title}</span>
+                                  <Badge className={`border-0 text-xs ${c.status === "active" || c.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/40"}`}>{c.status}</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="space-y-1.5">
+                          <Label className="text-white/60">Add Another Competition</Label>
+                          <Select value={assignCompId} onValueChange={setAssignCompId}>
+                            <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-assign-comp">
+                              <SelectValue placeholder="Choose a competition..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-white/10">
+                              {available.map(c => (
+                                <SelectItem key={c.id} value={String(c.id)}>{c.title} ({c.status})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {available.length === 0 && (
+                            <p className="text-xs text-white/30">All competitions are already assigned to this host.</p>
+                          )}
+                        </div>
+                        <Button
+                          onClick={() => assignHostUid && assignCompId && assignHostMutation.mutate({ compId: parseInt(assignCompId), hostUid: assignHostUid })}
+                          disabled={!assignCompId || assignHostMutation.isPending}
+                          className="w-full bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                          data-testid="button-confirm-assign"
+                        >
+                          {assignHostMutation.isPending ? "Assigning..." : "Assign Competition"}
+                        </Button>
+                      </>
+                    );
+                  })()}
+                  <Button variant="ghost" onClick={() => setAssignHostDialogOpen(false)} className="w-full text-white/40" data-testid="button-close-assign">
+                    Done
                   </Button>
                 </div>
               </DialogContent>
