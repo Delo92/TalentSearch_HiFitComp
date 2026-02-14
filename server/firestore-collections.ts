@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+import crypto from "crypto";
 import { getFirestore } from "./firebase-admin";
 
 const COLLECTIONS = {
@@ -19,6 +20,7 @@ const COLLECTIONS = {
   JOIN_SUBMISSIONS: "joinSubmissions",
   HOST_SETTINGS: "hostSettings",
   HOST_SUBMISSIONS: "hostSubmissions",
+  INVITATIONS: "invitations",
 } as const;
 
 function db() {
@@ -925,5 +927,102 @@ export const firestoreHostSubmissions = {
     await ref.update({ status });
     const updated = await ref.get();
     return updated.data() as FirestoreHostSubmission;
+  },
+};
+
+export interface FirestoreInvitation {
+  id: string;
+  token: string;
+  invitedBy: string;
+  invitedByEmail: string;
+  invitedByName: string;
+  invitedEmail: string;
+  invitedName: string;
+  targetLevel: number;
+  message: string | null;
+  status: "pending" | "accepted" | "expired";
+  createdAt: string;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+}
+
+function generateToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+export const firestoreInvitations = {
+  async create(data: {
+    invitedBy: string;
+    invitedByEmail: string;
+    invitedByName: string;
+    invitedEmail: string;
+    invitedName: string;
+    targetLevel: number;
+    message?: string;
+  }): Promise<FirestoreInvitation> {
+    const docRef = db().collection(COLLECTIONS.INVITATIONS).doc();
+    const invitation: FirestoreInvitation = {
+      id: docRef.id,
+      token: generateToken(),
+      invitedBy: data.invitedBy,
+      invitedByEmail: data.invitedByEmail,
+      invitedByName: data.invitedByName,
+      invitedEmail: data.invitedEmail,
+      invitedName: data.invitedName,
+      targetLevel: data.targetLevel,
+      message: data.message || null,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      acceptedAt: null,
+      acceptedBy: null,
+    };
+    await docRef.set(invitation);
+    return invitation;
+  },
+
+  async getByToken(token: string): Promise<FirestoreInvitation | null> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.INVITATIONS)
+      .where("token", "==", token)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as FirestoreInvitation;
+  },
+
+  async getBySender(invitedBy: string): Promise<FirestoreInvitation[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.INVITATIONS)
+      .where("invitedBy", "==", invitedBy)
+      .get();
+    const items = snapshot.docs.map(doc => doc.data() as FirestoreInvitation);
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  async getAll(): Promise<FirestoreInvitation[]> {
+    const snapshot = await db().collection(COLLECTIONS.INVITATIONS).get();
+    const items = snapshot.docs.map(doc => doc.data() as FirestoreInvitation);
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  async markAccepted(token: string, acceptedByUid: string): Promise<FirestoreInvitation | null> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.INVITATIONS)
+      .where("token", "==", token)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    const docRef = snapshot.docs[0].ref;
+    await docRef.update({
+      status: "accepted",
+      acceptedAt: new Date().toISOString(),
+      acceptedBy: acceptedByUid,
+    });
+    const updated = await docRef.get();
+    return updated.data() as FirestoreInvitation;
+  },
+
+  async delete(id: string): Promise<void> {
+    await db().collection(COLLECTIONS.INVITATIONS).doc(id).delete();
   },
 };

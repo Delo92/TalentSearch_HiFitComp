@@ -1,28 +1,62 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useSearch } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { Mail } from "lucide-react";
 
 type Mode = "login" | "register" | "reset";
+
+interface InviteInfo {
+  invitedEmail: string;
+  invitedName: string;
+  targetLevel: number;
+  invitedByName: string;
+  message: string | null;
+}
+
+const LEVEL_LABELS: Record<number, string> = {
+  1: "Viewer",
+  2: "Talent",
+  3: "Host",
+};
 
 export default function LoginPage() {
   const { login, register, resetPassword, isAuthenticated, error } = useAuth();
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const { getImage, getMedia } = useLivery();
 
-  const [mode, setMode] = useState<Mode>("login");
+  const params = new URLSearchParams(search);
+  const inviteToken = params.get("invite") || "";
+  const isRegisterPath = window.location.pathname === "/register";
+
+  const [mode, setMode] = useState<Mode>(inviteToken || isRegisterPath ? "register" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const { data: inviteInfo } = useQuery<InviteInfo>({
+    queryKey: ["/api/invitations/token", inviteToken],
+    enabled: !!inviteToken,
+  });
+
+  useEffect(() => {
+    if (inviteInfo) {
+      setEmail(inviteInfo.invitedEmail);
+      setDisplayName(inviteInfo.invitedName);
+    }
+  }, [inviteInfo]);
 
   if (isAuthenticated) {
     setLocation("/dashboard");
@@ -49,7 +83,7 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
-        await register(email, password, displayName);
+        await register(email, password, displayName, inviteToken || undefined);
         toast({ title: "Account created!", description: "Welcome to the platform." });
         setLocation("/dashboard");
       } else if (mode === "reset") {
@@ -87,6 +121,21 @@ export default function LoginPage() {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-16">
+        {inviteInfo && mode === "register" && (
+          <div className="rounded-md bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 p-4 mb-6" data-testid="invite-banner">
+            <div className="flex items-center gap-2 mb-2">
+              <Mail className="h-4 w-4 text-orange-400" />
+              <span className="text-sm font-medium text-orange-400">You've been invited!</span>
+            </div>
+            <p className="text-sm text-white/60">
+              <span className="text-white">{inviteInfo.invitedByName}</span> invited you to join as a <Badge className={`border-0 text-xs ml-1 ${inviteInfo.targetLevel === 3 ? "bg-purple-500/20 text-purple-300" : inviteInfo.targetLevel === 2 ? "bg-blue-500/20 text-blue-400" : "bg-white/10 text-white/50"}`}>{LEVEL_LABELS[inviteInfo.targetLevel] || `Level ${inviteInfo.targetLevel}`}</Badge>
+            </p>
+            {inviteInfo.message && (
+              <p className="text-xs text-white/40 mt-2 italic">"{inviteInfo.message}"</p>
+            )}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {mode === "register" && (
             <div>

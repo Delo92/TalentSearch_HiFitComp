@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, User, Image as ImageIcon, Video, Save, Plus, LogOut, X } from "lucide-react";
+import { Trophy, User, Image as ImageIcon, Video, Save, Plus, LogOut, X, Mail } from "lucide-react";
+import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -116,9 +117,12 @@ export default function TalentDashboard({ user, profile }: Props) {
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="font-serif text-3xl font-bold" data-testid="text-dashboard-title">Talent Dashboard</h1>
-          <p className="text-white/40 mt-1">Manage your profile and competition applications.</p>
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="font-serif text-3xl font-bold" data-testid="text-dashboard-title">Talent Dashboard</h1>
+            <p className="text-white/40 mt-1">Manage your profile and competition applications.</p>
+          </div>
+          <InviteDialog senderLevel={2} />
         </div>
 
         <Tabs defaultValue="profile">

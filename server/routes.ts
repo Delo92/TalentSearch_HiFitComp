@@ -21,6 +21,7 @@ import {
   firestoreJoinSubmissions,
   firestoreHostSettings,
   firestoreHostSubmissions,
+  firestoreInvitations,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import {
@@ -123,12 +124,23 @@ export async function registerRoutes(
 
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { email, password, displayName, stageName, level: requestedLevel, socialLinks, billingAddress } = req.body;
+      const { email, password, displayName, stageName, level: requestedLevel, socialLinks, billingAddress, inviteToken } = req.body;
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
-      const level = [1, 2].includes(requestedLevel) ? requestedLevel : 1;
+      let level = [1, 2].includes(requestedLevel) ? requestedLevel : 1;
+      let invitation = null;
+
+      if (inviteToken) {
+        invitation = await firestoreInvitations.getByToken(inviteToken);
+        if (invitation && invitation.status === "pending") {
+          if (invitation.invitedEmail.toLowerCase().trim() !== email.toLowerCase().trim()) {
+            return res.status(403).json({ message: "This invitation was sent to a different email address" });
+          }
+          level = invitation.targetLevel;
+        }
+      }
 
       const firebaseUser = await createFirebaseUser(email, password, displayName);
       await setUserLevel(firebaseUser.uid, level);
@@ -142,6 +154,26 @@ export async function registerRoutes(
         socialLinks: socialLinks || undefined,
         billingAddress: billingAddress || undefined,
       });
+
+      if (invitation && invitation.status === "pending") {
+        await firestoreInvitations.markAccepted(inviteToken, firebaseUser.uid);
+      }
+
+      const roleMap: Record<number, string> = { 1: "viewer", 2: "talent", 3: "host", 4: "admin" };
+      if (level >= 2) {
+        await storage.createTalentProfile({
+          userId: firebaseUser.uid,
+          displayName: displayName || email.split("@")[0],
+          stageName: stageName || null,
+          bio: null,
+          category: null,
+          location: null,
+          imageUrls: [],
+          videoUrls: [],
+          socialLinks: socialLinks ? JSON.stringify(socialLinks) : null,
+          role: roleMap[level],
+        });
+      }
 
       res.status(201).json({
         uid: firebaseUser.uid,
@@ -804,6 +836,142 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Update user level error:", error);
       res.status(500).json({ message: "Failed to update user level" });
+    }
+  });
+
+  app.post("/api/admin/users/create", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { email, password, displayName, level, stageName, socialLinks } = req.body;
+      if (!email || !password || !displayName) {
+        return res.status(400).json({ message: "Email, password, and display name are required" });
+      }
+      if (![1, 2, 3].includes(level)) {
+        return res.status(400).json({ message: "Level must be 1, 2, or 3" });
+      }
+
+      const firebaseUser = await createFirebaseUser(email, password, displayName);
+      await setUserLevel(firebaseUser.uid, level);
+
+      await createFirestoreUser({
+        uid: firebaseUser.uid,
+        email,
+        displayName,
+        level,
+        stageName: stageName || undefined,
+        socialLinks: socialLinks || undefined,
+      });
+
+      const roleMap: Record<number, string> = { 1: "viewer", 2: "talent", 3: "host", 4: "admin" };
+      await storage.createTalentProfile({
+        userId: firebaseUser.uid,
+        displayName,
+        stageName: stageName || null,
+        bio: null,
+        category: null,
+        location: null,
+        imageUrls: [],
+        videoUrls: [],
+        socialLinks: socialLinks ? JSON.stringify(socialLinks) : null,
+        role: roleMap[level],
+      });
+
+      res.status(201).json({
+        uid: firebaseUser.uid,
+        email,
+        displayName,
+        level,
+      });
+    } catch (error: any) {
+      if (error.code === "auth/email-already-exists") {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      console.error("Admin create user error:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.post("/api/invitations", firebaseAuth, requireTalent, async (req, res) => {
+    try {
+      const { email, name, targetLevel, message } = req.body;
+      if (!email || !name || !targetLevel) {
+        return res.status(400).json({ message: "Email, name, and target level are required" });
+      }
+
+      const senderLevel = req.firebaseUser!.level;
+      if (targetLevel >= senderLevel) {
+        return res.status(403).json({ message: "You can only invite users to a lower level than your own" });
+      }
+      if (targetLevel < 1) {
+        return res.status(400).json({ message: "Invalid target level" });
+      }
+
+      const senderUser = await getFirestoreUser(req.firebaseUser!.uid);
+      const invitation = await firestoreInvitations.create({
+        invitedBy: req.firebaseUser!.uid,
+        invitedByEmail: req.firebaseUser!.email,
+        invitedByName: senderUser?.displayName || req.firebaseUser!.email,
+        invitedEmail: email,
+        invitedName: name,
+        targetLevel,
+        message: message || undefined,
+      });
+
+      res.status(201).json(invitation);
+    } catch (error: any) {
+      console.error("Create invitation error:", error);
+      res.status(500).json({ message: "Failed to create invitation" });
+    }
+  });
+
+  app.get("/api/invitations/sent", firebaseAuth, requireTalent, async (req, res) => {
+    try {
+      const invitations = await firestoreInvitations.getBySender(req.firebaseUser!.uid);
+      res.json(invitations);
+    } catch (error: any) {
+      console.error("Get sent invitations error:", error);
+      res.status(500).json({ message: "Failed to get invitations" });
+    }
+  });
+
+  app.get("/api/invitations/all", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const invitations = await firestoreInvitations.getAll();
+      res.json(invitations);
+    } catch (error: any) {
+      console.error("Get all invitations error:", error);
+      res.status(500).json({ message: "Failed to get invitations" });
+    }
+  });
+
+  app.get("/api/invitations/token/:token", async (req, res) => {
+    try {
+      const invitation = await firestoreInvitations.getByToken(req.params.token);
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+      if (invitation.status !== "pending") {
+        return res.status(400).json({ message: `Invitation has already been ${invitation.status}` });
+      }
+      res.json({
+        invitedEmail: invitation.invitedEmail,
+        invitedName: invitation.invitedName,
+        targetLevel: invitation.targetLevel,
+        invitedByName: invitation.invitedByName,
+        message: invitation.message,
+      });
+    } catch (error: any) {
+      console.error("Get invitation by token error:", error);
+      res.status(500).json({ message: "Failed to get invitation" });
+    }
+  });
+
+  app.delete("/api/invitations/:id", firebaseAuth, requireTalent, async (req, res) => {
+    try {
+      await firestoreInvitations.delete(req.params.id);
+      res.json({ message: "Invitation deleted" });
+    } catch (error: any) {
+      console.error("Delete invitation error:", error);
+      res.status(500).json({ message: "Failed to delete invitation" });
     }
   });
 

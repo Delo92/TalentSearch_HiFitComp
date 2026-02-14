@@ -11,7 +11,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail } from "lucide-react";
+import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -284,6 +285,10 @@ export default function HostDashboard({ user }: { user: any }) {
             </div>
             <p className="text-2xl font-bold">{stats?.pendingApplications ?? 0}</p>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <InviteDialog senderLevel={3} />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>

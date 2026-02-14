@@ -11,7 +11,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail } from "lucide-react";
+import { InviteDialog, CreateUserDialog } from "@/components/invite-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -1385,6 +1386,10 @@ export default function AdminDashboard({ user }: { user: any }) {
 
           <TabsContent value="users">
             <div className="space-y-4" data-testid="users-tab-content">
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <CreateUserDialog />
+                <InviteDialog senderLevel={4} />
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
                 <Input

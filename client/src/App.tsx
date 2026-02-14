@@ -20,6 +20,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={LoginPage} />
       <Route path="/competitions" component={Competitions} />
       <Route path="/competition/:id" component={CompetitionDetail} />
       <Route path="/talent/:id" component={TalentProfilePublic} />

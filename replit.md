@@ -92,6 +92,13 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `DELETE /api/host/competitions/:id` - Delete own competition
 - `GET /api/host/competitions/:id/report` - Report for host's competition
 
+### Invitations
+- `POST /api/invitations` - Send invitation (level ≥2, can only invite lower levels)
+- `GET /api/invitations/sent` - List own sent invitations (level ≥2)
+- `GET /api/invitations/all` - List all invitations (admin only)
+- `GET /api/invitations/token/:token` - Get invitation details (public, for accept flow)
+- `DELETE /api/invitations/:id` - Delete invitation (level ≥2)
+
 ### Admin
 - `GET /api/admin/stats` - Platform analytics (breakdowns by status/category, per-competition stats)
 - `GET /api/admin/competitions/:id/report` - Competition report (leaderboard, revenue, purchase stats)
@@ -99,6 +106,7 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - `PATCH /api/admin/contestants/:id/status` - Approve/reject applications
 - `GET /api/admin/users` - List all talent profiles
 - `PATCH /api/admin/users/:uid/level` - Update user level
+- `POST /api/admin/users/create` - Directly create user at level 1-3 (admin only)
 
 ### Livery
 - `GET /api/livery` - Get all livery items
@@ -170,3 +178,12 @@ A comprehensive talent competition and voting platform where artists, models, bo
 - Feb 13, 2026: Added hero_summary text livery item displayed below hero buttons on landing page
 - Feb 13, 2026: Added text editor UI in admin livery tab with save/reset for text-type livery items
 - Feb 13, 2026: Added closed-loop navigation with deep linking via query params
+- Feb 14, 2026: Updated user levels: Level 3=Host, Level 4=Admin (4-level hierarchy)
+- Feb 14, 2026: Added admin level management UI with color-coded role badges (red=Admin, purple=Host, blue=Talent, gray=Viewer)
+- Feb 14, 2026: Added invitation system (invitations Firestore collection) with token-based invite links
+- Feb 14, 2026: Invitation hierarchy: Admin invites L1-3, Host invites L1-2, Talent invites L1
+- Feb 14, 2026: Admin can directly create users (POST /api/admin/users/create) at levels 1-3
+- Feb 14, 2026: All other roles can only invite (not create) lower-level users
+- Feb 14, 2026: Added invite dialog UI to all dashboards (admin, host, talent) with sent invitations list
+- Feb 14, 2026: Added /register route with invite token support, pre-fills name/email from invitation
+- Feb 14, 2026: Registration accepts inviteToken to set user level from invitation
