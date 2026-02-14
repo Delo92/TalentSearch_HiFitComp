@@ -746,6 +746,7 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
   const [userDetailId, setUserDetailId] = useState<number | null>(null);
   const [userSearch, setUserSearch] = useState("");
+  const [usersView, setUsersView] = useState<"users" | "applications">("users");
   const [compSearch, setCompSearch] = useState("");
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
   const [compPage, setCompPage] = useState(1);
@@ -1203,9 +1204,6 @@ export default function AdminDashboard({ user }: { user: any }) {
             <TabsTrigger value="competitions" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white">
               Competitions
             </TabsTrigger>
-            <TabsTrigger value="applications" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white">
-              Applications {pending.length > 0 && <Badge className="ml-2 bg-orange-500 text-white border-0">{pending.length}</Badge>}
-            </TabsTrigger>
             <TabsTrigger value="livery" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-livery">
               <Image className="h-4 w-4 mr-1" /> Livery
             </TabsTrigger>
@@ -1216,7 +1214,7 @@ export default function AdminDashboard({ user }: { user: any }) {
               <Megaphone className="h-4 w-4 mr-1" /> Host
             </TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-users">
-              <Users className="h-4 w-4 mr-1" /> Users
+              <Users className="h-4 w-4 mr-1" /> Users {pending.length > 0 && <Badge className="ml-1 bg-orange-500 text-white border-0 text-[10px] px-1.5 py-0">{pending.length}</Badge>}
             </TabsTrigger>
           </TabsList>
 
@@ -1387,53 +1385,6 @@ export default function AdminDashboard({ user }: { user: any }) {
                 >
                   Next
                 </Button>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="applications">
-            {allContestants && allContestants.length > 0 ? (
-              <div className="space-y-3">
-                {allContestants.map((contestant) => (
-                  <div key={contestant.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`admin-contestant-${contestant.id}`}>
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={contestant.talentProfile.imageUrls?.[0] || ""} />
-                          <AvatarFallback className="bg-orange-500/20 text-orange-400 text-sm font-bold">
-                            {contestant.talentProfile.displayName?.charAt(0) || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-medium">{contestant.talentProfile.displayName}</h4>
-                          <p className="text-xs text-white/30">{contestant.competitionTitle} | {contestant.talentProfile.category}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={`border-0 ${contestant.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : contestant.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                          {contestant.applicationStatus}
-                        </Badge>
-                        {contestant.applicationStatus === "pending" && (
-                          <>
-                            <Button size="icon" onClick={() => updateStatusMutation.mutate({ id: contestant.id, status: "approved" })}
-                              className="bg-green-500/20 text-green-400 border-0" data-testid={`button-approve-${contestant.id}`}>
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" onClick={() => updateStatusMutation.mutate({ id: contestant.id, status: "rejected" })}
-                              className="bg-red-500/20 text-red-400 border-0" data-testid={`button-reject-${contestant.id}`}>
-                              <XIcon className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
-                <Users className="h-8 w-8 text-white/10 mx-auto mb-2" />
-                <p className="text-sm text-white/30">No applications yet.</p>
               </div>
             )}
           </TabsContent>
@@ -2010,61 +1961,136 @@ export default function AdminDashboard({ user }: { user: any }) {
 
           <TabsContent value="users">
             <div className="space-y-4" data-testid="users-tab-content">
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <CreateUserDialog />
-                <InviteDialog senderLevel={4} />
-              </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-                <Input
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  placeholder="Search by name, stage name, or category..."
-                  className="bg-white/5 border-white/10 text-white pl-10"
-                  data-testid="input-user-search"
-                />
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={usersView === "users" ? "default" : "ghost"}
+                    onClick={() => setUsersView("users")}
+                    className={usersView === "users" ? "bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white" : "text-white/50"}
+                    data-testid="button-view-users"
+                  >
+                    <Users className="h-4 w-4 mr-1" /> Users
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={usersView === "applications" ? "default" : "ghost"}
+                    onClick={() => setUsersView("applications")}
+                    className={usersView === "applications" ? "bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white" : "text-white/50"}
+                    data-testid="button-view-applications"
+                  >
+                    <UserCheck className="h-4 w-4 mr-1" /> Applications
+                    {pending.length > 0 && <Badge className="ml-1.5 bg-orange-500 text-white border-0 text-[10px] px-1.5 py-0">{pending.length}</Badge>}
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CreateUserDialog />
+                  <InviteDialog senderLevel={4} />
+                </div>
               </div>
 
-              {usersLoading ? (
-                <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
-                  <p className="text-sm text-white/30">Loading users...</p>
-                </div>
-              ) : filteredUsers && filteredUsers.length > 0 ? (
-                <div className="space-y-2">
-                  {filteredUsers.map((u) => (
-                    <div
-                      key={u.id}
-                      className="rounded-md bg-white/5 border border-white/5 p-4 cursor-pointer transition-colors hover:bg-white/[0.08]"
-                      onClick={() => setUserDetailId(u.id)}
-                      data-testid={`user-row-${u.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={u.imageUrls?.[0] || ""} />
-                          <AvatarFallback className="bg-orange-500/20 text-orange-400 text-sm font-bold">
-                            {u.displayName?.charAt(0) || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium" data-testid={`user-name-${u.id}`}>{u.displayName}</h4>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {u.stageName && <span className="text-xs text-white/40">{u.stageName}</span>}
-                            {u.category && <Badge className="bg-orange-500/10 text-orange-400/80 border-0 text-xs">{u.category}</Badge>}
-                            <Badge className={`border-0 text-xs ${u.role === "admin" ? "bg-red-500/20 text-red-400" : u.role === "host" ? "bg-purple-500/20 text-purple-300" : u.role === "talent" ? "bg-blue-500/20 text-blue-400" : "bg-white/10 text-white/50"}`}>
-                              {u.role === "admin" ? "Admin" : u.role === "host" ? "Host" : u.role === "talent" ? "Talent" : "Viewer"}
-                            </Badge>
+              {usersView === "users" ? (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                    <Input
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Search by name, stage name, or category..."
+                      className="bg-white/5 border-white/10 text-white pl-10"
+                      data-testid="input-user-search"
+                    />
+                  </div>
+
+                  {usersLoading ? (
+                    <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+                      <p className="text-sm text-white/30">Loading users...</p>
+                    </div>
+                  ) : filteredUsers && filteredUsers.length > 0 ? (
+                    <div className="space-y-2">
+                      {filteredUsers.map((u) => (
+                        <div
+                          key={u.id}
+                          className="rounded-md bg-white/5 border border-white/5 p-4 cursor-pointer transition-colors hover:bg-white/[0.08]"
+                          onClick={() => setUserDetailId(u.id)}
+                          data-testid={`user-row-${u.id}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={u.imageUrls?.[0] || ""} />
+                              <AvatarFallback className="bg-orange-500/20 text-orange-400 text-sm font-bold">
+                                {u.displayName?.charAt(0) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium" data-testid={`user-name-${u.id}`}>{u.displayName}</h4>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {u.stageName && <span className="text-xs text-white/40">{u.stageName}</span>}
+                                {u.category && <Badge className="bg-orange-500/10 text-orange-400/80 border-0 text-xs">{u.category}</Badge>}
+                                <Badge className={`border-0 text-xs ${u.role === "admin" ? "bg-red-500/20 text-red-400" : u.role === "host" ? "bg-purple-500/20 text-purple-300" : u.role === "talent" ? "bg-blue-500/20 text-blue-400" : "bg-white/10 text-white/50"}`}>
+                                  {u.role === "admin" ? "Admin" : u.role === "host" ? "Host" : u.role === "talent" ? "Talent" : "Viewer"}
+                                </Badge>
+                              </div>
+                            </div>
+                            <Eye className="h-4 w-4 text-white/20 shrink-0" />
                           </div>
                         </div>
-                        <Eye className="h-4 w-4 text-white/20 shrink-0" />
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+                      <Users className="h-8 w-8 text-white/10 mx-auto mb-2" />
+                      <p className="text-sm text-white/30">{userSearch ? "No users match your search." : "No talent profiles found."}</p>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
-                  <Users className="h-8 w-8 text-white/10 mx-auto mb-2" />
-                  <p className="text-sm text-white/30">{userSearch ? "No users match your search." : "No talent profiles found."}</p>
-                </div>
+                <>
+                  {allContestants && allContestants.length > 0 ? (
+                    <div className="space-y-3">
+                      {allContestants.map((contestant) => (
+                        <div key={contestant.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`admin-contestant-${contestant.id}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={contestant.talentProfile.imageUrls?.[0] || ""} />
+                                <AvatarFallback className="bg-orange-500/20 text-orange-400 text-sm font-bold">
+                                  {contestant.talentProfile.displayName?.charAt(0) || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <h4 className="font-medium">{contestant.talentProfile.displayName}</h4>
+                                <p className="text-xs text-white/30">{contestant.competitionTitle} | {contestant.talentProfile.category}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={`border-0 ${contestant.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : contestant.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                                {contestant.applicationStatus}
+                              </Badge>
+                              {contestant.applicationStatus === "pending" && (
+                                <>
+                                  <Button size="icon" onClick={() => updateStatusMutation.mutate({ id: contestant.id, status: "approved" })}
+                                    className="bg-green-500/20 text-green-400 border-0" data-testid={`button-approve-${contestant.id}`}>
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                  <Button size="icon" onClick={() => updateStatusMutation.mutate({ id: contestant.id, status: "rejected" })}
+                                    className="bg-red-500/20 text-red-400 border-0" data-testid={`button-reject-${contestant.id}`}>
+                                    <XIcon className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+                      <UserCheck className="h-8 w-8 text-white/10 mx-auto mb-2" />
+                      <p className="text-sm text-white/30">No applications yet.</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </TabsContent>
