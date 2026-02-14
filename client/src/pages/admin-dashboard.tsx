@@ -2375,23 +2375,43 @@ export default function AdminDashboard({ user }: { user: any }) {
                       <Image className="h-5 w-5 text-blue-400" />
                       <h4 className="text-xs uppercase tracking-widest text-blue-400 font-bold">Google Drive (Images)</h4>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white/[0.03] rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-white" data-testid="text-drive-used">
+                          {storageData.drive?.usedGB || 0} GB
+                        </div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Used</div>
+                      </div>
+                      <div className="bg-white/[0.03] rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-white" data-testid="text-drive-total">
+                          {storageData.drive?.totalGB ? `${storageData.drive.totalGB} GB` : "Unlimited"}
+                        </div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Total</div>
+                      </div>
                       <div className="bg-white/[0.03] rounded p-3 text-center">
                         <div className="text-2xl font-bold text-white" data-testid="text-drive-total-files">{storageData.drive?.totalFiles || 0}</div>
-                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Total Files</div>
-                      </div>
-                      <div className="bg-white/[0.03] rounded p-3 text-center">
-                        <div className="text-2xl font-bold text-white" data-testid="text-drive-total-size">
-                          {(storageData.drive?.totalSizeMB || 0) >= 1024
-                            ? `${(storageData.drive.totalSizeMB / 1024).toFixed(2)} GB`
-                            : `${storageData.drive?.totalSizeMB || 0} MB`}
-                        </div>
-                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Total Size</div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">HiFitComp Files</div>
                       </div>
                     </div>
+                    {storageData.drive?.totalGB > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-white/40">Account Storage</span>
+                          <span className={`font-bold ${storageData.drive.usedPercent > 80 ? "text-red-400" : storageData.drive.usedPercent > 60 ? "text-yellow-400" : "text-green-400"}`}>
+                            {storageData.drive.usedPercent}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-white/10 rounded-full h-2.5">
+                          <div
+                            className={`h-2.5 rounded-full transition-all ${storageData.drive.usedPercent > 80 ? "bg-red-500" : storageData.drive.usedPercent > 60 ? "bg-yellow-500" : "bg-green-500"}`}
+                            style={{ width: `${Math.min(storageData.drive.usedPercent, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                     {storageData.drive?.folders?.length > 0 && (
                       <div>
-                        <h5 className="text-[10px] text-white/30 uppercase tracking-wider mb-2">By Event</h5>
+                        <h5 className="text-[10px] text-white/30 uppercase tracking-wider mb-2">HiFitComp Events</h5>
                         <div className="space-y-1 max-h-48 overflow-y-auto">
                           {storageData.drive.folders.map((f: any, i: number) => (
                             <div key={i} className="flex items-center justify-between py-1 px-2 bg-white/[0.02] rounded text-sm">

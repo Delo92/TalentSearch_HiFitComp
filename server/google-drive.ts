@@ -244,15 +244,34 @@ export function getDriveThumbnailUrl(fileId: string, size: number = 400): string
 }
 
 export async function getDriveStorageUsage(): Promise<{
+  usedGB: number;
+  totalGB: number;
+  usedPercent: number;
   totalFiles: number;
-  totalSizeBytes: number;
-  totalSizeMB: number;
+  hifitcompSizeMB: number;
   folders: Array<{ name: string; fileCount: number; sizeBytes: number; sizeMB: number }>;
+  error?: string;
 }> {
   const drive = getDriveClient();
+  let usedGB = 0;
+  let totalGB = 0;
   let totalFiles = 0;
-  let totalSizeBytes = 0;
+  let hifitcompSizeBytes = 0;
   const folders: Array<{ name: string; fileCount: number; sizeBytes: number; sizeMB: number }> = [];
+
+  try {
+    const about = await drive.about.get({ fields: "storageQuota" });
+    const quota = about.data.storageQuota;
+    if (quota) {
+      usedGB = Math.round((parseInt(quota.usage || "0") / (1024 * 1024 * 1024)) * 100) / 100;
+      const limitBytes = parseInt(quota.limit || "0");
+      totalGB = limitBytes > 0
+        ? Math.round((limitBytes / (1024 * 1024 * 1024)) * 100) / 100
+        : 0;
+    }
+  } catch (err: any) {
+    console.error("Error getting Drive about info:", err.message);
+  }
 
   try {
     const rootId = await getHiFitCompFolder();
@@ -304,7 +323,7 @@ export async function getDriveStorageUsage(): Promise<{
       }
 
       totalFiles += folderFiles;
-      totalSizeBytes += folderSize;
+      hifitcompSizeBytes += folderSize;
       folders.push({
         name: compFolder.name!,
         fileCount: folderFiles,
@@ -313,13 +332,15 @@ export async function getDriveStorageUsage(): Promise<{
       });
     }
   } catch (err: any) {
-    console.error("Error calculating Drive storage:", err.message);
+    console.error("Error calculating Drive folder sizes:", err.message);
   }
 
   return {
+    usedGB,
+    totalGB,
+    usedPercent: totalGB > 0 ? Math.round((usedGB / totalGB) * 10000) / 100 : 0,
     totalFiles,
-    totalSizeBytes,
-    totalSizeMB: Math.round((totalSizeBytes / (1024 * 1024)) * 100) / 100,
+    hifitcompSizeMB: Math.round((hifitcompSizeBytes / (1024 * 1024)) * 100) / 100,
     folders,
   };
 }
