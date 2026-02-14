@@ -1977,6 +1977,8 @@ export async function registerRoutes(
             { name: "Super Fan Pack", voteCount: 2000, bonusVotes: 600, price: 30, description: "2,000 votes + 600 bonus votes" },
           ],
           salesTaxPercent: 0,
+          maxImagesPerContestant: 10,
+          maxVideosPerContestant: 3,
           defaultVoteCost: 0,
           freeVotesPerDay: 5,
           votePricePerVote: 1,
@@ -2071,7 +2073,18 @@ export async function registerRoutes(
       const comp = await storage.getCompetition(parseInt(competitionId));
       if (!comp) return res.status(404).json({ message: "Competition not found" });
 
+      const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+      const maxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
+
       const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+
+      try {
+        const existingImages = await listTalentImages(comp.title, talentName);
+        if (existingImages.length >= maxImages) {
+          return res.status(400).json({ message: `Upload limit reached. Maximum ${maxImages} images allowed per contestant.` });
+        }
+      } catch {}
+
       const result = await uploadImageToDrive(
         comp.title,
         talentName,
@@ -2229,7 +2242,18 @@ export async function registerRoutes(
       const comp = await storage.getCompetition(parseInt(competitionId));
       if (!comp) return res.status(404).json({ message: "Competition not found" });
 
+      const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+      const maxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
+
       const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+
+      try {
+        const existingVideos = await listTalentVideos(comp.title, talentName);
+        if (existingVideos.length >= maxVideos) {
+          return res.status(400).json({ message: `Upload limit reached. Maximum ${maxVideos} videos allowed per contestant.` });
+        }
+      } catch {}
+
       const ticket = await createUploadTicket(comp.title, talentName, fileName, fileSize);
 
       res.json(ticket);

@@ -2747,6 +2747,30 @@ export default function AdminDashboard({ user }: { user: any }) {
                         <p className="text-[10px] text-white/25 mt-1">Percentage fee taken from vote revenue</p>
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <Label className="text-white/50 text-xs">Max Images Per Contestant</Label>
+                        <Input
+                          type="number"
+                          value={form.maxImagesPerContestant ?? 10}
+                          onChange={(e) => updateForm("maxImagesPerContestant", parseInt(e.target.value) || 1)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-max-images"
+                        />
+                        <p className="text-[10px] text-white/25 mt-1">Max image uploads allowed per contestant (Google Drive)</p>
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Max Videos Per Contestant</Label>
+                        <Input
+                          type="number"
+                          value={form.maxVideosPerContestant ?? 3}
+                          onChange={(e) => updateForm("maxVideosPerContestant", parseInt(e.target.value) || 1)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-max-videos"
+                        />
+                        <p className="text-[10px] text-white/25 mt-1">Max video uploads allowed per contestant (Vimeo)</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
