@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   initFirebase,
@@ -31,100 +31,107 @@ export interface AuthUser {
 }
 
 let globalToken: string | null = null;
+let globalUser: AuthUser | null = null;
+let globalLoading = true;
+let listeners: Set<() => void> = new Set();
+
+function notifyListeners() {
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
+function getSnapshot() {
+  return { user: globalUser, isLoading: globalLoading };
+}
 
 export function getAuthToken(): string | null {
   return globalToken;
 }
 
-export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+let initialized = false;
 
-  const syncUserWithBackend = useCallback(async (token: string): Promise<AuthUser | null> => {
-    try {
-      const res = await fetch("/api/auth/user", {
+async function syncUserWithBackend(token: string): Promise<AuthUser | null> {
+  try {
+    const res = await fetch("/api/auth/user", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const syncRes = await fetch("/api/auth/sync", {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        const syncRes = await fetch("/api/auth/sync", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!syncRes.ok) return null;
-        return syncRes.json();
-      }
-      return res.json();
-    } catch {
-      return null;
+      if (!syncRes.ok) return null;
+      return syncRes.json();
     }
-  }, []);
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+function initAuthListener() {
+  if (initialized) return;
+  initialized = true;
+
+  (async () => {
+    await initFirebase();
+
+    onFirebaseIdTokenChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const token = await firebaseUser.getIdToken();
+          globalToken = token;
+          const userData = await syncUserWithBackend(token);
+          globalUser = userData;
+          globalLoading = false;
+          notifyListeners();
+        } catch {
+          globalUser = null;
+          globalToken = null;
+          globalLoading = false;
+          notifyListeners();
+        }
+      } else {
+        globalUser = null;
+        globalToken = null;
+        globalLoading = false;
+        notifyListeners();
+      }
+    });
+
+    setInterval(async () => {
+      const auth = getFirebaseAuth();
+      if (auth?.currentUser) {
+        try {
+          const freshToken = await auth.currentUser.getIdToken(true);
+          globalToken = freshToken;
+        } catch {}
+      }
+    }, 45 * 60 * 1000);
+  })();
+}
+
+export function useAuth() {
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    let cancelled = false;
-    let tokenRefreshInterval: ReturnType<typeof setInterval> | null = null;
+    initAuthListener();
+  }, []);
 
-    async function init() {
-      await initFirebase();
+  const [, forceUpdate] = useState(0);
 
-      const unsub = onFirebaseIdTokenChanged(async (firebaseUser) => {
-        if (cancelled) return;
+  useEffect(() => {
+    const unsub = subscribe(() => forceUpdate((n) => n + 1));
+    return unsub;
+  }, []);
 
-        if (firebaseUser) {
-          try {
-            const token = await firebaseUser.getIdToken();
-            globalToken = token;
-
-            if (!user) {
-              const userData = await syncUserWithBackend(token);
-              if (!cancelled) {
-                setUser(userData);
-                setIsLoading(false);
-              }
-            } else {
-              if (!cancelled) setIsLoading(false);
-            }
-          } catch {
-            if (!cancelled) {
-              setUser(null);
-              globalToken = null;
-              setIsLoading(false);
-            }
-          }
-        } else {
-          if (!cancelled) {
-            setUser(null);
-            globalToken = null;
-            setIsLoading(false);
-          }
-        }
-      });
-
-      tokenRefreshInterval = setInterval(async () => {
-        const auth = getFirebaseAuth();
-        if (auth?.currentUser) {
-          try {
-            const freshToken = await auth.currentUser.getIdToken(true);
-            globalToken = freshToken;
-          } catch {
-          }
-        }
-      }, 45 * 60 * 1000);
-
-      return unsub;
-    }
-
-    const cleanup = init();
-    return () => {
-      cancelled = true;
-      if (tokenRefreshInterval) clearInterval(tokenRefreshInterval);
-      cleanup.then(unsub => unsub?.());
-    };
-  }, [syncUserWithBackend]);
+  const snapshot = getSnapshot();
 
   const login = useCallback(async (email: string, password: string) => {
-    setError(null);
     try {
       await firebaseLogin(email, password);
     } catch (err: any) {
@@ -133,13 +140,11 @@ export function useAuth() {
         : err.code === "auth/invalid-credential" ? "Invalid email or password"
         : err.code === "auth/too-many-requests" ? "Too many attempts. Try again later."
         : "Login failed";
-      setError(msg);
       throw new Error(msg);
     }
   }, []);
 
   const register = useCallback(async (email: string, password: string, displayName?: string, inviteToken?: string, level?: number) => {
-    setError(null);
     try {
       await firebaseRegister(email, password);
       const token = await getIdToken();
@@ -158,7 +163,6 @@ export function useAuth() {
         : err.code === "auth/weak-password" ? "Password must be at least 6 characters"
         : err.code === "auth/invalid-email" ? "Invalid email address"
         : "Registration failed";
-      setError(msg);
       throw new Error(msg);
     }
   }, []);
@@ -166,27 +170,26 @@ export function useAuth() {
   const logout = useCallback(async () => {
     await firebaseLogout();
     globalToken = null;
-    setUser(null);
+    globalUser = null;
+    notifyListeners();
     queryClient.clear();
   }, [queryClient]);
 
   const resetPassword = useCallback(async (email: string) => {
-    setError(null);
     try {
       await firebaseResetPassword(email);
     } catch (err: any) {
       const msg = err.code === "auth/user-not-found" ? "No account found with this email"
         : "Password reset failed";
-      setError(msg);
       throw new Error(msg);
     }
   }, []);
 
   return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    error,
+    user: snapshot.user,
+    isLoading: snapshot.isLoading,
+    isAuthenticated: !!snapshot.user,
+    error: null as string | null,
     login,
     register,
     logout,

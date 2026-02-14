@@ -60,8 +60,13 @@ export default function LoginPage() {
     }
   }, [inviteInfo]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/dashboard");
+    }
+  }, [isAuthenticated, setLocation]);
+
   if (isAuthenticated) {
-    setLocation("/dashboard");
     return null;
   }
 
