@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { InviteDialog, CreateUserDialog } from "@/components/invite-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
@@ -148,6 +148,24 @@ interface CompDetailResponse {
   totalVotes: number;
   hosts: CompDetailHost[];
   contestants: CompDetailContestant[];
+}
+
+interface CalendarReportResponse {
+  competition: Competition;
+  totalVotes: number;
+  totalContestants: number;
+  totalRevenue: number;
+  totalPurchasedVotes: number;
+  totalPurchases: number;
+  leaderboard: {
+    rank: number;
+    contestantId: number;
+    talentProfileId: number;
+    displayName: string;
+    stageName: string | null;
+    voteCount: number;
+    votePercentage: number;
+  }[];
 }
 
 interface TalentUser {
@@ -747,6 +765,8 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [userDetailId, setUserDetailId] = useState<number | null>(null);
   const [userSearch, setUserSearch] = useState("");
   const [usersView, setUsersView] = useState<"users" | "applications">("users");
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [calendarSelectedComp, setCalendarSelectedComp] = useState<number | null>(null);
   const [compSearch, setCompSearch] = useState("");
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
   const [compPage, setCompPage] = useState(1);
@@ -814,6 +834,11 @@ export default function AdminDashboard({ user }: { user: any }) {
     return filteredHosts.slice(start, start + HOSTS_PER_PAGE);
   }, [filteredHosts, hostPage]);
   const { data: talentUsers, isLoading: usersLoading } = useQuery<TalentUser[]>({ queryKey: ["/api/admin/users"] });
+
+  const { data: calendarReport, isLoading: calendarReportLoading } = useQuery<CalendarReportResponse>({
+    queryKey: ["/api/admin/competitions", calendarSelectedComp, "report"],
+    enabled: calendarSelectedComp !== null,
+  });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -1215,6 +1240,9 @@ export default function AdminDashboard({ user }: { user: any }) {
             </TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-users">
               <Users className="h-4 w-4 mr-1" /> Users {pending.length > 0 && <Badge className="ml-1 bg-orange-500 text-white border-0 text-[10px] px-1.5 py-0">{pending.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-calendar">
+              <Calendar className="h-4 w-4 mr-1" /> Calendar
             </TabsTrigger>
           </TabsList>
 
@@ -2093,6 +2121,167 @@ export default function AdminDashboard({ user }: { user: any }) {
                 </>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            {(() => {
+              const year = calendarMonth.getFullYear();
+              const month = calendarMonth.getMonth();
+              const firstDay = new Date(year, month, 1).getDay();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const monthName = calendarMonth.toLocaleString("default", { month: "long", year: "numeric" });
+
+              const calendarComps = (competitions || []).filter((c) => {
+                if (!c.startDate && !c.endDate) return false;
+                const start = c.startDate ? new Date(c.startDate) : null;
+                const end = c.endDate ? new Date(c.endDate) : null;
+                if (start && start.getFullYear() === year && start.getMonth() === month) return true;
+                if (end && end.getFullYear() === year && end.getMonth() === month) return true;
+                if (start && end && start <= new Date(year, month + 1, 0) && end >= new Date(year, month, 1)) return true;
+                return false;
+              });
+
+              const getCompsForDay = (day: number) => {
+                const date = new Date(year, month, day);
+                return calendarComps.filter((c) => {
+                  const start = c.startDate ? new Date(c.startDate) : null;
+                  const end = c.endDate ? new Date(c.endDate) : null;
+                  if (start && end) return date >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) && date <= new Date(end.getFullYear(), end.getMonth(), end.getDate());
+                  if (start) return date.getDate() === start.getDate() && date.getMonth() === start.getMonth() && date.getFullYear() === start.getFullYear();
+                  if (end) return date.getDate() === end.getDate() && date.getMonth() === end.getMonth() && date.getFullYear() === end.getFullYear();
+                  return false;
+                });
+              };
+
+              const statusColor = (s: string) => s === "active" ? "bg-green-500" : s === "upcoming" ? "bg-blue-500" : s === "voting" ? "bg-orange-500" : "bg-zinc-500";
+              const days = [];
+              for (let i = 0; i < firstDay; i++) days.push(null);
+              for (let d = 1; d <= daysInMonth; d++) days.push(d);
+
+              return (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button size="icon" variant="ghost" onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} data-testid="button-calendar-prev">
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <h3 className="text-lg font-serif tracking-wider uppercase text-white min-w-[200px] text-center">{monthName}</h3>
+                      <Button size="icon" variant="ghost" onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} data-testid="button-calendar-next">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Button variant="ghost" onClick={() => setCalendarMonth(new Date())} className="text-xs text-white/50" data-testid="button-calendar-today">Today</Button>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs text-white/40">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Active</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Upcoming</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500 inline-block" /> Voting</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-500 inline-block" /> Other</span>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-px bg-white/5 rounded-md overflow-hidden">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                      <div key={d} className="bg-zinc-900 p-2 text-center text-xs font-semibold text-white/40 uppercase tracking-wider">{d}</div>
+                    ))}
+                    {days.map((day, i) => {
+                      const comps = day ? getCompsForDay(day) : [];
+                      const isToday = day && new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
+                      return (
+                        <div key={i} className={`bg-zinc-900/80 min-h-[90px] p-1.5 ${!day ? "bg-zinc-950/50" : ""} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""}`}>
+                          {day && (
+                            <>
+                              <span className={`text-xs ${isToday ? "text-orange-400 font-bold" : "text-white/40"}`}>{day}</span>
+                              <div className="mt-1 space-y-0.5">
+                                {comps.slice(0, 3).map((c) => (
+                                  <button
+                                    key={c.id}
+                                    onClick={() => setCalendarSelectedComp(calendarSelectedComp === c.id ? null : c.id)}
+                                    className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${calendarSelectedComp === c.id ? "bg-orange-500/30 text-orange-300" : "hover:bg-white/10 text-white/60"}`}
+                                    data-testid={`calendar-comp-${c.id}`}
+                                  >
+                                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${statusColor(c.status)}`} />
+                                    {c.title}
+                                  </button>
+                                ))}
+                                {comps.length > 3 && <span className="text-[9px] text-white/30 px-1">+{comps.length - 3} more</span>}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {calendarSelectedComp !== null && (
+                    <div className="rounded-md bg-white/5 border border-white/10 p-4 space-y-4">
+                      {calendarReportLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-orange-500 border-t-transparent" />
+                        </div>
+                      ) : calendarReport ? (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-lg font-serif text-white">{calendarReport.competition.title}</h4>
+                              <p className="text-xs text-white/40 mt-0.5">
+                                {calendarReport.competition.startDate && new Date(calendarReport.competition.startDate).toLocaleDateString()}
+                                {calendarReport.competition.endDate && ` - ${new Date(calendarReport.competition.endDate).toLocaleDateString()}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={`border-0 ${calendarReport.competition.status === "active" ? "bg-green-500/20 text-green-400" : calendarReport.competition.status === "upcoming" ? "bg-blue-500/20 text-blue-400" : calendarReport.competition.status === "voting" ? "bg-orange-500/20 text-orange-400" : "bg-zinc-500/20 text-zinc-400"}`}>
+                                {calendarReport.competition.status}
+                              </Badge>
+                              <Button size="icon" variant="ghost" onClick={() => setCalendarSelectedComp(null)} data-testid="button-close-calendar-detail">
+                                <XIcon className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-white/5 rounded-md p-3 text-center">
+                              <p className="text-2xl font-bold text-orange-400">{calendarReport.totalContestants}</p>
+                              <p className="text-[10px] text-white/40 uppercase tracking-wider mt-1">Contestants</p>
+                            </div>
+                            <div className="bg-white/5 rounded-md p-3 text-center">
+                              <p className="text-2xl font-bold text-orange-400">{calendarReport.totalVotes}</p>
+                              <p className="text-[10px] text-white/40 uppercase tracking-wider mt-1">Total Votes</p>
+                            </div>
+                            <div className="bg-white/5 rounded-md p-3 text-center">
+                              <p className="text-2xl font-bold text-orange-400">${(calendarReport.totalRevenue / 100).toFixed(2)}</p>
+                              <p className="text-[10px] text-white/40 uppercase tracking-wider mt-1">Revenue</p>
+                            </div>
+                          </div>
+
+                          {calendarReport.leaderboard.length > 0 && (
+                            <div>
+                              <h5 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Leaderboard</h5>
+                              <div className="space-y-1">
+                                {calendarReport.leaderboard.map((entry) => (
+                                  <div key={entry.contestantId} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-xs font-bold ${entry.rank <= 3 ? "text-orange-400" : "text-white/30"}`}>#{entry.rank}</span>
+                                      <span className="text-sm text-white/80">{entry.stageName || entry.displayName}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs">
+                                      <span className="text-white/50">{entry.voteCount} votes</span>
+                                      <span className="text-orange-400 font-medium">{entry.votePercentage}%</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-white/30 text-center py-4">No report data available.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </div>
