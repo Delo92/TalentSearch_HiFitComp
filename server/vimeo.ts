@@ -198,3 +198,57 @@ export function getVideoThumbnail(video: VimeoVideo, width: number = 640): strin
 export function getVideoEmbedUrl(video: VimeoVideo): string {
   return video.player_embed_url || "";
 }
+
+export async function getVimeoStorageUsage(): Promise<{
+  usedGB: number;
+  totalGB: number;
+  usedPercent: number;
+  totalVideos: number;
+  folders: Array<{ name: string; videoCount: number }>;
+}> {
+  let usedGB = 0;
+  let totalGB = 0;
+  let totalVideos = 0;
+  const folders: Array<{ name: string; videoCount: number }> = [];
+
+  try {
+    const userData = await vimeoRequest("/me?fields=upload_quota");
+    const quota = userData.upload_quota;
+    if (quota?.space) {
+      usedGB = Math.round(((quota.space.used || 0) / (1024 * 1024 * 1024)) * 100) / 100;
+      totalGB = Math.round(((quota.space.max || 0) / (1024 * 1024 * 1024)) * 100) / 100;
+    }
+
+    const root = await getHiFitCompFolder();
+    const listPath = `${root.uri}/items?type=folder&per_page=100`;
+    const data = await vimeoRequest(listPath);
+    const compFolders = data.data || [];
+
+    for (const compFolder of compFolders) {
+      const videoCount = compFolder.metadata?.connections?.videos?.total || 0;
+
+      let subVideoCount = videoCount;
+      try {
+        const subListPath = `${compFolder.uri}/items?type=folder&per_page=100`;
+        const subData = await vimeoRequest(subListPath);
+        for (const sub of subData.data || []) {
+          const subVids = sub.metadata?.connections?.videos?.total || 0;
+          subVideoCount += subVids;
+        }
+      } catch {}
+
+      totalVideos += subVideoCount;
+      folders.push({ name: compFolder.name, videoCount: subVideoCount });
+    }
+  } catch (err: any) {
+    console.error("Error getting Vimeo storage:", err.message);
+  }
+
+  return {
+    usedGB,
+    totalGB,
+    usedPercent: totalGB > 0 ? Math.round((usedGB / totalGB) * 10000) / 100 : 0,
+    totalVideos,
+    folders,
+  };
+}

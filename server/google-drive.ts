@@ -242,3 +242,84 @@ export function getDriveImageUrl(fileId: string): string {
 export function getDriveThumbnailUrl(fileId: string, size: number = 400): string {
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
 }
+
+export async function getDriveStorageUsage(): Promise<{
+  totalFiles: number;
+  totalSizeBytes: number;
+  totalSizeMB: number;
+  folders: Array<{ name: string; fileCount: number; sizeBytes: number; sizeMB: number }>;
+}> {
+  const drive = getDriveClient();
+  let totalFiles = 0;
+  let totalSizeBytes = 0;
+  const folders: Array<{ name: string; fileCount: number; sizeBytes: number; sizeMB: number }> = [];
+
+  try {
+    const rootId = await getHiFitCompFolder();
+    const compFoldersRes = await drive.files.list({
+      q: `'${rootId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: "files(id, name)",
+    });
+
+    for (const compFolder of compFoldersRes.data.files || []) {
+      let folderSize = 0;
+      let folderFiles = 0;
+
+      const allFilesInComp = await drive.files.list({
+        q: `'${compFolder.id}' in parents and trashed=false`,
+        fields: "files(id, mimeType, size)",
+        pageSize: 1000,
+      });
+
+      for (const item of allFilesInComp.data.files || []) {
+        if (item.mimeType === "application/vnd.google-apps.folder") {
+          const subFiles = await drive.files.list({
+            q: `'${item.id}' in parents and trashed=false`,
+            fields: "files(id, mimeType, size)",
+            pageSize: 1000,
+          });
+          for (const subItem of subFiles.data.files || []) {
+            if (subItem.mimeType === "application/vnd.google-apps.folder") {
+              const deepFiles = await drive.files.list({
+                q: `'${subItem.id}' in parents and trashed=false`,
+                fields: "files(size)",
+                pageSize: 1000,
+              });
+              for (const df of deepFiles.data.files || []) {
+                const sz = parseInt(df.size || "0");
+                folderSize += sz;
+                folderFiles++;
+              }
+            } else {
+              const sz = parseInt(subItem.size || "0");
+              folderSize += sz;
+              folderFiles++;
+            }
+          }
+        } else {
+          const sz = parseInt(item.size || "0");
+          folderSize += sz;
+          folderFiles++;
+        }
+      }
+
+      totalFiles += folderFiles;
+      totalSizeBytes += folderSize;
+      folders.push({
+        name: compFolder.name!,
+        fileCount: folderFiles,
+        sizeBytes: folderSize,
+        sizeMB: Math.round((folderSize / (1024 * 1024)) * 100) / 100,
+      });
+    }
+  } catch (err: any) {
+    console.error("Error calculating Drive storage:", err.message);
+  }
+
+  return {
+    totalFiles,
+    totalSizeBytes,
+    totalSizeMB: Math.round((totalSizeBytes / (1024 * 1024)) * 100) / 100,
+    folders,
+  };
+}

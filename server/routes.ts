@@ -36,6 +36,7 @@ import {
   getDriveThumbnailUrl,
   createCompetitionDriveFolder,
   createContestantDriveFolders,
+  getDriveStorageUsage,
 } from "./google-drive";
 import {
   listTalentVideos,
@@ -45,6 +46,7 @@ import {
   getVideoThumbnail,
   createCompetitionVimeoFolder,
   createContestantVimeoFolder,
+  getVimeoStorageUsage,
 } from "./vimeo";
 import { z } from "zod";
 import multer from "multer";
@@ -487,12 +489,33 @@ export async function registerRoutes(
     const existing = await storage.getContestant(compId, profile.id);
     if (existing) return res.status(400).json({ message: "Already applied to this competition" });
 
+    let autoApprove = false;
+    try {
+      const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+      autoApprove = settingsDoc.exists ? (settingsDoc.data()?.autoApproveApplications === true) : false;
+    } catch {}
+
+    const applicationStatus = autoApprove ? "approved" : "pending";
+
     const contestant = await storage.createContestant({
       competitionId: compId,
       talentProfileId: profile.id,
-      applicationStatus: "pending",
+      applicationStatus,
       appliedAt: new Date().toISOString(),
     });
+
+    if (autoApprove) {
+      try {
+        const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+        await Promise.all([
+          createContestantDriveFolders(comp.title, talentName),
+          createContestantVimeoFolder(comp.title, talentName),
+        ]);
+      } catch (folderErr: any) {
+        console.error("Auto-create contestant folders error (non-blocking):", folderErr.message);
+      }
+    }
+
     res.status(201).json(contestant);
   });
 
@@ -636,6 +659,22 @@ export async function registerRoutes(
     }
 
     const updated = await storage.updateContestantStatus(id, status);
+
+    if (status === "approved" && updated) {
+      try {
+        const profile = await storage.getTalentProfile(updated.talentProfileId);
+        if (profile && comp) {
+          const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+          await Promise.all([
+            createContestantDriveFolders(comp.title, talentName),
+            createContestantVimeoFolder(comp.title, talentName),
+          ]);
+        }
+      } catch (folderErr: any) {
+        console.error("Auto-create contestant folders error (non-blocking):", folderErr.message);
+      }
+    }
+
     res.json(updated);
   });
 
@@ -778,6 +817,25 @@ export async function registerRoutes(
     }
 
     res.json(updated);
+  });
+
+  app.get("/api/admin/storage", firebaseAuth, requireAdmin, async (_req, res) => {
+    try {
+      const [driveUsage, vimeoUsage] = await Promise.all([
+        getDriveStorageUsage().catch(err => {
+          console.error("Drive storage error:", err.message);
+          return { totalFiles: 0, totalSizeBytes: 0, totalSizeMB: 0, folders: [] };
+        }),
+        getVimeoStorageUsage().catch(err => {
+          console.error("Vimeo storage error:", err.message);
+          return { usedGB: 0, totalGB: 0, usedPercent: 0, totalVideos: 0, folders: [] };
+        }),
+      ]);
+      res.json({ drive: driveUsage, vimeo: vimeoUsage });
+    } catch (error: any) {
+      console.error("Storage usage error:", error);
+      res.status(500).json({ message: error.message || "Failed to get storage usage" });
+    }
   });
 
   app.get("/api/admin/stats", firebaseAuth, requireAdmin, async (_req, res) => {

@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HardDrive, RefreshCw, FolderOpen } from "lucide-react";
 import { InviteDialog, CreateUserDialog } from "@/components/invite-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
@@ -784,6 +784,10 @@ export default function AdminDashboard({ user }: { user: any }) {
 
   const { data: stats } = useQuery<AdminStats>({ queryKey: ["/api/admin/stats"] });
   const { data: competitions } = useQuery<CompetitionWithCreator[]>({ queryKey: ["/api/competitions"] });
+  const { data: storageData, isLoading: storageLoading, refetch: refetchStorage } = useQuery<any>({
+    queryKey: ["/api/admin/storage"],
+    staleTime: 60000,
+  });
 
   const compCategories = useMemo(() => {
     if (!competitions) return [];
@@ -1269,6 +1273,9 @@ export default function AdminDashboard({ user }: { user: any }) {
             </TabsTrigger>
             <TabsTrigger value="calendar" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-calendar">
               <Calendar className="h-4 w-4 mr-1" /> Calendar
+            </TabsTrigger>
+            <TabsTrigger value="storage" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-storage">
+              <HardDrive className="h-4 w-4 mr-1" /> Storage
             </TabsTrigger>
             <TabsTrigger value="settings" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-settings">
               <Settings className="h-4 w-4 mr-1" /> Settings
@@ -2339,6 +2346,128 @@ export default function AdminDashboard({ user }: { user: any }) {
                 </div>
               );
             })()}
+          </TabsContent>
+
+          <TabsContent value="storage">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h3 className="font-serif text-lg text-white flex items-center gap-2">
+                  <HardDrive className="h-5 w-5 text-orange-400" /> Storage Overview
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refetchStorage()}
+                  disabled={storageLoading}
+                  className="text-orange-400 text-xs"
+                  data-testid="button-refresh-storage"
+                >
+                  <RefreshCw className={`h-3 w-3 mr-1 ${storageLoading ? "animate-spin" : ""}`} /> Refresh
+                </Button>
+              </div>
+
+              {storageLoading && !storageData ? (
+                <div className="text-center py-12 text-white/40">Loading storage data...</div>
+              ) : storageData ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image className="h-5 w-5 text-blue-400" />
+                      <h4 className="text-xs uppercase tracking-widest text-blue-400 font-bold">Google Drive (Images)</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/[0.03] rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-white" data-testid="text-drive-total-files">{storageData.drive?.totalFiles || 0}</div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Total Files</div>
+                      </div>
+                      <div className="bg-white/[0.03] rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-white" data-testid="text-drive-total-size">
+                          {(storageData.drive?.totalSizeMB || 0) >= 1024
+                            ? `${(storageData.drive.totalSizeMB / 1024).toFixed(2)} GB`
+                            : `${storageData.drive?.totalSizeMB || 0} MB`}
+                        </div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Total Size</div>
+                      </div>
+                    </div>
+                    {storageData.drive?.folders?.length > 0 && (
+                      <div>
+                        <h5 className="text-[10px] text-white/30 uppercase tracking-wider mb-2">By Event</h5>
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {storageData.drive.folders.map((f: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between py-1 px-2 bg-white/[0.02] rounded text-sm">
+                              <span className="text-white/70 flex items-center gap-1.5 truncate">
+                                <FolderOpen className="h-3 w-3 text-blue-400/50 flex-shrink-0" /> {f.name}
+                              </span>
+                              <span className="text-white/40 text-xs flex-shrink-0 ml-2">
+                                {f.fileCount} files / {f.sizeMB >= 1024 ? `${(f.sizeMB / 1024).toFixed(1)} GB` : `${f.sizeMB} MB`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Video className="h-5 w-5 text-purple-400" />
+                      <h4 className="text-xs uppercase tracking-widest text-purple-400 font-bold">Vimeo (Videos)</h4>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white/[0.03] rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-white" data-testid="text-vimeo-total-videos">{storageData.vimeo?.totalVideos || 0}</div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Videos</div>
+                      </div>
+                      <div className="bg-white/[0.03] rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-white" data-testid="text-vimeo-used">
+                          {storageData.vimeo?.usedGB || 0} GB
+                        </div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Used</div>
+                      </div>
+                      <div className="bg-white/[0.03] rounded p-3 text-center">
+                        <div className="text-2xl font-bold text-white" data-testid="text-vimeo-total">
+                          {storageData.vimeo?.totalGB || 0} GB
+                        </div>
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider">Total</div>
+                      </div>
+                    </div>
+                    {storageData.vimeo?.totalGB > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-white/40">Storage Used</span>
+                          <span className={`font-bold ${storageData.vimeo.usedPercent > 80 ? "text-red-400" : storageData.vimeo.usedPercent > 60 ? "text-yellow-400" : "text-green-400"}`}>
+                            {storageData.vimeo.usedPercent}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-white/10 rounded-full h-2.5">
+                          <div
+                            className={`h-2.5 rounded-full transition-all ${storageData.vimeo.usedPercent > 80 ? "bg-red-500" : storageData.vimeo.usedPercent > 60 ? "bg-yellow-500" : "bg-green-500"}`}
+                            style={{ width: `${Math.min(storageData.vimeo.usedPercent, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {storageData.vimeo?.folders?.length > 0 && (
+                      <div>
+                        <h5 className="text-[10px] text-white/30 uppercase tracking-wider mb-2">By Event</h5>
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {storageData.vimeo.folders.map((f: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between py-1 px-2 bg-white/[0.02] rounded text-sm">
+                              <span className="text-white/70 flex items-center gap-1.5 truncate">
+                                <FolderOpen className="h-3 w-3 text-purple-400/50 flex-shrink-0" /> {f.name}
+                              </span>
+                              <span className="text-white/40 text-xs flex-shrink-0 ml-2">{f.videoCount} videos</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-white/40">No storage data available. Connect your Google Drive and Vimeo accounts to see usage.</div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="settings">
