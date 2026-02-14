@@ -64,6 +64,7 @@ export function useAuth() {
   useEffect(() => {
     let cancelled = false;
     let tokenRefreshInterval: ReturnType<typeof setInterval> | null = null;
+    let hasSynced = false;
 
     async function init() {
       await initFirebase();
@@ -76,7 +77,8 @@ export function useAuth() {
             const token = await firebaseUser.getIdToken();
             globalToken = token;
 
-            if (!user) {
+            if (!hasSynced) {
+              hasSynced = true;
               const userData = await syncUserWithBackend(token);
               if (!cancelled) {
                 setUser(userData);
@@ -93,6 +95,7 @@ export function useAuth() {
             }
           }
         } else {
+          hasSynced = false;
           if (!cancelled) {
             setUser(null);
             globalToken = null;

@@ -6,7 +6,7 @@ import { Trophy, Shield } from "lucide-react";
 import type { TalentProfile } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import TalentDashboard from "./talent-dashboard";
 import AdminDashboard from "./admin-dashboard";
 import HostDashboard from "./host-dashboard";
@@ -48,8 +48,7 @@ export default function Dashboard() {
   }
 
   if (!isAuthenticated || !user) {
-    setLocation("/login");
-    return null;
+    return <Redirect to="/login" />;
   }
 
   const isAdmin = profile?.role === "admin" || user.level >= 4;
