@@ -766,6 +766,7 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [userSearch, setUserSearch] = useState("");
   const [usersView, setUsersView] = useState<"users" | "applications">("users");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [calendarSelectedDay, setCalendarSelectedDay] = useState<number | null>(null);
   const [calendarSelectedComp, setCalendarSelectedComp] = useState<number | null>(null);
   const [compSearch, setCompSearch] = useState("");
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
@@ -2187,98 +2188,121 @@ export default function AdminDashboard({ user }: { user: any }) {
                     {days.map((day, i) => {
                       const comps = day ? getCompsForDay(day) : [];
                       const isToday = day && new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
+                      const isSelected = day !== null && calendarSelectedDay === day;
                       return (
-                        <div key={i} className={`bg-zinc-900/80 min-h-[90px] p-1.5 ${!day ? "bg-zinc-950/50" : ""} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""}`}>
+                        <button
+                          key={i}
+                          onClick={() => { if (day && comps.length > 0) { setCalendarSelectedDay(isSelected ? null : day); setCalendarSelectedComp(null); } }}
+                          disabled={!day || comps.length === 0}
+                          className={`bg-zinc-900/80 min-h-[60px] p-2 text-left transition-colors ${!day ? "bg-zinc-950/50 cursor-default" : comps.length > 0 ? "cursor-pointer hover:bg-white/5" : "cursor-default"} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""} ${isSelected ? "bg-orange-500/10" : ""}`}
+                          data-testid={day ? `calendar-day-${day}` : undefined}
+                        >
                           {day && (
-                            <>
-                              <span className={`text-xs ${isToday ? "text-orange-400 font-bold" : "text-white/40"}`}>{day}</span>
-                              <div className="mt-1 space-y-0.5">
-                                {comps.slice(0, 3).map((c) => (
-                                  <button
-                                    key={c.id}
-                                    onClick={() => setCalendarSelectedComp(calendarSelectedComp === c.id ? null : c.id)}
-                                    className={`w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate ${calendarSelectedComp === c.id ? "bg-orange-500/30 text-orange-300" : "hover:bg-white/10 text-white/60"}`}
-                                    data-testid={`calendar-comp-${c.id}`}
-                                  >
-                                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${statusColor(c.status)}`} />
-                                    {c.title}
-                                  </button>
-                                ))}
-                                {comps.length > 3 && <span className="text-[9px] text-white/30 px-1">+{comps.length - 3} more</span>}
-                              </div>
-                            </>
+                            <div className="flex flex-col items-start gap-1">
+                              <span className={`text-xs ${isToday ? "text-orange-400 font-bold" : isSelected ? "text-orange-300" : "text-white/40"}`}>{day}</span>
+                              {comps.length > 0 && (
+                                <div className="flex items-center gap-0.5 flex-wrap">
+                                  {comps.map((c) => (
+                                    <span key={c.id} className={`w-2 h-2 rounded-full ${statusColor(c.status)}`} title={c.title} />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           )}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
 
-                  {calendarSelectedComp !== null && (
-                    <div className="rounded-md bg-white/5 border border-white/10 p-4 space-y-4">
-                      {calendarReportLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-orange-500 border-t-transparent" />
+                  {calendarSelectedDay !== null && (() => {
+                    const dayComps = getCompsForDay(calendarSelectedDay);
+                    if (dayComps.length === 0) return null;
+                    const dateLabel = new Date(year, month, calendarSelectedDay).toLocaleDateString("default", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+                    return (
+                      <div className="rounded-md bg-white/5 border border-white/10 p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-serif text-white/70">{dateLabel}</h4>
+                          <Button size="icon" variant="ghost" onClick={() => { setCalendarSelectedDay(null); setCalendarSelectedComp(null); }} data-testid="button-close-calendar-day">
+                            <XIcon className="h-4 w-4" />
+                          </Button>
                         </div>
-                      ) : calendarReport ? (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-lg font-serif text-white">{calendarReport.competition.title}</h4>
-                              <p className="text-xs text-white/40 mt-0.5">
-                                {calendarReport.competition.startDate && new Date(calendarReport.competition.startDate).toLocaleDateString()}
-                                {calendarReport.competition.endDate && ` - ${new Date(calendarReport.competition.endDate).toLocaleDateString()}`}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className={`border-0 ${calendarReport.competition.status === "active" ? "bg-green-500/20 text-green-400" : calendarReport.competition.status === "upcoming" ? "bg-blue-500/20 text-blue-400" : calendarReport.competition.status === "voting" ? "bg-orange-500/20 text-orange-400" : "bg-zinc-500/20 text-zinc-400"}`}>
-                                {calendarReport.competition.status}
-                              </Badge>
-                              <Button size="icon" variant="ghost" onClick={() => setCalendarSelectedComp(null)} data-testid="button-close-calendar-detail">
-                                <XIcon className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
+                        <div className="space-y-2">
+                          {dayComps.map((c) => (
+                            <div key={c.id}>
+                              <button
+                                onClick={() => setCalendarSelectedComp(calendarSelectedComp === c.id ? null : c.id)}
+                                className={`w-full flex items-center justify-between rounded-md px-3 py-2.5 transition-colors ${calendarSelectedComp === c.id ? "bg-orange-500/15 ring-1 ring-orange-500/30" : "bg-white/5 hover:bg-white/10"}`}
+                                data-testid={`calendar-comp-${c.id}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor(c.status)}`} />
+                                  <span className="text-sm text-white/80">{c.title}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge className={`border-0 text-[10px] ${c.status === "active" ? "bg-green-500/20 text-green-400" : c.status === "upcoming" ? "bg-blue-500/20 text-blue-400" : c.status === "voting" ? "bg-orange-500/20 text-orange-400" : "bg-zinc-500/20 text-zinc-400"}`}>
+                                    {c.status}
+                                  </Badge>
+                                  {calendarSelectedComp === c.id ? <ChevronUp className="h-3 w-3 text-white/30" /> : <ChevronDown className="h-3 w-3 text-white/30" />}
+                                </div>
+                              </button>
 
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="bg-white/5 rounded-md p-3 text-center">
-                              <p className="text-2xl font-bold text-orange-400">{calendarReport.totalContestants}</p>
-                              <p className="text-[10px] text-white/40 uppercase tracking-wider mt-1">Contestants</p>
-                            </div>
-                            <div className="bg-white/5 rounded-md p-3 text-center">
-                              <p className="text-2xl font-bold text-orange-400">{calendarReport.totalVotes}</p>
-                              <p className="text-[10px] text-white/40 uppercase tracking-wider mt-1">Total Votes</p>
-                            </div>
-                            <div className="bg-white/5 rounded-md p-3 text-center">
-                              <p className="text-2xl font-bold text-orange-400">${(calendarReport.totalRevenue / 100).toFixed(2)}</p>
-                              <p className="text-[10px] text-white/40 uppercase tracking-wider mt-1">Revenue</p>
-                            </div>
-                          </div>
-
-                          {calendarReport.leaderboard.length > 0 && (
-                            <div>
-                              <h5 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Leaderboard</h5>
-                              <div className="space-y-1">
-                                {calendarReport.leaderboard.map((entry) => (
-                                  <div key={entry.contestantId} className="flex items-center justify-between bg-white/5 rounded px-3 py-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className={`text-xs font-bold ${entry.rank <= 3 ? "text-orange-400" : "text-white/30"}`}>#{entry.rank}</span>
-                                      <span className="text-sm text-white/80">{entry.stageName || entry.displayName}</span>
+                              {calendarSelectedComp === c.id && (
+                                <div className="mt-2 ml-4 space-y-3">
+                                  {calendarReportLoading ? (
+                                    <div className="flex items-center justify-center py-6">
+                                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-orange-500 border-t-transparent" />
                                     </div>
-                                    <div className="flex items-center gap-3 text-xs">
-                                      <span className="text-white/50">{entry.voteCount} votes</span>
-                                      <span className="text-orange-400 font-medium">{entry.votePercentage}%</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                                  ) : calendarReport ? (
+                                    <>
+                                      <div className="text-xs text-white/40">
+                                        {calendarReport.competition.startDate && new Date(calendarReport.competition.startDate).toLocaleDateString()}
+                                        {calendarReport.competition.endDate && ` — ${new Date(calendarReport.competition.endDate).toLocaleDateString()}`}
+                                      </div>
+                                      <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-white/5 rounded-md p-2.5 text-center">
+                                          <p className="text-xl font-bold text-orange-400">{calendarReport.totalContestants}</p>
+                                          <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Contestants</p>
+                                        </div>
+                                        <div className="bg-white/5 rounded-md p-2.5 text-center">
+                                          <p className="text-xl font-bold text-orange-400">{calendarReport.totalVotes}</p>
+                                          <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Total Votes</p>
+                                        </div>
+                                        <div className="bg-white/5 rounded-md p-2.5 text-center">
+                                          <p className="text-xl font-bold text-orange-400">${(calendarReport.totalRevenue / 100).toFixed(2)}</p>
+                                          <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Revenue</p>
+                                        </div>
+                                      </div>
+                                      {calendarReport.leaderboard.length > 0 && (
+                                        <div>
+                                          <h5 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Leaderboard</h5>
+                                          <div className="space-y-1">
+                                            {calendarReport.leaderboard.map((entry) => (
+                                              <div key={entry.contestantId} className="flex items-center justify-between bg-white/5 rounded px-3 py-1.5">
+                                                <div className="flex items-center gap-2">
+                                                  <span className={`text-xs font-bold ${entry.rank <= 3 ? "text-orange-400" : "text-white/30"}`}>#{entry.rank}</span>
+                                                  <span className="text-sm text-white/80">{entry.stageName || entry.displayName}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs">
+                                                  <span className="text-white/50">{entry.voteCount} votes</span>
+                                                  <span className="text-orange-400 font-medium">{entry.votePercentage}%</span>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-white/30 text-center py-3">No report data available.</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-sm text-white/30 text-center py-4">No report data available.</p>
-                      )}
-                    </div>
-                  )}
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
