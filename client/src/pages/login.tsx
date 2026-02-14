@@ -157,7 +157,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {mode === "register" && !inviteToken && (
+          {(mode === "login" || (mode === "register" && !inviteToken)) && (
             <div>
               <Label className="text-white/60 uppercase text-xs tracking-wider">
                 Account Type
@@ -174,21 +174,26 @@ export default function LoginPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a1a1a] border-white/20">
                   <SelectItem value="1" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-viewer">
-                    Viewer - Vote on competitions
+                    Viewer
                   </SelectItem>
                   <SelectItem value="2" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-talent">
-                    Talent - Compete in events
+                    Talent / Competitor
                   </SelectItem>
                   <SelectItem value="3" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-host">
-                    Host - Create & manage events
+                    Host
+                  </SelectItem>
+                  <SelectItem value="4" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-admin">
+                    Admin
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-white/30 text-xs mt-1.5">
-                {selectedLevel === 1 && "Browse and vote on your favorite contestants"}
-                {selectedLevel === 2 && "Create a talent profile and apply to competitions"}
-                {selectedLevel === 3 && "Organize and manage your own competitions"}
-              </p>
+              {mode === "register" && (
+                <p className="text-white/30 text-xs mt-1.5">
+                  {selectedLevel === 1 && "Browse and vote on your favorite contestants"}
+                  {selectedLevel === 2 && "Create a talent profile and apply to competitions"}
+                  {selectedLevel === 3 && "Organize and manage your own competitions"}
+                </p>
+              )}
             </div>
           )}
 
