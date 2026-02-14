@@ -2435,49 +2435,29 @@ export default function AdminDashboard({ user }: { user: any }) {
                       };
 
                       return (
-                        <div className="mt-5 pt-5 border-t border-white/10 space-y-4">
+                        <div className="mt-5 pt-5 border-t border-white/10 space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Vote Packages</h4>
                             <Button variant="ghost" size="sm" onClick={addVotePkg} className="text-orange-400 text-xs" data-testid="button-add-vote-package">
                               <Plus className="h-3 w-3 mr-1" /> Add Package
                             </Button>
                           </div>
-                          <p className="text-[10px] text-white/25">Bulk vote packages with bonus votes. Buyers get base votes + bonus votes for better value.</p>
-                          <div className="space-y-4">
+                          <div className="hidden lg:grid grid-cols-[1fr_80px_80px_70px_80px_32px] gap-2 px-2 text-[10px] text-white/30 uppercase tracking-wider">
+                            <span>Name</span><span>Votes</span><span>Bonus</span><span>Price</span><span>Total</span><span></span>
+                          </div>
+                          <div className="space-y-2">
                             {votePackages.map((vpkg: any, idx: number) => (
-                              <div key={idx} className="rounded-md bg-white/[0.03] border border-white/5 p-4 space-y-3" data-testid={`vote-package-${idx}`}>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-white/60">Tier {idx + 1}</span>
-                                  {votePackages.length > 1 && (
-                                    <Button variant="ghost" size="icon" onClick={() => removeVotePkg(idx)} className="text-red-400/60" data-testid={`button-remove-vote-package-${idx}`}>
-                                      <XIcon className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                                  <div>
-                                    <Label className="text-white/40 text-[10px]">Name</Label>
-                                    <Input value={vpkg.name} onChange={(e) => updateVotePkg(idx, "name", e.target.value)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-name-${idx}`} />
-                                  </div>
-                                  <div>
-                                    <Label className="text-white/40 text-[10px]">Base Votes</Label>
-                                    <Input type="number" value={vpkg.voteCount} onChange={(e) => updateVotePkg(idx, "voteCount", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-count-${idx}`} />
-                                  </div>
-                                  <div>
-                                    <Label className="text-white/40 text-[10px]">Bonus Votes</Label>
-                                    <Input type="number" value={vpkg.bonusVotes} onChange={(e) => updateVotePkg(idx, "bonusVotes", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-bonus-${idx}`} />
-                                  </div>
-                                  <div>
-                                    <Label className="text-white/40 text-[10px]">Price ($)</Label>
-                                    <Input type="number" step="0.01" value={vpkg.price} onChange={(e) => updateVotePkg(idx, "price", parseFloat(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-vote-pkg-price-${idx}`} />
-                                  </div>
-                                  <div>
-                                    <Label className="text-white/40 text-[10px]">Total Votes</Label>
-                                    <div className="bg-white/[0.04] border border-white/10 rounded-md px-3 py-2 text-sm text-orange-400 font-bold">
-                                      {((vpkg.voteCount || 0) + (vpkg.bonusVotes || 0)).toLocaleString()}
-                                    </div>
-                                  </div>
-                                </div>
+                              <div key={idx} className="rounded-md bg-white/[0.03] border border-white/5 px-2 py-2 grid grid-cols-2 lg:grid-cols-[1fr_80px_80px_70px_80px_32px] gap-2 items-center" data-testid={`vote-package-${idx}`}>
+                                <Input value={vpkg.name} onChange={(e) => updateVotePkg(idx, "name", e.target.value)} className="bg-white/[0.08] border-white/20 text-white text-sm col-span-2 lg:col-span-1" placeholder="Name" data-testid={`input-vote-pkg-name-${idx}`} />
+                                <Input type="number" value={vpkg.voteCount} onChange={(e) => updateVotePkg(idx, "voteCount", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white text-sm" placeholder="Votes" data-testid={`input-vote-pkg-count-${idx}`} />
+                                <Input type="number" value={vpkg.bonusVotes} onChange={(e) => updateVotePkg(idx, "bonusVotes", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white text-sm" placeholder="Bonus" data-testid={`input-vote-pkg-bonus-${idx}`} />
+                                <Input type="number" step="0.01" value={vpkg.price} onChange={(e) => updateVotePkg(idx, "price", parseFloat(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white text-sm" placeholder="$" data-testid={`input-vote-pkg-price-${idx}`} />
+                                <span className="text-sm text-orange-400 font-bold text-center">{((vpkg.voteCount || 0) + (vpkg.bonusVotes || 0)).toLocaleString()}</span>
+                                {votePackages.length > 1 ? (
+                                  <Button variant="ghost" size="icon" onClick={() => removeVotePkg(idx)} className="text-red-400/60 h-7 w-7" data-testid={`button-remove-vote-package-${idx}`}>
+                                    <XIcon className="h-3 w-3" />
+                                  </Button>
+                                ) : <span />}
                               </div>
                             ))}
                           </div>
