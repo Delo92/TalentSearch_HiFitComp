@@ -18,7 +18,7 @@ export default function Dashboard() {
 
   const { data: profile, isLoading: profileLoading } = useQuery<TalentProfile | null>({
     queryKey: ["/api/talent-profiles/me"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !authLoading,
   });
 
   const adminSetupMutation = useMutation({

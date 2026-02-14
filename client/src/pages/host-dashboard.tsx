@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign, Pencil, Save } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign, Pencil, Save, ImageUp } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
@@ -317,6 +317,31 @@ export default function HostDashboard({ user }: { user: any }) {
     },
   });
 
+  const coverUploadMutation = useMutation({
+    mutationFn: async ({ id, file }: { id: number; file: File }) => {
+      const formData = new FormData();
+      formData.append("cover", file);
+      const { getAuthToken } = await import("@/hooks/use-auth");
+      const token = getAuthToken();
+      const res = await fetch(`/api/host/competitions/${id}/cover`, {
+        method: "PUT",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Upload failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
+      toast({ title: "Cover image updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to upload cover", description: err.message, variant: "destructive" });
+    },
+  });
 
   const eventPackages = platformSettings?.eventPackages || [
     { name: "Starter", price: 49, maxEvents: 1, description: "Perfect for your first competition" },
@@ -650,6 +675,45 @@ export default function HostDashboard({ user }: { user: any }) {
                             rows={3}
                             data-testid={`edit-desc-${comp.id}`}
                           />
+                        </div>
+                        <div>
+                          <Label className="text-white/50 text-xs">Cover Image / Thumbnail</Label>
+                          <div className="flex flex-wrap items-center gap-3 mt-1">
+                            {(comp.coverImage || comp.coverVideo) && (
+                              <div className="relative w-24 h-16 rounded-md overflow-hidden border border-white/10">
+                                {comp.coverVideo ? (
+                                  <video src={comp.coverVideo} muted className="w-full h-full object-cover" />
+                                ) : (
+                                  <img src={comp.coverImage!} alt="Cover" className="w-full h-full object-cover" />
+                                )}
+                              </div>
+                            )}
+                            <input
+                              id={`cover-input-${comp.id}`}
+                              type="file"
+                              accept="image/*,video/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  coverUploadMutation.mutate({ id: comp.id, file });
+                                }
+                                e.target.value = "";
+                              }}
+                              data-testid={`edit-cover-input-${comp.id}`}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => document.getElementById(`cover-input-${comp.id}`)?.click()}
+                              disabled={coverUploadMutation.isPending}
+                              className="text-xs text-white/60 border border-white/10"
+                              data-testid={`edit-cover-btn-${comp.id}`}
+                            >
+                              <ImageUp className="h-3.5 w-3.5 mr-1" />
+                              {coverUploadMutation.isPending ? "Uploading..." : comp.coverImage || comp.coverVideo ? "Change Cover" : "Upload Cover"}
+                            </Button>
+                          </div>
                         </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => { setEditingCompId(null); setEditForm({}); }} className="text-white/50" data-testid={`edit-cancel-${comp.id}`}>

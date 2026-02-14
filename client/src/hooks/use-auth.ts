@@ -10,6 +10,7 @@ import {
   getIdToken,
   getFirebaseAuth,
 } from "@/lib/firebase";
+import { queryClient as globalQueryClient } from "@/lib/queryClient";
 
 export interface AuthUser {
   uid: string;
@@ -51,6 +52,7 @@ function setCachedUser(user: AuthUser | null) {
 }
 
 let globalToken: string | null = null;
+let hasInvalidatedAfterRestore = false;
 
 export function getAuthToken(): string | null {
   return globalToken;
@@ -59,7 +61,7 @@ export function getAuthToken(): string | null {
 export function useAuth() {
   const cached = getCachedUser();
   const [user, setUser] = useState<AuthUser | null>(cached);
-  const [isLoading, setIsLoading] = useState(!cached);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -105,6 +107,10 @@ export function useAuth() {
                 setUser(userData);
                 setCachedUser(userData);
                 setIsLoading(false);
+                if (!hasInvalidatedAfterRestore) {
+                  hasInvalidatedAfterRestore = true;
+                  globalQueryClient.invalidateQueries();
+                }
               }
             } else {
               if (!cancelled) setIsLoading(false);
@@ -193,6 +199,7 @@ export function useAuth() {
   const logout = useCallback(async () => {
     setCachedUser(null);
     globalToken = null;
+    hasInvalidatedAfterRestore = false;
     setUser(null);
     await firebaseLogout();
     queryClient.clear();

@@ -654,6 +654,47 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.put("/api/host/competitions/:id/cover", firebaseAuth, requireHost, compCoverUpload.single("cover"), async (req, res) => {
+    try {
+      const { uid } = req.firebaseUser!;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+      const comp = await storage.getCompetition(id);
+      if (!comp || comp.createdBy !== uid) {
+        return res.status(403).json({ message: "Not your competition" });
+      }
+
+      if (!req.file) return res.status(400).json({ message: "No file provided" });
+
+      const filePath = path.join(compCoversDir, req.file.filename);
+      const isVideo = isVideoFile(req.file.originalname);
+
+      if (isVideo) {
+        const duration = await getVideoDuration(filePath);
+        if (duration > 30) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({ message: `Video must be 30 seconds or less. Uploaded video is ${Math.round(duration)} seconds.` });
+        }
+      }
+
+      const url = `/uploads/covers/${req.file.filename}`;
+      const updateData: any = {};
+      if (isVideo) {
+        updateData.coverVideo = url;
+      } else {
+        updateData.coverImage = url;
+      }
+
+      const updated = await storage.updateCompetition(id, updateData);
+      if (!updated) return res.status(404).json({ message: "Competition not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Host cover upload error:", error);
+      res.status(500).json({ message: "Failed to upload cover" });
+    }
+  });
+
   app.delete("/api/host/competitions/:id", firebaseAuth, requireHost, async (req, res) => {
     const { uid } = req.firebaseUser!;
     const id = parseInt(req.params.id);
