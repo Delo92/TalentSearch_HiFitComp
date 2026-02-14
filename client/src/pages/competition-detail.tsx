@@ -34,6 +34,7 @@ interface CompetitionDetail {
   description: string | null;
   category: string;
   coverImage: string | null;
+  coverVideo: string | null;
   status: string;
   voteCost: number;
   maxVotesPerDay: number;
@@ -106,7 +107,7 @@ export default function CompetitionDetailPage() {
 
       <section className="relative h-[270px] md:h-[340px] overflow-hidden">
         {(() => {
-          const headerMedia = competition.coverImage ? { url: competition.coverImage, type: "image" as const } : getMedia("competition_detail_header", "/images/template/breadcumb3.jpg");
+          const headerMedia = competition.coverVideo ? { url: competition.coverVideo, type: "video" as const } : competition.coverImage ? { url: competition.coverImage, type: "image" as const } : getMedia("competition_detail_header", "/images/template/breadcumb3.jpg");
           return headerMedia.type === "video" ? (
             <video src={headerMedia.url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
           ) : (

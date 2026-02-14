@@ -33,6 +33,7 @@ interface HostCompetition {
   description: string | null;
   category: string;
   coverImage: string | null;
+  coverVideo: string | null;
   status: string;
   voteCost: number;
   maxVotesPerDay: number;
@@ -445,10 +446,13 @@ export default function HostDashboard({ user }: { user: any }) {
                   <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 overflow-hidden" data-testid={`event-card-${comp.id}`}>
                     <div
                       className="relative h-[200px] bg-gradient-to-b from-orange-900/40 to-black"
-                      style={comp.coverImage ? { backgroundImage: `url(${comp.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                      style={comp.coverImage && !comp.coverVideo ? { backgroundImage: `url(${comp.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
                     >
+                      {comp.coverVideo && (
+                        <video src={comp.coverVideo} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-                      {!comp.coverImage && (
+                      {!comp.coverImage && !comp.coverVideo && (
                         <div className="absolute inset-0 flex items-center justify-center opacity-20">
                           <Trophy className="h-16 w-16 text-white" />
                         </div>

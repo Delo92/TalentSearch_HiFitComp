@@ -3,13 +3,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Users, Search, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import type { Competition } from "@shared/schema";
+
+type CompetitionExt = Competition & { coverVideo?: string | null };
 import { useState } from "react";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 
 export default function Competitions() {
-  const { data: competitions, isLoading } = useQuery<Competition[]>({
+  const { data: competitions, isLoading } = useQuery<CompetitionExt[]>({
     queryKey: ["/api/competitions"],
   });
   const [filter, setFilter] = useState("all");
@@ -89,7 +91,7 @@ export default function Competitions() {
   );
 }
 
-function CompetitionCard({ competition }: { competition: Competition }) {
+function CompetitionCard({ competition }: { competition: CompetitionExt }) {
   const { getImage } = useLivery();
   return (
     <div
@@ -98,12 +100,23 @@ function CompetitionCard({ competition }: { competition: Competition }) {
     >
       <Link href={`/competition/${competition.id}`}>
         <div className="cursor-pointer">
-          <div className="overflow-hidden">
-            <img
-              src={competition.coverImage || getImage("competition_card_fallback", "/images/template/e1.jpg")}
-              alt={competition.title}
-              className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-105"
-            />
+          <div className="overflow-hidden relative h-52">
+            {competition.coverVideo ? (
+              <video
+                src={competition.coverVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            ) : (
+              <img
+                src={competition.coverImage || getImage("competition_card_fallback", "/images/template/e1.jpg")}
+                alt={competition.title}
+                className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            )}
           </div>
           <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-6 px-4 transition-all duration-500">
             <h4

@@ -61,11 +61,15 @@ export interface FirestoreCompetition {
   description: string | null;
   category: string;
   coverImage: string | null;
+  coverVideo: string | null;
   status: string;
   voteCost: number;
   maxVotesPerDay: number;
   startDate: string | null;
   endDate: string | null;
+  votingStartDate: string | null;
+  votingEndDate: string | null;
+  expectedContestants: number | null;
   createdAt: string | null;
   createdBy: string | null;
 }

@@ -55,6 +55,32 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+const compCoversDir = path.resolve(process.cwd(), "client/public/uploads/covers");
+if (!fs.existsSync(compCoversDir)) {
+  fs.mkdirSync(compCoversDir, { recursive: true });
+}
+
+const compCoverUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, compCoversDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+      cb(null, name);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedImages = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+    const allowedVideos = /\.(mp4|webm|mov)$/i;
+    if (allowedImages.test(path.extname(file.originalname)) || allowedVideos.test(path.extname(file.originalname))) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image and video files are allowed"));
+    }
+  },
+});
+
 const liveryUpload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -370,6 +396,7 @@ export async function registerRoutes(
       ...parsed.data,
       description: parsed.data.description || null,
       coverImage: parsed.data.coverImage || null,
+      coverVideo: null,
       startDate: parsed.data.startDate || null,
       endDate: parsed.data.endDate || null,
       votingStartDate: parsed.data.votingStartDate || null,
@@ -894,6 +921,61 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Assign host error:", error);
       res.status(500).json({ message: "Failed to assign host" });
+    }
+  });
+
+  app.put("/api/admin/competitions/:id/cover", firebaseAuth, requireAdmin, compCoverUpload.single("cover"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+      if (!req.file) return res.status(400).json({ message: "No file provided" });
+
+      const filePath = path.join(compCoversDir, req.file.filename);
+      const isVideo = isVideoFile(req.file.originalname);
+
+      if (isVideo) {
+        const duration = await getVideoDuration(filePath);
+        if (duration > 30) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({ message: `Video must be 30 seconds or less. Uploaded video is ${Math.round(duration)} seconds.` });
+        }
+      }
+
+      const url = `/uploads/covers/${req.file.filename}`;
+      const updateData: any = {};
+      if (isVideo) {
+        updateData.coverVideo = url;
+      } else {
+        updateData.coverImage = url;
+      }
+
+      const updated = await storage.updateCompetition(id, updateData);
+      if (!updated) return res.status(404).json({ message: "Competition not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Cover upload error:", error);
+      res.status(500).json({ message: "Failed to upload cover" });
+    }
+  });
+
+  app.delete("/api/admin/competitions/:id/cover", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+      const { type } = req.query;
+      const updateData: any = {};
+      if (type === "video") {
+        updateData.coverVideo = null;
+      } else {
+        updateData.coverImage = null;
+      }
+      const updated = await storage.updateCompetition(id, updateData);
+      if (!updated) return res.status(404).json({ message: "Competition not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Cover delete error:", error);
+      res.status(500).json({ message: "Failed to remove cover" });
     }
   });
 

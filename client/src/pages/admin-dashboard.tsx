@@ -22,7 +22,7 @@ import type { Competition, SiteLivery } from "@shared/schema";
 import { useState, useRef, useMemo } from "react";
 import { useAuth, getAuthToken } from "@/hooks/use-auth";
 
-type CompetitionWithCreator = Competition & { createdBy?: string | null };
+type CompetitionWithCreator = Competition & { createdBy?: string | null; coverVideo?: string | null };
 
 interface AdminStats {
   totalCompetitions: number;
@@ -903,6 +903,48 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
   });
 
+  const coverInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  const uploadCoverMutation = useMutation({
+    mutationFn: async ({ compId, file }: { compId: number; file: File }) => {
+      const formData = new FormData();
+      formData.append("cover", file);
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/admin/competitions/${compId}/cover`, {
+        method: "PUT",
+        body: formData,
+        headers,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Upload failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      toast({ title: "Cover updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const removeCoverMutation = useMutation({
+    mutationFn: async ({ compId, type }: { compId: number; type: "image" | "video" }) => {
+      await apiRequest("DELETE", `/api/admin/competitions/${compId}/cover?type=${type}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      toast({ title: "Cover removed!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const resetLiveryMutation = useMutation({
     mutationFn: async (imageKey: string) => {
       await apiRequest("DELETE", `/api/admin/livery/${imageKey}`);
@@ -1207,15 +1249,59 @@ export default function AdminDashboard({ user }: { user: any }) {
               {paginatedComps.map((comp) => (
                 <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 overflow-visible" data-testid={`admin-comp-${comp.id}`}>
                   <div
-                    className="relative h-[200px] rounded-t-md flex flex-col justify-end"
-                    style={comp.coverImage ? { backgroundImage: `url(${comp.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                    className="group relative h-[200px] rounded-t-md flex flex-col justify-end"
+                    style={comp.coverImage && !comp.coverVideo ? { backgroundImage: `url(${comp.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
                   >
-                    {!comp.coverImage && (
+                    {comp.coverVideo && (
+                      <video
+                        src={comp.coverVideo}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover rounded-t-md"
+                      />
+                    )}
+                    {!comp.coverImage && !comp.coverVideo && (
                       <div className="absolute inset-0 rounded-t-md bg-gradient-to-b from-orange-900/40 to-black flex items-center justify-center">
                         <Trophy className="h-16 w-16 text-white/10" />
                       </div>
                     )}
                     <div className="absolute inset-0 rounded-t-md bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                    <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <input
+                        type="file"
+                        accept="image/*,video/mp4,video/webm,video/quicktime"
+                        className="hidden"
+                        ref={(el) => { coverInputRefs.current[comp.id] = el; }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadCoverMutation.mutate({ compId: comp.id, file });
+                          e.target.value = "";
+                        }}
+                        data-testid={`input-cover-upload-${comp.id}`}
+                      />
+                      <Button
+                        size="icon"
+                        onClick={() => coverInputRefs.current[comp.id]?.click()}
+                        disabled={uploadCoverMutation.isPending}
+                        className="bg-black/60 border-0 text-white/80"
+                        data-testid={`button-upload-cover-${comp.id}`}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                      {(comp.coverImage || comp.coverVideo) && (
+                        <Button
+                          size="icon"
+                          onClick={() => removeCoverMutation.mutate({ compId: comp.id, type: comp.coverVideo ? "video" : "image" })}
+                          disabled={removeCoverMutation.isPending}
+                          className="bg-black/60 border-0 text-red-400"
+                          data-testid={`button-remove-cover-${comp.id}`}
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     <div className="relative z-10 p-4">
                       <h3 className="font-bold text-lg text-white drop-shadow-md">{comp.title}</h3>
                       <div className="flex flex-wrap items-center gap-3 mt-1">
