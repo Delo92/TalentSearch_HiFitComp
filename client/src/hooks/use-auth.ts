@@ -30,6 +30,26 @@ export interface AuthUser {
   profileRole: string | null;
 }
 
+const AUTH_CACHE_KEY = "hifitcomp_auth_user";
+
+function getCachedUser(): AuthUser | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function setCachedUser(user: AuthUser | null) {
+  try {
+    if (user) {
+      sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(user));
+    } else {
+      sessionStorage.removeItem(AUTH_CACHE_KEY);
+    }
+  } catch {}
+}
+
 let globalToken: string | null = null;
 
 export function getAuthToken(): string | null {
@@ -37,8 +57,9 @@ export function getAuthToken(): string | null {
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const cached = getCachedUser();
+  const [user, setUser] = useState<AuthUser | null>(cached);
+  const [isLoading, setIsLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -82,6 +103,7 @@ export function useAuth() {
               const userData = await syncUserWithBackend(token);
               if (!cancelled) {
                 setUser(userData);
+                setCachedUser(userData);
                 setIsLoading(false);
               }
             } else {
@@ -90,6 +112,7 @@ export function useAuth() {
           } catch {
             if (!cancelled) {
               setUser(null);
+              setCachedUser(null);
               globalToken = null;
               setIsLoading(false);
             }
@@ -98,6 +121,7 @@ export function useAuth() {
           hasSynced = false;
           if (!cancelled) {
             setUser(null);
+            setCachedUser(null);
             globalToken = null;
             setIsLoading(false);
           }
@@ -167,9 +191,10 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(async () => {
-    await firebaseLogout();
+    setCachedUser(null);
     globalToken = null;
     setUser(null);
+    await firebaseLogout();
     queryClient.clear();
   }, [queryClient]);
 

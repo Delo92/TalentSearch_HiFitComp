@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign, Pencil, Save } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
@@ -73,6 +73,65 @@ interface PlatformSettings {
   maxVotesPerDay?: number;
   defaultVoteCost?: number;
   freeVotesPerDay?: number;
+}
+
+function EventAnalyticsCard({ comp }: { comp: HostCompetition }) {
+  const { data: report, isLoading } = useQuery<CompReportResponse>({
+    queryKey: ["/api/host/competitions", comp.id, "report"],
+  });
+
+  if (isLoading) return <div className="rounded-md bg-white/5 border border-white/5 p-4 animate-pulse h-24" />;
+
+  return (
+    <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`analytics-event-${comp.id}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-medium text-white/80 truncate">{comp.title}</h4>
+          <Badge className={`border-0 text-[10px] ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/50"}`}>{comp.status}</Badge>
+        </div>
+        <Link href={`/competitions/${comp.id}`} className="text-xs text-orange-400 flex items-center gap-1">
+          <Eye className="h-3 w-3" /> View
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div>
+          <p className="text-[10px] text-white/30 uppercase tracking-wider">Votes</p>
+          <p className="text-lg font-bold text-orange-400">{report?.totalVotes ?? 0}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-white/30 uppercase tracking-wider">Contestants</p>
+          <p className="text-lg font-bold">{report?.totalContestants ?? 0}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-white/30 uppercase tracking-wider">Revenue</p>
+          <p className="text-lg font-bold text-green-400">${((report?.totalRevenue ?? 0) / 100).toFixed(2)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-white/30 uppercase tracking-wider">Purchases</p>
+          <p className="text-lg font-bold">{report?.totalPurchases ?? 0}</p>
+        </div>
+      </div>
+      {report && report.leaderboard.length > 0 && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Top 3</p>
+          <div className="space-y-1">
+            {report.leaderboard.slice(0, 3).map((entry) => (
+              <div key={entry.contestantId} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className={`font-bold ${entry.rank <= 3 ? "text-orange-400" : "text-white/30"}`}>#{entry.rank}</span>
+                  <span className="text-white/70">{entry.displayName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40">{entry.voteCount} votes</span>
+                  <span className="text-orange-400">{entry.votePercentage}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function InlineHostCompDetail({ compId }: { compId: number }) {
@@ -140,6 +199,8 @@ export default function HostDashboard({ user }: { user: any }) {
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [calendarSelectedDay, setCalendarSelectedDay] = useState<number | null>(null);
   const [calendarSelectedComp, setCalendarSelectedComp] = useState<number | null>(null);
+  const [editingCompId, setEditingCompId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
 
   const { data: stats } = useQuery<HostStats>({
     queryKey: ["/api/host/stats"],
@@ -201,15 +262,6 @@ export default function HostDashboard({ user }: { user: any }) {
     return filtered;
   }, [allContestants, contestantFilter, contestantSearch]);
 
-  const { data: selectedContestants = [] } = useQuery<ContestantItem[]>({
-    queryKey: ["/api/host/competitions", selectedCompId, "contestants"],
-    enabled: !!selectedCompId,
-  });
-
-  const { data: selectedReport } = useQuery<CompReportResponse>({
-    queryKey: ["/api/host/competitions", selectedCompId, "report"],
-    enabled: !!selectedCompId && activeTab === "analytics",
-  });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
@@ -247,6 +299,24 @@ export default function HostDashboard({ user }: { user: any }) {
       toast({ title: "Event deleted" });
     },
   });
+
+  const editCompMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/host/competitions/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
+      setEditingCompId(null);
+      setEditForm({});
+      toast({ title: "Event updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to update", description: err.message, variant: "destructive" });
+    },
+  });
+
 
   const eventPackages = platformSettings?.eventPackages || [
     { name: "Starter", price: 49, maxEvents: 1, description: "Perfect for your first competition" },
@@ -439,16 +509,45 @@ export default function HostDashboard({ user }: { user: any }) {
                       </div>
                     </div>
                     <div className="p-3 flex flex-wrap items-center justify-between gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-white/60"
-                        onClick={() => setExpandedCompId(expandedCompId === comp.id ? null : comp.id)}
-                        data-testid={`button-expand-${comp.id}`}
-                      >
-                        {expandedCompId === comp.id ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
-                        View Details
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-white/60"
+                          onClick={() => setExpandedCompId(expandedCompId === comp.id ? null : comp.id)}
+                          data-testid={`button-expand-${comp.id}`}
+                        >
+                          {expandedCompId === comp.id ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                          View Details
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-white/60"
+                          onClick={() => {
+                            if (editingCompId === comp.id) {
+                              setEditingCompId(null);
+                              setEditForm({});
+                            } else {
+                              setEditingCompId(comp.id);
+                              setEditForm({
+                                title: comp.title,
+                                description: comp.description || "",
+                                category: comp.category,
+                                startDate: comp.startDate ? comp.startDate.split("T")[0] : "",
+                                endDate: comp.endDate ? comp.endDate.split("T")[0] : "",
+                                maxVotesPerDay: comp.maxVotesPerDay,
+                                voteCost: comp.voteCost,
+                              });
+                              setExpandedCompId(comp.id);
+                            }
+                          }}
+                          data-testid={`button-edit-${comp.id}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5 mr-1" />
+                          {editingCompId === comp.id ? "Cancel Edit" : "Edit"}
+                        </Button>
+                      </div>
                       <div className="flex items-center gap-2">
                         <Select value={comp.status} onValueChange={(v) => updateStatusMutation.mutate({ id: comp.id, status: v })}>
                           <SelectTrigger className="bg-white/[0.08] border-white/20 text-white text-xs w-28" data-testid={`select-status-${comp.id}`}>
@@ -472,7 +571,111 @@ export default function HostDashboard({ user }: { user: any }) {
                         </Button>
                       </div>
                     </div>
-                    {expandedCompId === comp.id && <InlineHostCompDetail compId={comp.id} />}
+                    {expandedCompId === comp.id && editingCompId === comp.id && (
+                      <div className="border-t border-white/5 p-4 space-y-4" data-testid={`edit-form-${comp.id}`}>
+                        <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Edit Event</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-white/50 text-xs">Title</Label>
+                            <Input
+                              value={editForm.title || ""}
+                              onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                              className="bg-white/[0.08] border-white/20 text-white"
+                              data-testid={`edit-title-${comp.id}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-white/50 text-xs">Category</Label>
+                            <Select value={editForm.category || ""} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
+                              <SelectTrigger className="bg-white/[0.08] border-white/20 text-white" data-testid={`edit-category-${comp.id}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#222] border-white/20 text-white">
+                                <SelectItem value="Music">Music</SelectItem>
+                                <SelectItem value="Dance">Dance</SelectItem>
+                                <SelectItem value="Modeling">Modeling</SelectItem>
+                                <SelectItem value="Bodybuilding">Bodybuilding</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-white/50 text-xs">Start Date</Label>
+                            <Input
+                              type="date"
+                              value={editForm.startDate || ""}
+                              onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                              className="bg-white/[0.08] border-white/20 text-white"
+                              data-testid={`edit-start-${comp.id}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-white/50 text-xs">End Date</Label>
+                            <Input
+                              type="date"
+                              value={editForm.endDate || ""}
+                              onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                              className="bg-white/[0.08] border-white/20 text-white"
+                              data-testid={`edit-end-${comp.id}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-white/50 text-xs">Max Votes Per Day</Label>
+                            <Input
+                              type="number"
+                              value={editForm.maxVotesPerDay ?? 10}
+                              onChange={(e) => setEditForm({ ...editForm, maxVotesPerDay: parseInt(e.target.value) || 0 })}
+                              className="bg-white/[0.08] border-white/20 text-white"
+                              data-testid={`edit-maxvotes-${comp.id}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-white/50 text-xs">Vote Cost ($)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editForm.voteCost ?? 0}
+                              onChange={(e) => setEditForm({ ...editForm, voteCost: parseFloat(e.target.value) || 0 })}
+                              className="bg-white/[0.08] border-white/20 text-white"
+                              data-testid={`edit-votecost-${comp.id}`}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-white/50 text-xs">Description</Label>
+                          <Textarea
+                            value={editForm.description || ""}
+                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                            className="bg-white/[0.08] border-white/20 text-white resize-none"
+                            rows={3}
+                            data-testid={`edit-desc-${comp.id}`}
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => { setEditingCompId(null); setEditForm({}); }} className="text-white/50" data-testid={`edit-cancel-${comp.id}`}>
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={editCompMutation.isPending}
+                            onClick={() => {
+                              const data: any = { ...editForm };
+                              if (data.startDate) data.startDate = new Date(data.startDate).toISOString();
+                              else data.startDate = null;
+                              if (data.endDate) data.endDate = new Date(data.endDate).toISOString();
+                              else data.endDate = null;
+                              editCompMutation.mutate({ id: comp.id, data });
+                            }}
+                            className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                            data-testid={`edit-save-${comp.id}`}
+                          >
+                            <Save className="h-3.5 w-3.5 mr-1" />
+                            {editCompMutation.isPending ? "Saving..." : "Save Changes"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {expandedCompId === comp.id && editingCompId !== comp.id && <InlineHostCompDetail compId={comp.id} />}
                   </div>
                 ))}
               </div>
@@ -596,74 +799,40 @@ export default function HostDashboard({ user }: { user: any }) {
           </TabsContent>
 
           <TabsContent value="analytics">
-            <div className="mb-4">
-              <Label className="text-white/60 text-xs mb-2 block">Select Event</Label>
-              <Select value={selectedCompId?.toString() ?? ""} onValueChange={(v) => setSelectedCompId(parseInt(v))}>
-                <SelectTrigger className="bg-white/[0.08] border-white/20 text-white w-full max-w-sm" data-testid="select-event-analytics">
-                  <SelectValue placeholder="Choose an event..." />
-                </SelectTrigger>
-                <SelectContent className="bg-[#222] border-white/20 text-white">
-                  {competitions.map(c => (
-                    <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Total Events</p>
+                  <p className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">{stats?.totalCompetitions ?? 0}</p>
+                </div>
+                <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Total Contestants</p>
+                  <p className="text-2xl font-bold">{stats?.totalContestants ?? 0}</p>
+                </div>
+                <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Total Votes</p>
+                  <p className="text-2xl font-bold text-orange-400">{stats?.totalVotes ?? 0}</p>
+                </div>
+                <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Pending Apps</p>
+                  <p className="text-2xl font-bold text-yellow-400">{stats?.pendingApplications ?? 0}</p>
+                </div>
+              </div>
+
+              <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Per-Event Analytics</h3>
+              {competitions.length === 0 ? (
+                <div className="text-center py-12 text-white/30">
+                  <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p>No events to show analytics for</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {competitions.map(comp => (
+                    <EventAnalyticsCard key={comp.id} comp={comp} />
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
             </div>
-
-            {!selectedCompId || !selectedReport ? (
-              <div className="text-center py-12 text-white/30" data-testid="no-analytics">
-                <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>Select an event to view analytics</p>
-              </div>
-            ) : (
-              <div className="space-y-6" data-testid="analytics-content">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
-                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Total Votes</p>
-                    <p className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid="analytics-votes">{selectedReport.totalVotes}</p>
-                  </div>
-                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
-                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Contestants</p>
-                    <p className="text-2xl font-bold" data-testid="analytics-contestants">{selectedReport.totalContestants}</p>
-                  </div>
-                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
-                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Revenue</p>
-                    <p className="text-2xl font-bold text-green-400" data-testid="analytics-revenue">${(selectedReport.totalRevenue / 100).toFixed(2)}</p>
-                  </div>
-                  <div className="rounded-md bg-white/5 border border-white/5 p-4">
-                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Purchases</p>
-                    <p className="text-2xl font-bold" data-testid="analytics-purchases">{selectedReport.totalPurchases}</p>
-                  </div>
-                </div>
-
-                <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="leaderboard">
-                  <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-4">Leaderboard</h3>
-                  {selectedReport.leaderboard.length === 0 ? (
-                    <p className="text-white/30 text-sm text-center py-6">No votes cast yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedReport.leaderboard.map((entry) => (
-                        <div key={entry.contestantId} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 p-3" data-testid={`leaderboard-entry-${entry.contestantId}`}>
-                          <div className="flex items-center gap-3">
-                            <span className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold ${entry.rank === 1 ? "bg-orange-500/30 text-orange-300" : entry.rank === 2 ? "bg-white/10 text-white/80" : entry.rank === 3 ? "bg-amber-800/30 text-amber-400" : "bg-white/5 text-white/40"}`}>
-                              {entry.rank}
-                            </span>
-                            <span className="font-medium">{entry.displayName}</span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="text-sm text-white/60">{entry.voteCount} votes</span>
-                            <div className="w-20 h-2 rounded-full bg-white/10 overflow-hidden">
-                              <div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500" style={{ width: `${entry.votePercentage}%` }} />
-                            </div>
-                            <span className="text-xs text-white/40 w-10 text-right">{entry.votePercentage}%</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="calendar">
