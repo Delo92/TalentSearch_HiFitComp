@@ -137,6 +137,9 @@ export default function HostDashboard({ user }: { user: any }) {
     maxVotesPerDay: 10,
     startDate: "",
     endDate: "",
+    votingStartDate: "",
+    votingEndDate: "",
+    expectedContestants: "",
   });
 
   const { data: stats } = useQuery<HostStats>({
@@ -182,14 +185,22 @@ export default function HostDashboard({ user }: { user: any }) {
 
   const createCompMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/competitions", newComp);
+      const payload = {
+        ...newComp,
+        startDate: newComp.startDate || null,
+        endDate: newComp.endDate || null,
+        votingStartDate: newComp.votingStartDate || null,
+        votingEndDate: newComp.votingEndDate || null,
+        expectedContestants: newComp.expectedContestants ? parseInt(newComp.expectedContestants) : null,
+      };
+      const res = await apiRequest("POST", "/api/competitions", payload);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
       setCreateDialogOpen(false);
-      setNewComp({ title: "", description: "", category: "Music", status: "draft", voteCost: 0, maxVotesPerDay: 10, startDate: "", endDate: "" });
+      setNewComp({ title: "", description: "", category: "Music", status: "draft", voteCost: 0, maxVotesPerDay: 10, startDate: "", endDate: "", votingStartDate: "", votingEndDate: "", expectedContestants: "" });
       toast({ title: "Event created" });
     },
     onError: (err: Error) => {
@@ -325,6 +336,20 @@ export default function HostDashboard({ user }: { user: any }) {
                     <Label className="text-white/60 text-xs">End Date</Label>
                     <Input type="date" value={newComp.endDate} onChange={(e) => setNewComp(p => ({ ...p, endDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-end-date" />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-white/60 text-xs">Voting Start Date</Label>
+                    <Input type="date" value={newComp.votingStartDate} onChange={(e) => setNewComp(p => ({ ...p, votingStartDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-start-date" />
+                  </div>
+                  <div>
+                    <Label className="text-white/60 text-xs">Voting End Date</Label>
+                    <Input type="date" value={newComp.votingEndDate} onChange={(e) => setNewComp(p => ({ ...p, votingEndDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-end-date" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-white/60 text-xs">Expected Contestants</Label>
+                  <Input type="number" value={newComp.expectedContestants} onChange={(e) => setNewComp(p => ({ ...p, expectedContestants: e.target.value }))} placeholder="e.g., 20" className="bg-white/[0.08] border-white/20 text-white" data-testid="input-expected-contestants" />
                 </div>
                 <Button onClick={() => createCompMutation.mutate()} disabled={createCompMutation.isPending || !newComp.title} className="w-full bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white" data-testid="button-submit-event">
                   {createCompMutation.isPending ? "Creating..." : "Create Event"}

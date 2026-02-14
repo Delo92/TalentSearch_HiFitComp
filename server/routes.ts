@@ -355,6 +355,9 @@ export async function registerRoutes(
     coverImage: z.string().optional(),
     startDate: z.string().optional().nullable(),
     endDate: z.string().optional().nullable(),
+    votingStartDate: z.string().optional().nullable(),
+    votingEndDate: z.string().optional().nullable(),
+    expectedContestants: z.number().int().min(0).optional().nullable(),
   });
 
   app.post("/api/competitions", firebaseAuth, requireHost, async (req, res) => {
@@ -369,6 +372,9 @@ export async function registerRoutes(
       coverImage: parsed.data.coverImage || null,
       startDate: parsed.data.startDate || null,
       endDate: parsed.data.endDate || null,
+      votingStartDate: parsed.data.votingStartDate || null,
+      votingEndDate: parsed.data.votingEndDate || null,
+      expectedContestants: parsed.data.expectedContestants ?? null,
       createdAt: new Date().toISOString(),
       createdBy: req.firebaseUser!.uid,
     });

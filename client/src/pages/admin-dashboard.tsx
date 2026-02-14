@@ -635,6 +635,11 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [compStatus, setCompStatus] = useState("active");
   const [maxVotes, setMaxVotes] = useState("10");
   const [voteCost, setVoteCost] = useState("0");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [votingStartDate, setVotingStartDate] = useState("");
+  const [votingEndDate, setVotingEndDate] = useState("");
+  const [expectedContestants, setExpectedContestants] = useState("");
   const [compDetailId, setCompDetailId] = useState<number | null>(null);
   const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
   const [userDetailId, setUserDetailId] = useState<number | null>(null);
@@ -691,6 +696,11 @@ export default function AdminDashboard({ user }: { user: any }) {
         status: compStatus,
         maxVotesPerDay: parseInt(maxVotes) || 10,
         voteCost: parseInt(voteCost) || 0,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        votingStartDate: votingStartDate || null,
+        votingEndDate: votingEndDate || null,
+        expectedContestants: expectedContestants ? parseInt(expectedContestants) : null,
       });
     },
     onSuccess: () => {
@@ -700,6 +710,11 @@ export default function AdminDashboard({ user }: { user: any }) {
       setTitle("");
       setDescription("");
       setCompCategory("");
+      setStartDate("");
+      setEndDate("");
+      setVotingStartDate("");
+      setVotingEndDate("");
+      setExpectedContestants("");
       toast({ title: "Competition created!" });
     },
     onError: (err: Error) => {
@@ -892,7 +907,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                 <Plus className="h-4 w-4 mr-2" /> New Competition
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-zinc-900 border-white/10 text-white">
+            <DialogContent className="bg-zinc-900 border-white/10 text-white max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-serif text-xl">Create Competition</DialogTitle>
               </DialogHeader>
@@ -928,9 +943,45 @@ export default function AdminDashboard({ user }: { user: any }) {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-white/60">Expected Contestants</Label>
+                    <Input type="number" value={expectedContestants} onChange={(e) => setExpectedContestants(e.target.value)} placeholder="e.g., 20"
+                      className="bg-white/5 border-white/10 text-white" data-testid="input-expected-contestants" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
                     <Label className="text-white/60">Max Votes/Day</Label>
                     <Input type="number" value={maxVotes} onChange={(e) => setMaxVotes(e.target.value)}
                       className="bg-white/5 border-white/10 text-white" data-testid="input-max-votes" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60">Vote Cost ($)</Label>
+                    <Input type="number" step="0.01" value={voteCost} onChange={(e) => setVoteCost(e.target.value)} placeholder="0"
+                      className="bg-white/5 border-white/10 text-white" data-testid="input-vote-cost" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60">Start Date</Label>
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white" data-testid="input-start-date" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60">End Date</Label>
+                    <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white" data-testid="input-end-date" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60">Voting Start Date</Label>
+                    <Input type="date" value={votingStartDate} onChange={(e) => setVotingStartDate(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white" data-testid="input-voting-start-date" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60">Voting End Date</Label>
+                    <Input type="date" value={votingEndDate} onChange={(e) => setVotingEndDate(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white" data-testid="input-voting-end-date" />
                   </div>
                 </div>
                 <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !title.trim() || !compCategory.trim()}
