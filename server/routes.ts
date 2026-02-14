@@ -10,6 +10,7 @@ import {
   createFirestoreUser,
   updateFirestoreUser,
   getFirebaseAuth,
+  getFirestore,
 } from "./firebase-admin";
 import {
   firestoreCategories,
@@ -589,6 +590,15 @@ export async function registerRoutes(
       totalVotes,
       pendingApplications,
     });
+  });
+
+  app.get("/api/host/contestants", firebaseAuth, requireHost, async (req, res) => {
+    const { uid } = req.firebaseUser!;
+    const competitions = await storage.getCompetitionsByCreator(uid);
+    const compIds = new Set(competitions.map(c => c.id));
+    const allContestants = await storage.getAllContestants();
+    const hostContestants = allContestants.filter(c => compIds.has(c.competitionId));
+    res.json(hostContestants);
   });
 
   app.get("/api/host/competitions/:id/contestants", firebaseAuth, requireHost, async (req, res) => {
@@ -1821,6 +1831,45 @@ export async function registerRoutes(
     }
   });
 
+
+  app.get("/api/platform-settings", async (_req, res) => {
+    try {
+      const db = getFirestore();
+      const doc = await db.collection("platformSettings").doc("global").get();
+      if (!doc.exists) {
+        res.json({
+          eventPackages: [
+            { name: "Starter", price: 49, maxEvents: 1, description: "Perfect for your first competition" },
+            { name: "Pro", price: 149, maxEvents: 5, description: "For experienced hosts running multiple events" },
+            { name: "Enterprise", price: 399, maxEvents: 0, description: "Unlimited events with premium support" },
+          ],
+          maxVotesPerDay: 10,
+          defaultVoteCost: 0,
+          freeVotesPerDay: 5,
+          votePricePerVote: 1,
+          joinPrice: 0,
+          hostPrice: 0,
+        });
+        return;
+      }
+      res.json(doc.data());
+    } catch (error: any) {
+      console.error("Platform settings error:", error);
+      res.status(500).json({ message: "Failed to get platform settings" });
+    }
+  });
+
+  app.put("/api/admin/platform-settings", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const db = getFirestore();
+      const settings = req.body;
+      await db.collection("platformSettings").doc("global").set(settings, { merge: true });
+      res.json({ message: "Settings saved", ...settings });
+    } catch (error: any) {
+      console.error("Save platform settings error:", error);
+      res.status(500).json({ message: "Failed to save platform settings" });
+    }
+  });
 
   app.get("/api/livery", async (_req, res) => {
     const items = await storage.getAllLivery();

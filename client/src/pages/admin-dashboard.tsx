@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Competition, SiteLivery } from "@shared/schema";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useAuth, getAuthToken } from "@/hooks/use-auth";
 
 type CompetitionWithCreator = Competition & { createdBy?: string | null; coverVideo?: string | null };
@@ -768,6 +768,7 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [calendarSelectedDay, setCalendarSelectedDay] = useState<number | null>(null);
   const [calendarSelectedComp, setCalendarSelectedComp] = useState<number | null>(null);
+  const [settingsForm, setSettingsForm] = useState<any>(null);
   const [compSearch, setCompSearch] = useState("");
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
   const [compPage, setCompPage] = useState(1);
@@ -839,6 +840,30 @@ export default function AdminDashboard({ user }: { user: any }) {
   const { data: calendarReport, isLoading: calendarReportLoading } = useQuery<CalendarReportResponse>({
     queryKey: ["/api/admin/competitions", calendarSelectedComp, "report"],
     enabled: calendarSelectedComp !== null,
+  });
+
+  const { data: platformSettings } = useQuery<any>({
+    queryKey: ["/api/platform-settings"],
+  });
+
+  useEffect(() => {
+    if (platformSettings && !settingsForm) {
+      setSettingsForm(platformSettings);
+    }
+  }, [platformSettings]);
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (settings: any) => {
+      const res = await apiRequest("PUT", "/api/admin/platform-settings", settings);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/platform-settings"] });
+      toast({ title: "Settings saved" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to save settings", description: err.message, variant: "destructive" });
+    },
   });
 
   const createMutation = useMutation({
@@ -1244,6 +1269,9 @@ export default function AdminDashboard({ user }: { user: any }) {
             </TabsTrigger>
             <TabsTrigger value="calendar" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-calendar">
               <Calendar className="h-4 w-4 mr-1" /> Calendar
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-settings">
+              <Settings className="h-4 w-4 mr-1" /> Settings
             </TabsTrigger>
           </TabsList>
 
@@ -2308,6 +2336,210 @@ export default function AdminDashboard({ user }: { user: any }) {
                       </div>
                     );
                   })()}
+                </div>
+              );
+            })()}
+          </TabsContent>
+
+          <TabsContent value="settings">
+            {(() => {
+              const form = settingsForm || platformSettings || {};
+              const updateForm = (key: string, value: any) => {
+                setSettingsForm((prev: any) => ({ ...(prev || platformSettings || {}), [key]: value }));
+              };
+              const packages = form.eventPackages || [
+                { name: "Starter", price: 49, maxEvents: 1, description: "Perfect for your first competition" },
+                { name: "Pro", price: 149, maxEvents: 5, description: "For experienced hosts running multiple events" },
+                { name: "Enterprise", price: 399, maxEvents: 0, description: "Unlimited events with premium support" },
+              ];
+              const updatePackage = (index: number, field: string, value: any) => {
+                const updated = [...packages];
+                updated[index] = { ...updated[index], [field]: value };
+                updateForm("eventPackages", updated);
+              };
+              const addPackage = () => {
+                updateForm("eventPackages", [...packages, { name: "New Package", price: 0, maxEvents: 1, description: "" }]);
+              };
+              const removePackage = (index: number) => {
+                updateForm("eventPackages", packages.filter((_: any, i: number) => i !== index));
+              };
+
+              return (
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif text-lg text-white">Platform Settings</h3>
+                    <Button
+                      onClick={() => saveSettingsMutation.mutate(settingsForm || {})}
+                      disabled={saveSettingsMutation.isPending || !settingsForm}
+                      className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                      data-testid="button-save-settings"
+                    >
+                      {saveSettingsMutation.isPending ? "Saving..." : "Save All Settings"}
+                    </Button>
+                  </div>
+
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Voting Rules</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <Label className="text-white/50 text-xs">Max Free Votes Per Day</Label>
+                        <Input
+                          type="number"
+                          value={form.freeVotesPerDay ?? 5}
+                          onChange={(e) => updateForm("freeVotesPerDay", parseInt(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-free-votes"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Max Votes Per Day (Total)</Label>
+                        <Input
+                          type="number"
+                          value={form.maxVotesPerDay ?? 10}
+                          onChange={(e) => updateForm("maxVotesPerDay", parseInt(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-max-votes"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Default Vote Cost ($)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={form.defaultVoteCost ?? 0}
+                          onChange={(e) => updateForm("defaultVoteCost", parseFloat(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-default-vote-cost"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Price Per Purchased Vote ($)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={form.votePricePerVote ?? 1}
+                          onChange={(e) => updateForm("votePricePerVote", parseFloat(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-vote-price"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Join & Host Pricing</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-white/50 text-xs">Join Fee ($)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={form.joinPrice ?? 0}
+                          onChange={(e) => updateForm("joinPrice", parseFloat(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-join-price"
+                        />
+                        <p className="text-[10px] text-white/25 mt-1">Fee charged when a talent submits a join application (0 = free)</p>
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Host Application Fee ($)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={form.hostPrice ?? 0}
+                          onChange={(e) => updateForm("hostPrice", parseFloat(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-host-price"
+                        />
+                        <p className="text-[10px] text-white/25 mt-1">Fee charged when someone applies to become a host (0 = free)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Event Hosting Packages</h4>
+                      <Button variant="ghost" size="sm" onClick={addPackage} className="text-orange-400 text-xs" data-testid="button-add-package">
+                        <Plus className="h-3 w-3 mr-1" /> Add Package
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-white/25">Packages shown to hosts when they click "New Event". Set maxEvents to 0 for unlimited.</p>
+                    <div className="space-y-4">
+                      {packages.map((pkg: any, idx: number) => (
+                        <div key={idx} className="rounded-md bg-white/[0.03] border border-white/5 p-4 space-y-3" data-testid={`settings-package-${idx}`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-white/60">Package {idx + 1}</span>
+                            {packages.length > 1 && (
+                              <Button variant="ghost" size="icon" onClick={() => removePackage(idx)} className="text-red-400/60" data-testid={`button-remove-package-${idx}`}>
+                                <XIcon className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div>
+                              <Label className="text-white/40 text-[10px]">Name</Label>
+                              <Input value={pkg.name} onChange={(e) => updatePackage(idx, "name", e.target.value)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-name-${idx}`} />
+                            </div>
+                            <div>
+                              <Label className="text-white/40 text-[10px]">Price ($)</Label>
+                              <Input type="number" step="0.01" value={pkg.price} onChange={(e) => updatePackage(idx, "price", parseFloat(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-price-${idx}`} />
+                            </div>
+                            <div>
+                              <Label className="text-white/40 text-[10px]">Max Events (0=unlimited)</Label>
+                              <Input type="number" value={pkg.maxEvents} onChange={(e) => updatePackage(idx, "maxEvents", parseInt(e.target.value) || 0)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-max-${idx}`} />
+                            </div>
+                            <div>
+                              <Label className="text-white/40 text-[10px]">Description</Label>
+                              <Input value={pkg.description} onChange={(e) => updatePackage(idx, "description", e.target.value)} className="bg-white/[0.08] border-white/20 text-white" data-testid={`input-package-desc-${idx}`} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Competition Defaults</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-white/50 text-xs">Default Max Contestants</Label>
+                        <Input
+                          type="number"
+                          value={form.defaultMaxContestants ?? 50}
+                          onChange={(e) => updateForm("defaultMaxContestants", parseInt(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-default-max-contestants"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Auto-Approve Applications</Label>
+                        <Select
+                          value={form.autoApproveApplications ? "yes" : "no"}
+                          onValueChange={(v) => updateForm("autoApproveApplications", v === "yes")}
+                        >
+                          <SelectTrigger className="bg-white/[0.08] border-white/20 text-white" data-testid="select-auto-approve">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#222] border-white/20 text-white">
+                            <SelectItem value="no">No (Manual Review)</SelectItem>
+                            <SelectItem value="yes">Yes (Auto-Approve)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Platform Fee (%)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={form.platformFeePercent ?? 10}
+                          onChange={(e) => updateForm("platformFeePercent", parseFloat(e.target.value) || 0)}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-platform-fee"
+                        />
+                        <p className="text-[10px] text-white/25 mt-1">Percentage fee taken from vote revenue</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })()}

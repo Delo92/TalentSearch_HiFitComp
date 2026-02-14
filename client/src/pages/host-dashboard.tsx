@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, Eye, ExternalLink, Search } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
@@ -66,6 +66,13 @@ interface CompReportResponse {
   totalRevenue: number;
   totalContestants: number;
   totalPurchases: number;
+}
+
+interface PlatformSettings {
+  eventPackages?: { name: string; price: number; maxEvents: number; description: string }[];
+  maxVotesPerDay?: number;
+  defaultVoteCost?: number;
+  freeVotesPerDay?: number;
 }
 
 function InlineHostCompDetail({ compId }: { compId: number }) {
@@ -128,20 +135,11 @@ export default function HostDashboard({ user }: { user: any }) {
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
   const [compPage, setCompPage] = useState(1);
   const COMPS_PER_PAGE = 10;
-
-  const [newComp, setNewComp] = useState({
-    title: "",
-    description: "",
-    category: "Music",
-    status: "draft",
-    voteCost: 0,
-    maxVotesPerDay: 10,
-    startDate: "",
-    endDate: "",
-    votingStartDate: "",
-    votingEndDate: "",
-    expectedContestants: "",
-  });
+  const [contestantFilter, setContestantFilter] = useState("all");
+  const [contestantSearch, setContestantSearch] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [calendarSelectedDay, setCalendarSelectedDay] = useState<number | null>(null);
+  const [calendarSelectedComp, setCalendarSelectedComp] = useState<number | null>(null);
 
   const { data: stats } = useQuery<HostStats>({
     queryKey: ["/api/host/stats"],
@@ -149,6 +147,19 @@ export default function HostDashboard({ user }: { user: any }) {
 
   const { data: competitions = [] } = useQuery<HostCompetition[]>({
     queryKey: ["/api/host/competitions"],
+  });
+
+  const { data: allContestants = [] } = useQuery<ContestantItem[]>({
+    queryKey: ["/api/host/contestants"],
+  });
+
+  const { data: platformSettings } = useQuery<PlatformSettings>({
+    queryKey: ["/api/platform-settings"],
+  });
+
+  const { data: calendarReport, isLoading: calendarReportLoading } = useQuery<CompReportResponse>({
+    queryKey: ["/api/host/competitions", calendarSelectedComp, "report"],
+    enabled: calendarSelectedComp !== null,
   });
 
   const hostCategories = useMemo(() => {
@@ -174,6 +185,22 @@ export default function HostDashboard({ user }: { user: any }) {
     return filteredComps.slice(start, start + COMPS_PER_PAGE);
   }, [filteredComps, compPage]);
 
+  const filteredContestants = useMemo(() => {
+    let filtered = allContestants;
+    if (contestantFilter !== "all") {
+      filtered = filtered.filter(c => c.applicationStatus === contestantFilter);
+    }
+    if (contestantSearch.trim()) {
+      const q = contestantSearch.toLowerCase();
+      filtered = filtered.filter(c =>
+        (c.talentProfile?.displayName || "").toLowerCase().includes(q) ||
+        (c.competitionTitle || "").toLowerCase().includes(q) ||
+        (c.talentProfile?.category || "").toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [allContestants, contestantFilter, contestantSearch]);
+
   const { data: selectedContestants = [] } = useQuery<ContestantItem[]>({
     queryKey: ["/api/host/competitions", selectedCompId, "contestants"],
     enabled: !!selectedCompId,
@@ -182,31 +209,6 @@ export default function HostDashboard({ user }: { user: any }) {
   const { data: selectedReport } = useQuery<CompReportResponse>({
     queryKey: ["/api/host/competitions", selectedCompId, "report"],
     enabled: !!selectedCompId && activeTab === "analytics",
-  });
-
-  const createCompMutation = useMutation({
-    mutationFn: async () => {
-      const payload = {
-        ...newComp,
-        startDate: newComp.startDate ? new Date(newComp.startDate).toISOString() : null,
-        endDate: newComp.endDate ? new Date(newComp.endDate).toISOString() : null,
-        votingStartDate: newComp.votingStartDate ? new Date(newComp.votingStartDate).toISOString() : null,
-        votingEndDate: newComp.votingEndDate ? new Date(newComp.votingEndDate).toISOString() : null,
-        expectedContestants: newComp.expectedContestants ? parseInt(newComp.expectedContestants) : null,
-      };
-      const res = await apiRequest("POST", "/api/competitions", payload);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
-      setCreateDialogOpen(false);
-      setNewComp({ title: "", description: "", category: "Music", status: "draft", voteCost: 0, maxVotesPerDay: 10, startDate: "", endDate: "", votingStartDate: "", votingEndDate: "", expectedContestants: "" });
-      toast({ title: "Event created" });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Failed to create event", description: err.message, variant: "destructive" });
-    },
   });
 
   const updateStatusMutation = useMutation({
@@ -227,7 +229,8 @@ export default function HostDashboard({ user }: { user: any }) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions", selectedCompId, "contestants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/host/contestants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/host/stats"] });
       toast({ title: "Application updated" });
     },
@@ -244,6 +247,12 @@ export default function HostDashboard({ user }: { user: any }) {
       toast({ title: "Event deleted" });
     },
   });
+
+  const eventPackages = platformSettings?.eventPackages || [
+    { name: "Starter", price: 49, maxEvents: 1, description: "Perfect for your first competition" },
+    { name: "Pro", price: 149, maxEvents: 5, description: "For experienced hosts running multiple events" },
+    { name: "Enterprise", price: 399, maxEvents: 0, description: "Unlimited events with premium support" },
+  ];
 
   return (
     <div className="min-h-screen bg-black text-white" data-testid="host-dashboard">
@@ -279,83 +288,36 @@ export default function HostDashboard({ user }: { user: any }) {
             </DialogTrigger>
             <DialogContent className="bg-[#111] border-white/10 text-white max-w-lg">
               <DialogHeader>
-                <DialogTitle className="font-serif">Create New Event</DialogTitle>
+                <DialogTitle className="font-serif text-xl">Event Packages</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 mt-2">
-                <div>
-                  <Label className="text-white/60 text-xs">Title</Label>
-                  <Input value={newComp.title} onChange={(e) => setNewComp(p => ({ ...p, title: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-comp-title" />
-                </div>
-                <div>
-                  <Label className="text-white/60 text-xs">Description</Label>
-                  <Textarea value={newComp.description} onChange={(e) => setNewComp(p => ({ ...p, description: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-comp-description" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-white/60 text-xs">Category</Label>
-                    <Select value={newComp.category} onValueChange={(v) => setNewComp(p => ({ ...p, category: v }))}>
-                      <SelectTrigger className="bg-white/[0.08] border-white/20 text-white" data-testid="select-category">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#222] border-white/20 text-white">
-                        {["Music", "Dance", "Modeling", "Bodybuilding", "Talent", "Other"].map(cat => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <p className="text-sm text-white/50 mb-4">Choose a package to host your competition on HiFitComp.</p>
+              <div className="space-y-4">
+                {eventPackages.map((pkg, i) => (
+                  <div key={i} className="rounded-md border border-white/10 p-4 hover:bg-white/5 transition-colors" data-testid={`package-${pkg.name.toLowerCase()}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-serif font-bold text-lg">{pkg.name}</h3>
+                      <span className="text-xl font-bold text-orange-400">${pkg.price}</span>
+                    </div>
+                    <p className="text-sm text-white/50 mb-3">{pkg.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-white/30">
+                        {pkg.maxEvents === 0 ? "Unlimited events" : `Up to ${pkg.maxEvents} event${pkg.maxEvents > 1 ? "s" : ""}`}
+                      </span>
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                        onClick={() => {
+                          toast({ title: "Coming soon", description: "Payment processing will be available shortly." });
+                        }}
+                        data-testid={`button-buy-${pkg.name.toLowerCase()}`}
+                      >
+                        <ShoppingCart className="h-3 w-3 mr-1" /> Purchase
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-white/60 text-xs">Status</Label>
-                    <Select value={newComp.status} onValueChange={(v) => setNewComp(p => ({ ...p, status: v }))}>
-                      <SelectTrigger className="bg-white/[0.08] border-white/20 text-white" data-testid="select-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#222] border-white/20 text-white">
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="voting">Voting</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-white/60 text-xs">Max Votes/Day</Label>
-                    <Input type="number" value={newComp.maxVotesPerDay} onChange={(e) => setNewComp(p => ({ ...p, maxVotesPerDay: parseInt(e.target.value) || 0 }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-max-votes" />
-                  </div>
-                  <div>
-                    <Label className="text-white/60 text-xs">Vote Cost ($)</Label>
-                    <Input type="number" step="0.01" value={newComp.voteCost} onChange={(e) => setNewComp(p => ({ ...p, voteCost: parseFloat(e.target.value) || 0 }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-vote-cost" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-white/60 text-xs">Start Date & Time</Label>
-                    <Input type="datetime-local" value={newComp.startDate} onChange={(e) => setNewComp(p => ({ ...p, startDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-start-date" />
-                  </div>
-                  <div>
-                    <Label className="text-white/60 text-xs">End Date & Time</Label>
-                    <Input type="datetime-local" value={newComp.endDate} onChange={(e) => setNewComp(p => ({ ...p, endDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-end-date" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-white/60 text-xs">Voting Start</Label>
-                    <Input type="datetime-local" value={newComp.votingStartDate} onChange={(e) => setNewComp(p => ({ ...p, votingStartDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-start-date" />
-                  </div>
-                  <div>
-                    <Label className="text-white/60 text-xs">Voting End</Label>
-                    <Input type="datetime-local" value={newComp.votingEndDate} onChange={(e) => setNewComp(p => ({ ...p, votingEndDate: e.target.value }))} className="bg-white/[0.08] border-white/20 text-white" data-testid="input-voting-end-date" />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-white/60 text-xs">Expected Contestants</Label>
-                  <Input type="number" value={newComp.expectedContestants} onChange={(e) => setNewComp(p => ({ ...p, expectedContestants: e.target.value }))} placeholder="e.g., 20" className="bg-white/[0.08] border-white/20 text-white" data-testid="input-expected-contestants" />
-                </div>
-                <Button onClick={() => createCompMutation.mutate()} disabled={createCompMutation.isPending || !newComp.title} className="w-full bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white" data-testid="button-submit-event">
-                  {createCompMutation.isPending ? "Creating..." : "Create Event"}
-                </Button>
+                ))}
               </div>
+              <p className="text-[10px] text-white/20 text-center mt-2">Contact admin for custom enterprise pricing</p>
             </DialogContent>
           </Dialog>
         </div>
@@ -406,6 +368,9 @@ export default function HostDashboard({ user }: { user: any }) {
             <TabsTrigger value="analytics" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-300" data-testid="tab-analytics">
               <BarChart3 className="h-4 w-4 mr-2" /> Analytics
             </TabsTrigger>
+            <TabsTrigger value="calendar" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-300" data-testid="tab-calendar">
+              <Calendar className="h-4 w-4 mr-2" /> Calendar
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -413,7 +378,7 @@ export default function HostDashboard({ user }: { user: any }) {
               <div className="text-center py-16 text-white/30" data-testid="empty-events">
                 <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
                 <p className="text-lg mb-2">No events yet</p>
-                <p className="text-sm">Create your first competition to get started.</p>
+                <p className="text-sm">Purchase an event package to get started.</p>
               </div>
             ) : (
               <>
@@ -557,41 +522,57 @@ export default function HostDashboard({ user }: { user: any }) {
           </TabsContent>
 
           <TabsContent value="contestants">
-            <div className="mb-4">
-              <Label className="text-white/60 text-xs mb-2 block">Select Event</Label>
-              <Select value={selectedCompId?.toString() ?? ""} onValueChange={(v) => setSelectedCompId(parseInt(v))}>
-                <SelectTrigger className="bg-white/[0.08] border-white/20 text-white w-full max-w-sm" data-testid="select-event-contestants">
-                  <SelectValue placeholder="Choose an event..." />
-                </SelectTrigger>
-                <SelectContent className="bg-[#222] border-white/20 text-white">
-                  {competitions.map(c => (
-                    <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                <Input
+                  placeholder="Search by name, event, or category..."
+                  value={contestantSearch}
+                  onChange={(e) => setContestantSearch(e.target.value)}
+                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                  data-testid="input-contestant-search"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                {["all", "approved", "pending", "rejected"].map(s => (
+                  <Button
+                    key={s}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setContestantFilter(s)}
+                    className={contestantFilter === s ? "bg-orange-500/20 text-orange-300" : "text-white/40"}
+                    data-testid={`button-filter-${s}`}
+                  >
+                    {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                  </Button>
+                ))}
+              </div>
+              <span className="text-xs text-white/30">{filteredContestants.length} contestant{filteredContestants.length !== 1 ? "s" : ""}</span>
             </div>
 
-            {!selectedCompId ? (
-              <div className="text-center py-12 text-white/30" data-testid="no-event-selected">
-                <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>Select an event to view contestants</p>
-              </div>
-            ) : selectedContestants.length === 0 ? (
+            {filteredContestants.length === 0 ? (
               <div className="text-center py-12 text-white/30" data-testid="no-contestants">
                 <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>No contestants have applied yet</p>
+                <p>{allContestants.length === 0 ? "No contestants have applied to your events yet" : "No contestants match your filters"}</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {selectedContestants.map(c => (
-                  <div key={c.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4" data-testid={`contestant-card-${c.id}`}>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium" data-testid={`contestant-name-${c.id}`}>{c.talentProfile?.displayName || "Unknown"}</p>
-                      <p className="text-xs text-white/40">{c.talentProfile?.category || "No category"}</p>
-                      {c.appliedAt && <p className="text-xs text-white/30 mt-1">Applied {new Date(c.appliedAt).toLocaleDateString()}</p>}
+              <div className="space-y-2">
+                {filteredContestants.map(c => (
+                  <div key={c.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-3" data-testid={`contestant-card-${c.id}`}>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={c.talentProfile?.imageUrls?.[0] || ""} />
+                        <AvatarFallback className="bg-white/10 text-white text-xs">
+                          {(c.talentProfile?.displayName || "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate" data-testid={`contestant-name-${c.id}`}>{c.talentProfile?.displayName || "Unknown"}</p>
+                        <p className="text-xs text-white/30 truncate">{c.competitionTitle} {c.talentProfile?.category ? `| ${c.talentProfile.category}` : ""}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={`border-0 ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`contestant-status-${c.id}`}>
+                      <Badge className={`border-0 text-xs ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`contestant-status-${c.id}`}>
                         {c.applicationStatus}
                       </Badge>
                       {c.applicationStatus === "pending" && (
@@ -604,6 +585,9 @@ export default function HostDashboard({ user }: { user: any }) {
                           </Button>
                         </>
                       )}
+                      <Link href={"/talent/" + c.talentProfileId} className="text-xs text-orange-400 flex items-center gap-1" data-testid={`link-profile-contestant-${c.id}`}>
+                        <ExternalLink className="h-3 w-3" /> Profile
+                      </Link>
                     </div>
                   </div>
                 ))}
@@ -680,6 +664,194 @@ export default function HostDashboard({ user }: { user: any }) {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            {(() => {
+              const year = calendarMonth.getFullYear();
+              const month = calendarMonth.getMonth();
+              const firstDay = new Date(year, month, 1).getDay();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const monthName = calendarMonth.toLocaleString("default", { month: "long", year: "numeric" });
+
+              const calendarComps = competitions.filter((c) => {
+                if (!c.startDate && !c.endDate) return false;
+                const start = c.startDate ? new Date(c.startDate) : null;
+                const end = c.endDate ? new Date(c.endDate) : null;
+                if (start && start.getFullYear() === year && start.getMonth() === month) return true;
+                if (end && end.getFullYear() === year && end.getMonth() === month) return true;
+                if (start && end && start <= new Date(year, month + 1, 0) && end >= new Date(year, month, 1)) return true;
+                return false;
+              });
+
+              const getCompsForDay = (day: number) => {
+                const date = new Date(year, month, day);
+                return calendarComps.filter((c) => {
+                  const start = c.startDate ? new Date(c.startDate) : null;
+                  const end = c.endDate ? new Date(c.endDate) : null;
+                  const dateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                  const dayTime = dateOnly(date);
+                  if (start && dayTime === dateOnly(start)) return true;
+                  if (end && dayTime === dateOnly(end)) return true;
+                  return false;
+                });
+              };
+
+              const statusColor = (s: string) => s === "active" ? "bg-green-500" : s === "upcoming" ? "bg-blue-500" : s === "voting" ? "bg-orange-500" : "bg-zinc-500";
+              const days: (number | null)[] = [];
+              for (let i = 0; i < firstDay; i++) days.push(null);
+              for (let d = 1; d <= daysInMonth; d++) days.push(d);
+
+              return (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button size="icon" variant="ghost" onClick={() => { setCalendarMonth(new Date(year, month - 1, 1)); setCalendarSelectedDay(null); setCalendarSelectedComp(null); }} data-testid="button-calendar-prev">
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <h3 className="text-lg font-serif tracking-wider uppercase text-white min-w-[200px] text-center">{monthName}</h3>
+                      <Button size="icon" variant="ghost" onClick={() => { setCalendarMonth(new Date(year, month + 1, 1)); setCalendarSelectedDay(null); setCalendarSelectedComp(null); }} data-testid="button-calendar-next">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Button variant="ghost" onClick={() => { setCalendarMonth(new Date()); setCalendarSelectedDay(null); }} className="text-xs text-white/50" data-testid="button-calendar-today">Today</Button>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs text-white/40">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> Active</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" /> Voting</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-zinc-500 inline-block" /> Other</span>
+                    <span className="ml-2 text-white/25">Dots show start & end dates only</span>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-px bg-white/5 rounded-md overflow-hidden">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                      <div key={d} className="bg-zinc-900 p-2 text-center text-xs font-semibold text-white/40 uppercase tracking-wider">{d}</div>
+                    ))}
+                    {days.map((day, i) => {
+                      const comps = day ? getCompsForDay(day) : [];
+                      const isToday = day !== null && new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
+                      const isSelected = day !== null && calendarSelectedDay === day;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => { if (day && comps.length > 0) { setCalendarSelectedDay(isSelected ? null : day); setCalendarSelectedComp(null); } }}
+                          disabled={!day || comps.length === 0}
+                          className={`bg-zinc-900/80 min-h-[100px] p-3 text-left transition-colors ${!day ? "bg-zinc-950/50 cursor-default" : comps.length > 0 ? "cursor-pointer hover:bg-white/5" : "cursor-default"} ${isToday ? "ring-1 ring-inset ring-orange-500/50" : ""} ${isSelected ? "bg-orange-500/10" : ""}`}
+                          data-testid={day ? `calendar-day-${day}` : undefined}
+                        >
+                          {day && (
+                            <div className="flex flex-col items-start gap-2">
+                              <span className={`text-sm font-medium ${isToday ? "text-orange-400 font-bold" : isSelected ? "text-orange-300" : "text-white/50"}`}>{day}</span>
+                              {comps.length > 0 && comps.length <= 3 && (
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {comps.map((c) => (
+                                    <span key={c.id} className={`w-2.5 h-2.5 rounded-full ${statusColor(c.status)}`} title={c.title} />
+                                  ))}
+                                </div>
+                              )}
+                              {comps.length > 3 && (
+                                <span className="text-[10px] font-semibold text-orange-400/80">3+</span>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {calendarSelectedDay !== null && (() => {
+                    const dayComps = getCompsForDay(calendarSelectedDay);
+                    if (dayComps.length === 0) return null;
+                    const dateLabel = new Date(year, month, calendarSelectedDay).toLocaleDateString("default", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+                    return (
+                      <div className="rounded-md bg-white/5 border border-white/10 p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-serif text-white/70">{dateLabel}</h4>
+                          <Button size="icon" variant="ghost" onClick={() => { setCalendarSelectedDay(null); setCalendarSelectedComp(null); }} data-testid="button-close-calendar-day">
+                            <XIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {dayComps.map((c) => (
+                            <div key={c.id}>
+                              <button
+                                onClick={() => setCalendarSelectedComp(calendarSelectedComp === c.id ? null : c.id)}
+                                className={`w-full flex items-center justify-between rounded-md px-3 py-2.5 transition-colors ${calendarSelectedComp === c.id ? "bg-orange-500/15 ring-1 ring-orange-500/30" : "bg-white/5 hover:bg-white/10"}`}
+                                data-testid={`calendar-comp-${c.id}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor(c.status)}`} />
+                                  <span className="text-sm text-white/80">{c.title}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge className={`border-0 text-[10px] ${c.status === "active" ? "bg-green-500/20 text-green-400" : c.status === "voting" ? "bg-orange-500/20 text-orange-400" : "bg-zinc-500/20 text-zinc-400"}`}>
+                                    {c.status}
+                                  </Badge>
+                                  {calendarSelectedComp === c.id ? <ChevronUp className="h-3 w-3 text-white/30" /> : <ChevronDown className="h-3 w-3 text-white/30" />}
+                                </div>
+                              </button>
+
+                              {calendarSelectedComp === c.id && (
+                                <div className="mt-2 ml-4 space-y-3">
+                                  {calendarReportLoading ? (
+                                    <div className="flex items-center justify-center py-6">
+                                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-orange-500 border-t-transparent" />
+                                    </div>
+                                  ) : calendarReport ? (
+                                    <>
+                                      <div className="text-xs text-white/40">
+                                        {calendarReport.competition.startDate && new Date(calendarReport.competition.startDate).toLocaleDateString()}
+                                        {calendarReport.competition.endDate && ` — ${new Date(calendarReport.competition.endDate).toLocaleDateString()}`}
+                                      </div>
+                                      <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-white/5 rounded-md p-2.5 text-center">
+                                          <p className="text-xl font-bold text-orange-400">{calendarReport.totalContestants}</p>
+                                          <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Contestants</p>
+                                        </div>
+                                        <div className="bg-white/5 rounded-md p-2.5 text-center">
+                                          <p className="text-xl font-bold text-orange-400">{calendarReport.totalVotes}</p>
+                                          <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Total Votes</p>
+                                        </div>
+                                        <div className="bg-white/5 rounded-md p-2.5 text-center">
+                                          <p className="text-xl font-bold text-orange-400">${(calendarReport.totalRevenue / 100).toFixed(2)}</p>
+                                          <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Revenue</p>
+                                        </div>
+                                      </div>
+                                      {calendarReport.leaderboard.length > 0 && (
+                                        <div>
+                                          <h5 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Leaderboard</h5>
+                                          <div className="space-y-1">
+                                            {calendarReport.leaderboard.map((entry) => (
+                                              <div key={entry.contestantId} className="flex items-center justify-between bg-white/5 rounded px-3 py-1.5">
+                                                <div className="flex items-center gap-2">
+                                                  <span className={`text-xs font-bold ${entry.rank <= 3 ? "text-orange-400" : "text-white/30"}`}>#{entry.rank}</span>
+                                                  <span className="text-sm text-white/80">{entry.displayName}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs">
+                                                  <span className="text-white/50">{entry.voteCount} votes</span>
+                                                  <span className="text-orange-400 font-medium">{entry.votePercentage}%</span>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-white/30 text-center py-3">No report data available.</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </div>
