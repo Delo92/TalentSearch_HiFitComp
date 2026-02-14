@@ -11,13 +11,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, Eye, ExternalLink } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, Eye, ExternalLink, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface HostStats {
@@ -123,6 +123,10 @@ export default function HostDashboard({ user }: { user: any }) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCompId, setSelectedCompId] = useState<number | null>(null);
   const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
+  const [compSearch, setCompSearch] = useState("");
+  const [compCategoryFilter, setCompCategoryFilter] = useState("all");
+  const [compPage, setCompPage] = useState(1);
+  const COMPS_PER_PAGE = 10;
 
   const [newComp, setNewComp] = useState({
     title: "",
@@ -142,6 +146,29 @@ export default function HostDashboard({ user }: { user: any }) {
   const { data: competitions = [] } = useQuery<HostCompetition[]>({
     queryKey: ["/api/host/competitions"],
   });
+
+  const hostCategories = useMemo(() => {
+    const cats = [...new Set(competitions.map(c => c.category).filter(Boolean))];
+    return cats.sort();
+  }, [competitions]);
+
+  const filteredComps = useMemo(() => {
+    let filtered = competitions;
+    if (compSearch.trim()) {
+      const q = compSearch.toLowerCase();
+      filtered = filtered.filter(c => c.title.toLowerCase().includes(q) || (c.category && c.category.toLowerCase().includes(q)));
+    }
+    if (compCategoryFilter !== "all") {
+      filtered = filtered.filter(c => c.category === compCategoryFilter);
+    }
+    return filtered;
+  }, [competitions, compSearch, compCategoryFilter]);
+
+  const totalCompPages = Math.max(1, Math.ceil(filteredComps.length / COMPS_PER_PAGE));
+  const paginatedComps = useMemo(() => {
+    const start = (compPage - 1) * COMPS_PER_PAGE;
+    return filteredComps.slice(start, start + COMPS_PER_PAGE);
+  }, [filteredComps, compPage]);
 
   const { data: selectedContestants = [] } = useQuery<ContestantItem[]>({
     queryKey: ["/api/host/competitions", selectedCompId, "contestants"],
@@ -363,8 +390,33 @@ export default function HostDashboard({ user }: { user: any }) {
                 <p className="text-sm">Create your first competition to get started.</p>
               </div>
             ) : (
+              <>
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                  <Input
+                    placeholder="Search events..."
+                    value={compSearch}
+                    onChange={(e) => { setCompSearch(e.target.value); setCompPage(1); }}
+                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    data-testid="input-event-search"
+                  />
+                </div>
+                <Select value={compCategoryFilter} onValueChange={(val) => { setCompCategoryFilter(val); setCompPage(1); }}>
+                  <SelectTrigger className="w-44 bg-white/5 border-white/10 text-white text-sm" data-testid="select-event-category-filter">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-white/10">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {hostCategories.map(cat => (
+                      <SelectItem key={cat} value={cat!}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-white/30" data-testid="text-event-count">{filteredComps.length} result{filteredComps.length !== 1 ? "s" : ""}</span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {competitions.map(comp => (
+                {paginatedComps.map(comp => (
                   <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 overflow-hidden" data-testid={`event-card-${comp.id}`}>
                     <div
                       className="relative h-[200px] bg-gradient-to-b from-orange-900/40 to-black"
@@ -430,6 +482,48 @@ export default function HostDashboard({ user }: { user: any }) {
                   </div>
                 ))}
               </div>
+              {filteredComps.length === 0 && (
+                <div className="text-center py-12 text-white/30 text-sm" data-testid="text-no-events">
+                  No events found matching your search.
+                </div>
+              )}
+              {totalCompPages > 1 && (
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-6" data-testid="event-pagination">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={compPage <= 1}
+                    onClick={() => setCompPage(p => p - 1)}
+                    className="text-white/60"
+                    data-testid="button-event-prev"
+                  >
+                    Previous
+                  </Button>
+                  {Array.from({ length: totalCompPages }, (_, i) => i + 1).map(page => (
+                    <Button
+                      key={page}
+                      variant={page === compPage ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setCompPage(page)}
+                      className={page === compPage ? "bg-orange-500 text-white" : "text-white/40"}
+                      data-testid={`button-event-page-${page}`}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={compPage >= totalCompPages}
+                    onClick={() => setCompPage(p => p + 1)}
+                    className="text-white/60"
+                    data-testid="button-event-next"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+              </>
             )}
           </TabsContent>
 
