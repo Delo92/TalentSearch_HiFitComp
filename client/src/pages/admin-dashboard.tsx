@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp } from "lucide-react";
 import { InviteDialog, CreateUserDialog } from "@/components/invite-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
@@ -529,6 +529,102 @@ function TalentDetailModal({ profileId, competitions }: { profileId: number; com
   );
 }
 
+function InlineCompDetail({ compId }: { compId: number }) {
+  const { data, isLoading } = useQuery<CompDetailResponse>({
+    queryKey: ["/api/admin/competitions", compId, "detail"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8" data-testid={`inline-detail-loading-${compId}`}>
+        <div className="text-white/40 text-sm">Loading details...</div>
+      </div>
+    );
+  }
+
+  if (!data) return <div className="text-white/40 text-sm py-4 text-center">Failed to load details.</div>;
+
+  const { totalVotes, hosts, contestants } = data;
+
+  return (
+    <div className="space-y-4 p-4 pt-0" data-testid={`inline-detail-${compId}`}>
+      <div className="rounded-md bg-white/5 border border-white/5 p-3">
+        <p className="text-xs text-white/40">Total Votes</p>
+        <p className="font-bold text-lg bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid={`inline-votes-${compId}`}>{totalVotes}</p>
+      </div>
+
+      {hosts.length > 0 && (
+        <div data-testid={`inline-hosts-${compId}`}>
+          <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-2">Host(s)</h4>
+          <div className="space-y-2">
+            {hosts.map((host) => (
+              <div key={host.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 p-3" data-testid={`inline-host-${host.id}`}>
+                <div>
+                  <p className="font-medium text-sm">{host.fullName}</p>
+                  <p className="text-xs text-white/30">{host.email} {host.organization && `| ${host.organization}`}</p>
+                </div>
+                <Badge className={`border-0 ${host.status === "approved" ? "bg-green-500/20 text-green-400" : host.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                  {host.status}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div data-testid={`inline-contestants-${compId}`}>
+        <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-2">Contestants ({contestants.length})</h4>
+        {contestants.length > 0 ? (
+          <div className="space-y-2">
+            {contestants.map((c) => (
+              <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 border border-white/5 p-3" data-testid={`inline-contestant-${c.id}`}>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={c.imageUrls?.[0] || ""} />
+                    <AvatarFallback className="bg-orange-500/20 text-orange-400 text-xs font-bold">
+                      {c.displayName?.charAt(0) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-sm" data-testid={`inline-cname-${c.id}`}>{c.displayName}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {c.stageName && <span className="text-xs text-white/40">{c.stageName}</span>}
+                      {c.category && <span className="text-xs text-white/30">{c.category}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid={`inline-cvotes-${c.id}`}>{c.voteCount}</p>
+                    <p className="text-[10px] text-white/30">votes</p>
+                  </div>
+                  <Badge className={`border-0 text-xs ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`inline-cstatus-${c.id}`}>
+                    {c.applicationStatus}
+                  </Badge>
+                  <Link href={"/talent/" + c.talentProfileId}>
+                    <Button variant="ghost" size="sm" className="text-orange-400" data-testid={`link-view-profile-${c.id}`}>
+                      <ExternalLink className="h-3 w-3 mr-1" /> Profile
+                    </Button>
+                  </Link>
+                  <Link href={"/competitions/" + compId}>
+                    <Button variant="ghost" size="sm" className="text-white/40" data-testid={`link-view-comp-${c.id}`}>
+                      <Eye className="h-3 w-3 mr-1" /> Entry
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md bg-white/5 border border-white/5 p-4 text-center">
+            <p className="text-sm text-white/30">No contestants in this competition.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard({ user }: { user: any }) {
   const { logout } = useAuth();
   const { toast } = useToast();
@@ -540,6 +636,7 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [maxVotes, setMaxVotes] = useState("10");
   const [voteCost, setVoteCost] = useState("0");
   const [compDetailId, setCompDetailId] = useState<number | null>(null);
+  const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
   const [userDetailId, setUserDetailId] = useState<number | null>(null);
   const [userSearch, setUserSearch] = useState("");
 
@@ -857,42 +954,62 @@ export default function AdminDashboard({ user }: { user: any }) {
           </TabsList>
 
           <TabsContent value="competitions">
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {competitions?.map((comp) => (
-                <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 p-5" data-testid={`admin-comp-${comp.id}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-bold text-lg">{comp.title}</h3>
+                <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 overflow-visible" data-testid={`admin-comp-${comp.id}`}>
+                  <div
+                    className="relative h-[200px] rounded-t-md flex flex-col justify-end"
+                    style={comp.coverImage ? { backgroundImage: `url(${comp.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                  >
+                    {!comp.coverImage && (
+                      <div className="absolute inset-0 rounded-t-md bg-gradient-to-b from-orange-900/40 to-black flex items-center justify-center">
+                        <Trophy className="h-16 w-16 text-white/10" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 rounded-t-md bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                    <div className="relative z-10 p-4">
+                      <h3 className="font-bold text-lg text-white drop-shadow-md">{comp.title}</h3>
                       <div className="flex flex-wrap items-center gap-3 mt-1">
-                        <span className="text-xs text-white/30">{comp.category}</span>
+                        <span className="text-xs text-white/60">{comp.category}</span>
                         <Badge className={`border-0 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60"}`}>
                           {comp.status}
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setCompDetailId(comp.id)}
-                        className="text-orange-400"
-                        data-testid={`button-view-detail-${comp.id}`}
-                      >
-                        <Eye className="h-4 w-4 mr-1" /> View Details
-                      </Button>
-                      <Select value={comp.status} onValueChange={(val) => updateCompMutation.mutate({ id: comp.id, data: { status: val } })}>
-                        <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm" data-testid={`select-status-${comp.id}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-white/10">
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="voting">Voting</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedCompId(expandedCompId === comp.id ? null : comp.id)}
+                      className="text-orange-400"
+                      data-testid={`button-view-detail-${comp.id}`}
+                    >
+                      {expandedCompId === comp.id ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                      {expandedCompId === comp.id ? "Hide Details" : "View Details"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCompDetailId(comp.id)}
+                      className="text-white/40"
+                      data-testid={`button-full-detail-${comp.id}`}
+                    >
+                      <Eye className="h-4 w-4 mr-1" /> Full Details
+                    </Button>
+                    <Select value={comp.status} onValueChange={(val) => updateCompMutation.mutate({ id: comp.id, data: { status: val } })}>
+                      <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm" data-testid={`select-status-${comp.id}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10">
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="voting">Voting</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {expandedCompId === comp.id && <InlineCompDetail compId={comp.id} />}
                 </div>
               ))}
             </div>

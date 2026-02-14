@@ -11,7 +11,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, Eye, ExternalLink } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -66,12 +67,62 @@ interface CompReportResponse {
   totalPurchases: number;
 }
 
+function InlineHostCompDetail({ compId }: { compId: number }) {
+  const { data: contestants = [], isLoading } = useQuery<ContestantItem[]>({
+    queryKey: ["/api/host/competitions", compId, "contestants"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="p-4 text-center text-white/30 text-sm">Loading contestants...</div>
+    );
+  }
+
+  return (
+    <div className="border-t border-white/5 p-4 space-y-3" data-testid={`inline-detail-${compId}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <span className="text-xs text-white/40 uppercase tracking-wider">Contestants ({contestants.length})</span>
+        <Link href={`/competitions/${compId}`} className="text-xs text-orange-400 flex items-center gap-1" data-testid={`link-view-app-${compId}`}>
+          <Eye className="h-3 w-3" /> View in App
+        </Link>
+      </div>
+      {contestants.length === 0 ? (
+        <p className="text-sm text-white/30">No contestants have applied yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {contestants.map(c => (
+            <div key={c.id} className="flex flex-wrap items-center gap-3 rounded-md bg-white/[0.03] p-2" data-testid={`inline-contestant-${c.id}`}>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={c.talentProfile?.imageUrls?.[0] || ""} alt={c.talentProfile?.displayName || ""} />
+                <AvatarFallback className="bg-white/10 text-white text-xs">
+                  {(c.talentProfile?.displayName || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" data-testid={`inline-contestant-name-${c.id}`}>{c.talentProfile?.displayName || "Unknown"}</p>
+                <p className="text-xs text-white/40">{c.talentProfile?.category || "No category"}</p>
+              </div>
+              <Badge className={`border-0 text-xs ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                {c.applicationStatus}
+              </Badge>
+              <Link href={"/talent/" + c.talentProfileId} className="text-xs text-orange-400 flex items-center gap-1" data-testid={`link-profile-${c.id}`}>
+                <ExternalLink className="h-3 w-3" /> Profile
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function HostDashboard({ user }: { user: any }) {
   const { logout } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCompId, setSelectedCompId] = useState<number | null>(null);
+  const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
 
   const [newComp, setNewComp] = useState({
     title: "",
@@ -312,44 +363,70 @@ export default function HostDashboard({ user }: { user: any }) {
                 <p className="text-sm">Create your first competition to get started.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {competitions.map(comp => (
-                  <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4" data-testid={`event-card-${comp.id}`}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h3 className="font-serif font-bold text-lg truncate" data-testid={`event-title-${comp.id}`}>{comp.title}</h3>
-                        <Badge className={`border-0 text-xs ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`event-status-${comp.id}`}>
-                          {comp.status}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-white/40">
-                        <span>{comp.category}</span>
-                        {comp.startDate && <span><Calendar className="h-3 w-3 inline mr-1" />{new Date(comp.startDate).toLocaleDateString()}</span>}
-                        {comp.endDate && <span>to {new Date(comp.endDate).toLocaleDateString()}</span>}
+                  <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 overflow-hidden" data-testid={`event-card-${comp.id}`}>
+                    <div
+                      className="relative h-[200px] bg-gradient-to-b from-orange-900/40 to-black"
+                      style={comp.coverImage ? { backgroundImage: `url(${comp.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                      {!comp.coverImage && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                          <Trophy className="h-16 w-16 text-white" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <h3 className="font-serif font-bold text-lg text-white truncate" data-testid={`event-title-${comp.id}`}>{comp.title}</h3>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <Badge className="border-0 text-xs bg-white/10 text-white/80">{comp.category}</Badge>
+                          <Badge className={`border-0 text-xs ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`event-status-${comp.id}`}>
+                            {comp.status}
+                          </Badge>
+                          {comp.startDate && (
+                            <span className="text-xs text-white/40 flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />{new Date(comp.startDate).toLocaleDateString()}
+                              {comp.endDate && <span> - {new Date(comp.endDate).toLocaleDateString()}</span>}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Select value={comp.status} onValueChange={(v) => updateStatusMutation.mutate({ id: comp.id, status: v })}>
-                        <SelectTrigger className="bg-white/[0.08] border-white/20 text-white text-xs w-28" data-testid={`select-status-${comp.id}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#222] border-white/20 text-white">
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="voting">Voting</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="ghost" size="icon" onClick={() => { setSelectedCompId(comp.id); setActiveTab("contestants"); }} data-testid={`button-view-contestants-${comp.id}`}>
-                        <Users className="h-4 w-4 text-white/60" />
+                    <div className="p-3 flex flex-wrap items-center justify-between gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-white/60"
+                        onClick={() => setExpandedCompId(expandedCompId === comp.id ? null : comp.id)}
+                        data-testid={`button-expand-${comp.id}`}
+                      >
+                        {expandedCompId === comp.id ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                        View Details
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setSelectedCompId(comp.id); setActiveTab("analytics"); }} data-testid={`button-view-analytics-${comp.id}`}>
-                        <BarChart3 className="h-4 w-4 text-white/60" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this event?")) deleteCompMutation.mutate(comp.id); }} data-testid={`button-delete-${comp.id}`}>
-                        <XIcon className="h-4 w-4 text-red-400/60" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Select value={comp.status} onValueChange={(v) => updateStatusMutation.mutate({ id: comp.id, status: v })}>
+                          <SelectTrigger className="bg-white/[0.08] border-white/20 text-white text-xs w-28" data-testid={`select-status-${comp.id}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#222] border-white/20 text-white">
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="voting">Voting</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" onClick={() => { setSelectedCompId(comp.id); setActiveTab("contestants"); }} data-testid={`button-view-contestants-${comp.id}`}>
+                          <Users className="h-4 w-4 text-white/60" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setSelectedCompId(comp.id); setActiveTab("analytics"); }} data-testid={`button-view-analytics-${comp.id}`}>
+                          <BarChart3 className="h-4 w-4 text-white/60" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this event?")) deleteCompMutation.mutate(comp.id); }} data-testid={`button-delete-${comp.id}`}>
+                          <XIcon className="h-4 w-4 text-red-400/60" />
+                        </Button>
+                      </div>
                     </div>
+                    {expandedCompId === comp.id && <InlineHostCompDetail compId={comp.id} />}
                   </div>
                 ))}
               </div>
