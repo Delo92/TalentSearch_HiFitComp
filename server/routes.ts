@@ -40,10 +40,6 @@ import {
   createCompetitionDriveFolder,
   createContestantDriveFolders,
   getDriveStorageUsage,
-  getOAuthAuthorizationUrl,
-  exchangeOAuthCode,
-  isOAuthConnected,
-  getOAuthRedirectUriForSetup,
 } from "./google-drive";
 import {
   listTalentVideos,
@@ -2598,50 +2594,6 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/google-drive-setup", (_req, res) => {
-    const connected = isOAuthConnected();
-    const redirectUri = getOAuthRedirectUriForSetup();
-    const authUrl = getOAuthAuthorizationUrl();
-    res.json({ connected, redirectUri, authUrl });
-  });
-
-  app.get("/api/admin/google-drive-auth", (_req, res) => {
-    const authUrl = getOAuthAuthorizationUrl();
-    if (!authUrl) {
-      res.status(500).json({ message: "OAuth not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET." });
-      return;
-    }
-    res.redirect(authUrl);
-  });
-
-  app.get("/api/admin/google-drive-callback", async (req, res) => {
-    const code = req.query.code as string;
-    if (!code) {
-      res.status(400).send("No authorization code received");
-      return;
-    }
-    const result = await exchangeOAuthCode(code);
-    if (result.success) {
-      res.send(`
-        <html><body style="background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-          <div style="text-align:center">
-            <h1 style="color:#FF5A09">Google Drive Connected!</h1>
-            <p>You can close this window and return to your app.</p>
-          </div>
-        </body></html>
-      `);
-    } else {
-      res.status(500).send(`
-        <html><body style="background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-          <div style="text-align:center">
-            <h1 style="color:red">Connection Failed</h1>
-            <p>${result.error}</p>
-          </div>
-        </body></html>
-      `);
-    }
-  });
-
   const driveUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 500 * 1024 * 1024 },
@@ -2670,7 +2622,7 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Google Drive upload error:", error);
       if (error.code === 403) {
-        res.status(403).json({ message: "Permission denied. Check Drive connection in admin settings." });
+        res.status(403).json({ message: "Permission denied. The service account may not have Editor access to this folder." });
       } else {
         res.status(500).json({ message: error.message || "Failed to upload file to Google Drive" });
       }
