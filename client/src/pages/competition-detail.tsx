@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { slugify } from "@shared/slugify";
 
 interface ContestantWithProfile {
   id: number;
@@ -242,7 +243,7 @@ export default function CompetitionDetailPage() {
 
                     <div className="flex items-center justify-center gap-4">
                       <Link
-                        href={`/talent/${contestant.talentProfileId}`}
+                        href={`/${slugify(competition.title)}/${slugify(contestant.talentProfile.displayName)}`}
                         className="text-[11px] text-white group-hover:text-black uppercase border-b border-white group-hover:border-black pb-1 transition-colors duration-500"
                         style={{ letterSpacing: "6px" }}
                         data-testid={`link-profile-${contestant.id}`}

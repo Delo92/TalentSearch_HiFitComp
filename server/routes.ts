@@ -56,6 +56,7 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { slugify, extractIdFromSlug } from "../shared/slugify";
 
 const uploadsDir = path.resolve(process.cwd(), "client/public/uploads/livery");
 if (!fs.existsSync(uploadsDir)) {
@@ -2451,6 +2452,88 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Vote purchase error:", error);
       res.status(500).json({ message: "Failed to process vote purchase" });
+    }
+  });
+
+  app.get("/api/resolve/host/:hostSlug", async (req, res) => {
+    try {
+      const { hostSlug } = req.params;
+      const { baseSlug, id: hostId } = extractIdFromSlug(hostSlug);
+      const hostProfiles = await storage.getHostProfiles();
+      const host = hostId
+        ? hostProfiles.find(p => p.id === hostId)
+        : hostProfiles.find(p =>
+            slugify(p.displayName) === hostSlug ||
+            (p.stageName && slugify(p.stageName) === hostSlug)
+          );
+      if (!host) return res.status(404).json({ message: "Host not found" });
+
+      const user = await storage.getUser(host.userId);
+      const hostComps = await storage.getCompetitionsByCreator(host.userId);
+
+      res.json({
+        host: {
+          ...host,
+          email: user?.email || null,
+          socialLinks: (host as any).socialLinks || user?.socialLinks || null,
+          profileImageUrl: user?.profileImageUrl || null,
+        },
+        competitions: hostComps,
+      });
+    } catch (error: any) {
+      console.error("Host slug resolution error:", error);
+      res.status(500).json({ message: "Failed to resolve host profile" });
+    }
+  });
+
+  app.get("/api/resolve/:compSlug/:talentSlug", async (req, res) => {
+    try {
+      const { compSlug, talentSlug } = req.params;
+      const { baseSlug: compBase, id: compId } = extractIdFromSlug(compSlug);
+      const competitions = await storage.getCompetitions();
+      const comp = compId
+        ? competitions.find(c => c.id === compId)
+        : competitions.find(c => slugify(c.title) === compSlug);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const contestants = await storage.getContestantsByCompetition(comp.id);
+      const { baseSlug: talentBase, id: talentId } = extractIdFromSlug(talentSlug);
+      let contestant = talentId
+        ? contestants.find(c => c.talentProfile.id === talentId)
+        : contestants.find(c =>
+            slugify(c.talentProfile.displayName) === talentSlug ||
+            (c.talentProfile.stageName && slugify(c.talentProfile.stageName) === talentSlug)
+          );
+      if (!contestant) return res.status(404).json({ message: "Contestant not found in this competition" });
+
+      let videoThumbnail: string | null = null;
+      let videos: any[] = [];
+      try {
+        const talentName = (contestant.talentProfile.displayName || contestant.talentProfile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+        const talentVideos = await listTalentVideos(comp.title, talentName);
+        if (talentVideos.length > 0) {
+          videoThumbnail = getVideoThumbnail(talentVideos[0]);
+        }
+        videos = talentVideos.map(v => ({
+          uri: v.uri,
+          name: v.name,
+          link: v.link,
+          embedUrl: v.player_embed_url,
+          duration: v.duration,
+          thumbnail: getVideoThumbnail(v),
+        }));
+      } catch {}
+
+      const totalVotes = await storage.getTotalVotesByCompetition(comp.id);
+
+      res.json({
+        competition: comp,
+        contestant: { ...contestant, videoThumbnail, videos },
+        totalVotes,
+      });
+    } catch (error: any) {
+      console.error("Slug resolution error:", error);
+      res.status(500).json({ message: "Failed to resolve profile" });
     }
   });
 
