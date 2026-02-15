@@ -65,16 +65,22 @@ export async function findOrCreateFolder(name: string, parentUri?: string): Prom
 
   try {
     const data = await vimeoRequest(listPath);
-    const folders = data.data || [];
-    const existing = folders.find((f: any) => f.name === name);
-    if (existing) return existing;
-  } catch {
+    const items = data.data || [];
+    for (const item of items) {
+      const folder = parentUri ? (item.folder || item) : item;
+      if (folder.name === name) return folder;
+    }
+  } catch (err: any) {
+    console.warn(`Could not list folders at ${listPath}:`, err.message);
   }
 
-  const createPath = parentUri ? `${parentUri}/items` : `/me/projects`;
-  const created = await vimeoRequest(createPath, {
+  const body: any = { name };
+  if (parentUri) {
+    body.parent_folder_uri = parentUri;
+  }
+  const created = await vimeoRequest("/me/projects", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
 
   return created;
@@ -105,6 +111,8 @@ export async function createContestantVimeoFolder(competitionName: string, talen
 }
 
 export async function listTalentVideos(competitionName: string, talentName: string): Promise<VimeoVideo[]> {
+  const safeTalentName = talentName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+  const safeCompName = competitionName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
   try {
     const folder = await getTalentFolderInCompetition(competitionName, talentName);
     const videosUri = folder.metadata?.connections?.videos?.uri;
@@ -114,7 +122,7 @@ export async function listTalentVideos(competitionName: string, talentName: stri
     return data.data || [];
   } catch {
     try {
-      const prefix = `${competitionName} - ${talentName} -`;
+      const prefix = `${safeCompName} - ${safeTalentName} -`;
       const data = await vimeoRequest(`/me/videos?per_page=50&sort=date&direction=desc&query=${encodeURIComponent(prefix)}`);
       return (data.data || []).filter((v: VimeoVideo) => v.name?.startsWith(prefix));
     } catch {
@@ -133,12 +141,14 @@ export async function listAllTalentVideos(talentName: string): Promise<(VimeoVid
 
     const allVideos: (VimeoVideo & { competitionFolder: string })[] = [];
 
-    for (const compFolder of compFolders) {
+    for (const compItem of compFolders) {
+      const compFolder = compItem.folder || compItem;
+      if (!compFolder.uri) continue;
       try {
         const talentListPath = `${compFolder.uri}/items?type=folder&per_page=100`;
         const talentData = await vimeoRequest(talentListPath);
-        const talentFolders = talentData.data || [];
-        const talentFolder = talentFolders.find((f: any) => f.name === safeTalentName);
+        const talentItems = talentData.data || [];
+        const talentFolder = talentItems.map((t: any) => t.folder || t).find((f: any) => f.name === safeTalentName);
         if (!talentFolder) continue;
 
         const videosUri = talentFolder.metadata?.connections?.videos?.uri;
@@ -218,6 +228,20 @@ export async function deleteVideo(videoUri: string): Promise<void> {
   await vimeoRequest(videoUri, { method: "DELETE" });
 }
 
+export async function renameVideo(videoUri: string, newName: string): Promise<VimeoVideo> {
+  return vimeoRequest(videoUri, {
+    method: "PATCH",
+    body: JSON.stringify({ name: newName }),
+  });
+}
+
+export async function addVideoToFolder(videoUri: string, folderUri: string): Promise<void> {
+  const videoId = videoUri.replace("/videos/", "");
+  await vimeoRequest(`${folderUri}/videos/${videoId}`, {
+    method: "PUT",
+  });
+}
+
 export function getVideoThumbnail(video: VimeoVideo, width: number = 640): string {
   if (!video.pictures?.sizes?.length) return "";
   const sorted = [...video.pictures.sizes].sort((a, b) => Math.abs(a.width - width) - Math.abs(b.width - width));
@@ -253,14 +277,17 @@ export async function getVimeoStorageUsage(): Promise<{
     const data = await vimeoRequest(listPath);
     const compFolders = data.data || [];
 
-    for (const compFolder of compFolders) {
+    for (const compItem of compFolders) {
+      const compFolder = compItem.folder || compItem;
+      if (!compFolder.uri) continue;
       const videoCount = compFolder.metadata?.connections?.videos?.total || 0;
 
       let subVideoCount = videoCount;
       try {
         const subListPath = `${compFolder.uri}/items?type=folder&per_page=100`;
         const subData = await vimeoRequest(subListPath);
-        for (const sub of subData.data || []) {
+        for (const subItem of subData.data || []) {
+          const sub = subItem.folder || subItem;
           const subVids = sub.metadata?.connections?.videos?.total || 0;
           subVideoCount += subVids;
         }

@@ -43,9 +43,13 @@ import {
   listAllTalentVideos,
   createUploadTicket,
   deleteVideo,
+  renameVideo,
+  addVideoToFolder,
   getVideoThumbnail,
   createCompetitionVimeoFolder,
   createContestantVimeoFolder,
+  getCompetitionFolder,
+  getTalentFolderInCompetition,
   getVimeoStorageUsage,
 } from "./vimeo";
 import { z } from "zod";
@@ -2289,6 +2293,52 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Vimeo delete error:", error);
       res.status(500).json({ message: "Failed to delete video" });
+    }
+  });
+
+  app.patch("/api/vimeo/videos/:videoId", firebaseAuth, async (req, res) => {
+    try {
+      const { videoId } = req.params;
+      const { name } = req.body;
+      if (!name || typeof name !== "string") {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      const updated = await renameVideo(`/videos/${videoId}`, name.trim());
+      res.json({
+        uri: updated.uri,
+        name: updated.name,
+        link: updated.link,
+      });
+    } catch (error: any) {
+      console.error("Vimeo rename error:", error);
+      res.status(500).json({ message: "Failed to rename video" });
+    }
+  });
+
+  app.post("/api/vimeo/backfill-folders", firebaseAuth, async (req, res) => {
+    try {
+      const uid = req.firebaseUser!.uid;
+      const firestoreUser = await getFirestoreUser(uid);
+      if (!firestoreUser || firestoreUser.level < 4) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const competitions = await storage.getCompetitions();
+      const results: Array<{ competition: string; status: string; folderUri?: string }> = [];
+
+      for (const comp of competitions) {
+        try {
+          const folder = await createCompetitionVimeoFolder(comp.title);
+          results.push({ competition: comp.title, status: "ok", folderUri: folder.uri });
+        } catch (err: any) {
+          results.push({ competition: comp.title, status: `error: ${err.message}` });
+        }
+      }
+
+      res.json({ message: `Processed ${results.length} competitions`, results });
+    } catch (error: any) {
+      console.error("Vimeo backfill error:", error);
+      res.status(500).json({ message: "Failed to backfill folders" });
     }
   });
 

@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen } from "lucide-react";
+import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check } from "lucide-react";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +40,8 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadError, setUploadError] = useState<{ type: "image" | "video"; message: string } | null>(null);
+  const [editingVideoUri, setEditingVideoUri] = useState<string | null>(null);
+  const [editingVideoName, setEditingVideoName] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -131,6 +133,22 @@ export default function TalentDashboard({ user, profile }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vimeo/videos", selectedCompId] });
       toast({ title: "Deleted", description: "Video removed from Vimeo." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const renameVideoMutation = useMutation({
+    mutationFn: async ({ videoUri, name }: { videoUri: string; name: string }) => {
+      const videoId = videoUri.split("/").pop();
+      await apiRequest("PATCH", `/api/vimeo/videos/${videoId}`, { name });
+    },
+    onSuccess: () => {
+      setEditingVideoUri(null);
+      setEditingVideoName("");
+      queryClient.invalidateQueries({ queryKey: ["/api/vimeo/videos", selectedCompId] });
+      toast({ title: "Renamed", description: "Video name updated." });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
@@ -556,7 +574,61 @@ export default function TalentDashboard({ user, profile }: Props) {
                                 <img src={vid.thumbnail} alt={vid.name} className="w-24 h-16 sm:w-32 sm:h-20 object-cover rounded-md flex-shrink-0" />
                               )}
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm truncate">{vid.name}</h4>
+                                {editingVideoUri === vid.uri ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={editingVideoName}
+                                      onChange={(e) => setEditingVideoName(e.target.value)}
+                                      className="h-8 text-sm bg-black/40 border-orange-500/50"
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && editingVideoName.trim()) {
+                                          renameVideoMutation.mutate({ videoUri: vid.uri, name: editingVideoName.trim() });
+                                        } else if (e.key === "Escape") {
+                                          setEditingVideoUri(null);
+                                        }
+                                      }}
+                                      autoFocus
+                                      data-testid="input-video-rename"
+                                    />
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="text-green-400 flex-shrink-0"
+                                      onClick={() => {
+                                        if (editingVideoName.trim()) {
+                                          renameVideoMutation.mutate({ videoUri: vid.uri, name: editingVideoName.trim() });
+                                        }
+                                      }}
+                                      disabled={renameVideoMutation.isPending || !editingVideoName.trim()}
+                                      data-testid="button-confirm-rename"
+                                    >
+                                      {renameVideoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="text-white/40 flex-shrink-0"
+                                      onClick={() => setEditingVideoUri(null)}
+                                      data-testid="button-cancel-rename"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-medium text-sm truncate">{vid.name}</h4>
+                                    <button
+                                      className="text-white/40 hover:text-orange-400 transition-colors flex-shrink-0 p-1"
+                                      onClick={() => {
+                                        setEditingVideoUri(vid.uri);
+                                        setEditingVideoName(vid.name || "");
+                                      }}
+                                      data-testid={`button-edit-video-name-${vid.uri}`}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                   {vid.duration > 0 && (
                                     <span className="text-xs text-white/30">{Math.floor(vid.duration / 60)}:{String(vid.duration % 60).padStart(2, "0")}</span>
