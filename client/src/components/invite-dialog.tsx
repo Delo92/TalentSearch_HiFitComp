@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { UserPlus, Mail, Copy, Check, Trash2, Clock, UserCheck } from "lucide-react";
+import { UserPlus, Mail, Copy, Check, Trash2, Clock, UserCheck, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -45,7 +45,7 @@ const LEVEL_COLORS: Record<number, string> = {
 
 function getInvitableLevels(senderLevel: number): number[] {
   const levels: number[] = [];
-  for (let i = 1; i < senderLevel; i++) {
+  for (let i = 1; i <= senderLevel; i++) {
     levels.push(i);
   }
   return levels;
@@ -59,6 +59,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
   const [targetLevel, setTargetLevel] = useState("");
   const [message, setMessage] = useState("");
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
 
   const invitableLevels = getInvitableLevels(senderLevel);
 
@@ -78,13 +79,15 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
       setName("");
       setTargetLevel("");
       setMessage("");
-      toast({ title: "Invitation sent!" });
       const link = `${window.location.origin}/register?invite=${data.token}`;
+      setNewInviteLink(link);
       navigator.clipboard.writeText(link).then(() => {
         setCopiedToken(data.token);
         setTimeout(() => setCopiedToken(null), 3000);
-        toast({ title: "Invite link copied to clipboard!" });
-      }).catch(() => {});
+        toast({ title: "Invitation created & link copied!" });
+      }).catch(() => {
+        toast({ title: "Invitation created!", description: "Copy the link below to share it." });
+      });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
@@ -127,7 +130,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
   if (invitableLevels.length === 0) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setNewInviteLink(null); }}>
       <DialogTrigger asChild>
         <Button variant="outline" className="border-white/10 text-white" data-testid="button-invite-user">
           <Mail className="h-4 w-4 mr-1.5" /> Invite
@@ -200,6 +203,38 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
             {inviteMutation.isPending ? "Sending..." : "Send Invitation"}
           </Button>
         </form>
+
+        {newInviteLink && (
+          <div className="mt-4 rounded-md bg-green-500/10 border border-green-500/20 p-4" data-testid="invite-link-box">
+            <div className="flex items-center gap-2 mb-2">
+              <LinkIcon className="h-4 w-4 text-green-400" />
+              <span className="text-sm font-semibold text-green-400">Invite Link Created</span>
+            </div>
+            <p className="text-xs text-white/50 mb-2">Share this link with your invitee. They can click it to sign up.</p>
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={newInviteLink}
+                className="bg-white/5 border-white/10 text-white text-xs flex-1"
+                onFocus={(e) => e.target.select()}
+                data-testid="input-invite-link"
+              />
+              <Button
+                size="icon"
+                variant="outline"
+                className="border-green-500/30 text-green-400 shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(newInviteLink).then(() => {
+                    toast({ title: "Link copied!" });
+                  });
+                }}
+                data-testid="button-copy-new-invite-link"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {invitations && invitations.length > 0 && (
           <div className="mt-4 border-t border-white/10 pt-4">

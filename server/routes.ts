@@ -1168,8 +1168,8 @@ export async function registerRoutes(
       }
 
       const senderLevel = req.firebaseUser!.level;
-      if (targetLevel >= senderLevel) {
-        return res.status(403).json({ message: "You can only invite users to a lower level than your own" });
+      if (targetLevel > senderLevel) {
+        return res.status(403).json({ message: "You can only invite users at your level or below" });
       }
       if (targetLevel < 1) {
         return res.status(400).json({ message: "Invalid target level" });

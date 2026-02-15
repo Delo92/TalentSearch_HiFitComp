@@ -28,6 +28,7 @@ export default function TalentDashboard({ user, profile }: Props) {
   const { logout } = useAuth();
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState(profile?.displayName || user.displayName || "");
+  const [email, setEmail] = useState(profile?.email || user.email || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [category, setCategory] = useState(profile?.category || "");
   const [location, setLocation] = useState(profile?.location || "");
@@ -75,7 +76,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
   const saveProfileMutation = useMutation({
     mutationFn: async () => {
-      const data = { displayName, bio, category, location };
+      const data = { displayName, email, bio, category, location };
       if (profile) {
         await apiRequest("PATCH", "/api/talent-profiles/me", data);
       } else {
@@ -293,6 +294,14 @@ export default function TalentDashboard({ user, profile }: Props) {
                     placeholder="Your stage name" data-testid="input-display-name"
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-white/60">Email</Label>
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com" data-testid="input-email"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="category" className="text-white/60">Category</Label>
                   <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)}
