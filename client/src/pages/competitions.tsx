@@ -10,8 +10,14 @@ import { useState } from "react";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { useSEO } from "@/hooks/use-seo";
 
 export default function Competitions() {
+  useSEO({
+    title: "Browse Competitions",
+    description: "Explore active talent competitions in music, modeling, bodybuilding, dance and more. Vote for your favorites, or apply to compete on HiFitComp.",
+    canonical: "https://hifitcomp.com/competitions",
+  });
   const { data: competitions, isLoading } = useQuery<CompetitionExt[]>({
     queryKey: ["/api/competitions"],
   });

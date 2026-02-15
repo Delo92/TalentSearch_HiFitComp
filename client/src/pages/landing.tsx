@@ -5,6 +5,7 @@ import { ChevronRight, Music, Camera, Dumbbell, Star } from "lucide-react";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { useSEO } from "@/hooks/use-seo";
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -20,6 +21,11 @@ function useInView(threshold = 0.15) {
 }
 
 export default function Landing() {
+  useSEO({
+    title: "HiFitComp - Talent Competition & Voting Platform",
+    description: "The ultimate talent competition platform. Browse competitions, vote for your favorite artists, models, bodybuilders, and performers. Join as a competitor or host your own event today.",
+    canonical: "https://hifitcomp.com",
+  });
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);

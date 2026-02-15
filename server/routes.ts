@@ -2751,7 +2751,85 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const baseUrl = "https://hifitcomp.com";
+      const competitions = await storage.getCompetitions();
+      const profiles = await storage.getAllTalentProfiles();
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>${baseUrl}/competitions</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>${baseUrl}/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>${baseUrl}/join</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>${baseUrl}/host</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>${baseUrl}/login</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>`;
+
+      for (const comp of competitions) {
+        if (comp.status === "draft") continue;
+        const compSlug = `${slugify(comp.title)}-${comp.id}`;
+        xml += `\n  <url><loc>${baseUrl}/competition/${compSlug}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`;
+      }
+
+      for (const profile of profiles) {
+        if (profile.role === "admin" || profile.role === "host") continue;
+        xml += `\n  <url><loc>${baseUrl}/talent/${profile.id}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`;
+      }
+
+      xml += `\n</urlset>`;
+      res.set("Content-Type", "application/xml").send(xml);
+    } catch (err) {
+      console.error("Sitemap error:", err);
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
   const socialCrawlerPattern = /facebookexternalhit|facebot|twitterbot|whatsapp|linkedinbot|slackbot|discordbot|telegrambot|applebot|googlebot|bingbot|yandexbot|pinterestbot|redditbot|rogerbot|embedly|quora|outbrain|vkShare|skypeuripreview|iframely|Slurp/i;
+
+  app.get("/competition/:slug", async (req, res, next) => {
+    try {
+      const ua = req.headers["user-agent"] || "";
+      if (!socialCrawlerPattern.test(ua)) return next();
+
+      const slug = req.params.slug;
+      const { id: compId } = extractIdFromSlug(slug);
+      const competitions = await storage.getCompetitions();
+      const comp = compId
+        ? competitions.find(c => c.id === compId)
+        : competitions.find(c => slugify(c.title) === slug);
+      if (!comp) return next();
+
+      const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const ogTitle = `${comp.title} - ${comp.category} Competition | HiFitComp`;
+      const ogDescription = comp.description || `Vote in the ${comp.title} ${comp.category} competition on HiFitComp. Browse contestants, cast your vote, and help decide the winner!`;
+      const ogImage = comp.coverImage || "https://hifitcomp.com/images/template/bg-1.jpg";
+      const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+      const ogUrl = `${protocol}://${req.get("host")}/competition/${slug}`;
+
+      const ogTags = `
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="${escHtml(ogTitle)}" />
+    <meta property="og:description" content="${escHtml(ogDescription)}" />
+    <meta property="og:image" content="${escHtml(ogImage)}" />
+    <meta property="og:url" content="${escHtml(ogUrl)}" />
+    <meta property="og:site_name" content="HiFitComp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escHtml(ogTitle)}" />
+    <meta name="twitter:description" content="${escHtml(ogDescription)}" />
+    <meta name="twitter:image" content="${escHtml(ogImage)}" />
+    <meta name="description" content="${escHtml(ogDescription)}" />
+    <title>${escHtml(ogTitle)}</title>`;
+
+      const clientTemplate = path.resolve(process.cwd(), "client", "index.html");
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      template = template.replace(/<title>.*?<\/title>/, ogTags);
+      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+    } catch (error) {
+      console.error("Competition OG meta injection error:", error);
+      next();
+    }
+  });
 
   app.get("/:compSlug/:talentSlug", async (req, res, next) => {
     try {

@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { useSEO } from "@/hooks/use-seo";
 import { CheckCircle, Send, CreditCard, Search, Trophy } from "lucide-react";
 import type { Competition } from "@shared/schema";
 
@@ -52,6 +53,11 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 export default function JoinPage() {
+  useSEO({
+    title: "Join a Competition",
+    description: "Ready to showcase your talent? Apply to join an active competition on HiFitComp. Compete in music, modeling, bodybuilding, dance, and more.",
+    canonical: "https://hifitcomp.com/join",
+  });
   const { toast } = useToast();
   const { getImage, getMedia } = useLivery();
 

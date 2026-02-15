@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /checkout/
+Disallow: /my-purchases
+Disallow: /api/
+
+Sitemap: https://hifitcomp.com/sitemap.xml

@@ -1,0 +1,69 @@
+import { useEffect } from "react";
+
+interface SEOOptions {
+  title: string;
+  description?: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: string;
+}
+
+const DEFAULT_TITLE = "HiFitComp - Talent Competition & Voting Platform";
+const DEFAULT_DESC = "HiFitComp is the ultimate talent competition and voting platform. Browse competitions, vote for your favorite artists, models, bodybuilders, and performers. Join or host your own event today.";
+
+function setMetaTag(property: string, content: string, isProperty = false) {
+  const attr = isProperty ? "property" : "name";
+  let el = document.querySelector(`meta[${attr}="${property}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, property);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
+function setCanonical(url: string) {
+  let el = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!el) {
+    el = document.createElement("link");
+    el.setAttribute("rel", "canonical");
+    document.head.appendChild(el);
+  }
+  el.setAttribute("href", url);
+}
+
+export function useSEO({ title, description, canonical, ogImage, ogType }: SEOOptions) {
+  useEffect(() => {
+    const fullTitle = title.includes("HiFitComp") ? title : `${title} | HiFitComp`;
+    document.title = fullTitle;
+
+    const desc = description || DEFAULT_DESC;
+    setMetaTag("description", desc);
+    setMetaTag("og:title", fullTitle, true);
+    setMetaTag("og:description", desc, true);
+    setMetaTag("twitter:title", fullTitle);
+    setMetaTag("twitter:description", desc);
+
+    setMetaTag("og:type", ogType || "website", true);
+    setMetaTag("og:image", ogImage || "https://hifitcomp.com/images/template/bg-1.jpg", true);
+    setMetaTag("twitter:image", ogImage || "https://hifitcomp.com/images/template/bg-1.jpg");
+
+    const url = canonical || "https://hifitcomp.com";
+    setCanonical(url);
+    setMetaTag("og:url", url, true);
+
+    return () => {
+      document.title = DEFAULT_TITLE;
+      setMetaTag("description", DEFAULT_DESC);
+      setMetaTag("og:title", DEFAULT_TITLE, true);
+      setMetaTag("og:description", DEFAULT_DESC, true);
+      setMetaTag("og:image", "https://hifitcomp.com/images/template/bg-1.jpg", true);
+      setMetaTag("og:url", "https://hifitcomp.com", true);
+      setMetaTag("og:type", "website", true);
+      setMetaTag("twitter:title", DEFAULT_TITLE);
+      setMetaTag("twitter:description", DEFAULT_DESC);
+      setMetaTag("twitter:image", "https://hifitcomp.com/images/template/bg-1.jpg");
+      setCanonical("https://hifitcomp.com");
+    };
+  }, [title, description, canonical, ogImage, ogType]);
+}

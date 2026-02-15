@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { useSEO } from "@/hooks/use-seo";
 import { CheckCircle, Send, CreditCard, Trophy } from "lucide-react";
 import type { Competition } from "@shared/schema";
 
@@ -44,6 +45,11 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 export default function HostPage() {
+  useSEO({
+    title: "Host Your Event",
+    description: "Want to run your own talent competition? Host your event on HiFitComp with built-in voting, contestant management, and analytics. Get started today.",
+    canonical: "https://hifitcomp.com/host",
+  });
   const { toast } = useToast();
   const { getImage, getMedia } = useLivery();
 

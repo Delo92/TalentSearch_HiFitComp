@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { useSEO } from "@/hooks/use-seo";
 import { slugify, extractIdFromSlug } from "@shared/slugify";
 import { FallbackImage, getBackupUrl } from "@/components/fallback-image";
 
@@ -69,12 +70,12 @@ export default function CompetitionDetailPage() {
     enabled: !!id,
   });
 
-  useEffect(() => {
-    if (competition) {
-      document.title = `${competition.title} | HiFitComp`;
-    }
-    return () => { document.title = "HiFitComp - Talent Competition & Voting Platform"; };
-  }, [competition]);
+  useSEO({
+    title: competition ? `${competition.title} - ${competition.category} Competition` : "Competition",
+    description: competition?.description || (competition ? `Vote in the ${competition.title} ${competition.category} competition on HiFitComp. Browse contestants, cast your vote, and help decide the winner!` : undefined),
+    ogImage: competition?.coverImage || undefined,
+    canonical: competition ? `https://hifitcomp.com/competition/${slugify(competition.title)}-${competition.id}` : undefined,
+  });
 
   const voteMutation = useMutation({
     mutationFn: async (contestantId: number) => {

@@ -7,6 +7,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { useSEO } from "@/hooks/use-seo";
 import { slugify } from "@shared/slugify";
 import type { Competition } from "@shared/schema";
 
@@ -22,10 +23,11 @@ export default function AboutPage() {
   });
   const [catFilter, setCatFilter] = useState("All");
 
-  useEffect(() => {
-    document.title = "About | HiFitComp";
-    return () => { document.title = "HiFitComp - Talent Competition & Voting Platform"; };
-  }, []);
+  useSEO({
+    title: "About HiFitComp",
+    description: "Learn about HiFitComp - the ultimate talent competition and voting platform. See our rules, upcoming events calendar, and how to get started as a competitor or host.",
+    canonical: "https://hifitcomp.com/about",
+  });
 
   const calendarComps = (competitions || [])
     .filter((c) => c.status !== "draft" && c.status !== "completed")
