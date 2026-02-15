@@ -594,6 +594,35 @@ export const firestoreVotes = {
     });
     return total;
   },
+
+  async getVoteBreakdownByCompetition(competitionId: number): Promise<{ online: number; inPerson: number; total: number }> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.VOTE_COUNTS)
+      .where("competitionId", "==", competitionId)
+      .get();
+    let online = 0;
+    let inPerson = 0;
+    let total = 0;
+    snapshot.docs.forEach(doc => {
+      const data = doc.data() as FirestoreVoteCount;
+      online += data.onlineCount || 0;
+      inPerson += data.inPersonCount || 0;
+      total += data.count;
+    });
+    return { online, inPerson, total };
+  },
+
+  async getContestantVoteBreakdown(contestantId: number, competitionId: number): Promise<{ online: number; inPerson: number; total: number }> {
+    const docId = `${competitionId}_${contestantId}`;
+    const doc = await db().collection(COLLECTIONS.VOTE_COUNTS).doc(docId).get();
+    if (!doc.exists) return { online: 0, inPerson: 0, total: 0 };
+    const data = doc.data() as FirestoreVoteCount;
+    return {
+      online: data.onlineCount || 0,
+      inPerson: data.inPersonCount || 0,
+      total: data.count,
+    };
+  },
 };
 
 export const firestoreVotePurchases = {

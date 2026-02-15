@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign, Pencil, Save, ImageUp } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign, Pencil, Save, ImageUp, QrCode, Download } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteDialog } from "@/components/invite-dialog";
@@ -83,6 +83,10 @@ function EventAnalyticsCard({ comp }: { comp: HostCompetition }) {
     queryKey: ["/api/host/competitions", comp.id, "report"],
   });
 
+  const { data: breakdown } = useQuery<{ online: number; inPerson: number; total: number; onlineVoteWeight: number }>({
+    queryKey: ["/api/competitions", comp.id, "vote-breakdown"],
+  });
+
   if (isLoading) return <div className="rounded-md bg-white/5 border border-white/5 p-4 animate-pulse h-24" />;
 
   return (
@@ -92,9 +96,19 @@ function EventAnalyticsCard({ comp }: { comp: HostCompetition }) {
           <h4 className="text-sm font-medium text-white/80 truncate">{comp.title}</h4>
           <Badge className={`border-0 text-[10px] ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/50"}`}>{comp.status}</Badge>
         </div>
-        <Link href={`/competitions/${comp.id}`} className="text-xs text-orange-400 flex items-center gap-1">
-          <Eye className="h-3 w-3" /> View
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => {
+            const a = document.createElement("a");
+            a.href = `/api/competitions/${comp.id}/qrcode`;
+            a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+            a.click();
+          }} className="text-white/40 text-xs" title="Download QR Code" data-testid={`analytics-qr-${comp.id}`}>
+            <QrCode className="h-3 w-3 mr-1" /> QR
+          </Button>
+          <Link href={`/competitions/${comp.id}`} className="text-xs text-orange-400 flex items-center gap-1">
+            <Eye className="h-3 w-3" /> View
+          </Link>
+        </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div>
@@ -114,6 +128,30 @@ function EventAnalyticsCard({ comp }: { comp: HostCompetition }) {
           <p className="text-lg font-bold">{report?.totalPurchases ?? 0}</p>
         </div>
       </div>
+      {breakdown && (breakdown.online > 0 || breakdown.inPerson > 0) && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Vote Source Breakdown</p>
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+              <span className="text-white/60">Online: <span className="text-white font-medium">{breakdown.online}</span></span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+              <span className="text-white/60">In-Person: <span className="text-white font-medium">{breakdown.inPerson}</span></span>
+            </div>
+            {breakdown.onlineVoteWeight < 100 && (
+              <span className="text-white/30">Online weight: {breakdown.onlineVoteWeight}%</span>
+            )}
+          </div>
+          {breakdown.total > 0 && (
+            <div className="mt-2 h-2 rounded-full bg-white/5 overflow-hidden flex">
+              <div className="bg-blue-400 h-full" style={{ width: `${(breakdown.online / breakdown.total) * 100}%` }} />
+              <div className="bg-orange-400 h-full" style={{ width: `${(breakdown.inPerson / breakdown.total) * 100}%` }} />
+            </div>
+          )}
+        </div>
+      )}
       {report && report.leaderboard.length > 0 && (
         <div className="mt-3 border-t border-white/5 pt-3">
           <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Top 3</p>
@@ -595,6 +633,14 @@ export default function HostDashboard({ user }: { user: any }) {
                             <SelectItem value="completed">Completed</SelectItem>
                           </SelectContent>
                         </Select>
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          const a = document.createElement("a");
+                          a.href = `/api/competitions/${comp.id}/qrcode`;
+                          a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+                          a.click();
+                        }} title="Download QR Code for live voting" data-testid={`button-qr-${comp.id}`}>
+                          <QrCode className="h-4 w-4 text-white/60" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => { setSelectedCompId(comp.id); setActiveTab("contestants"); }} data-testid={`button-view-contestants-${comp.id}`}>
                           <Users className="h-4 w-4 text-white/60" />
                         </Button>

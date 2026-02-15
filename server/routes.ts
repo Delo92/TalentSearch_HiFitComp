@@ -59,6 +59,7 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import QRCode from "qrcode";
 import { slugify, extractIdFromSlug } from "../shared/slugify";
 
 function generateUniqueFilename(originalName: string): string {
@@ -462,6 +463,83 @@ export async function registerRoutes(
     if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
     await storage.deleteCompetition(id);
     res.json({ message: "Deleted" });
+  });
+
+  app.get("/api/competitions/:id/qrcode", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+      const comp = await storage.getCompetition(id);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const slug = `${slugify(comp.title)}-${comp.id}`;
+      const host = req.headers.host || "hifitcomp.com";
+      const protocol = req.headers["x-forwarded-proto"] || "https";
+      const votingUrl = `${protocol}://${host}/competition/${slug}?source=in_person`;
+
+      const format = (req.query.format as string) || "png";
+
+      if (format === "svg") {
+        const svg = await QRCode.toString(votingUrl, {
+          type: "svg",
+          width: 400,
+          margin: 2,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        res.setHeader("Content-Type", "image/svg+xml");
+        res.setHeader("Content-Disposition", `attachment; filename="qr-${slug}.svg"`);
+        return res.send(svg);
+      }
+
+      const pngBuffer = await QRCode.toBuffer(votingUrl, {
+        type: "png",
+        width: 600,
+        margin: 2,
+        color: { dark: "#000000", light: "#ffffff" },
+        errorCorrectionLevel: "H",
+      });
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Content-Disposition", `attachment; filename="qr-${slug}.png"`);
+      return res.send(pngBuffer);
+    } catch (err: any) {
+      console.error("QR code generation error:", err);
+      res.status(500).json({ message: "Failed to generate QR code" });
+    }
+  });
+
+  app.get("/api/competitions/:id/vote-breakdown", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+      const comp = await storage.getCompetition(id);
+      if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      const breakdown = await storage.getVoteBreakdownByCompetition(id);
+
+      const contestants = await storage.getContestantsByCompetition(id);
+      const contestantBreakdowns = await Promise.all(
+        contestants.map(async (c) => {
+          const cb = await storage.getContestantVoteBreakdown(c.id, id);
+          return {
+            contestantId: c.id,
+            displayName: c.talentProfile.displayName,
+            ...cb,
+          };
+        })
+      );
+
+      res.json({
+        competitionId: id,
+        ...breakdown,
+        onlineVoteWeight: (comp as any).onlineVoteWeight ?? 100,
+        contestants: contestantBreakdowns,
+      });
+    } catch (err: any) {
+      console.error("Vote breakdown error:", err);
+      res.status(500).json({ message: "Failed to get vote breakdown" });
+    }
   });
 
   const voteBodySchema = z.object({

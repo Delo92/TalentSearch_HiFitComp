@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HardDrive, RefreshCw, FolderOpen } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HardDrive, RefreshCw, FolderOpen, QrCode } from "lucide-react";
 import { InviteDialog, CreateUserDialog } from "@/components/invite-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
@@ -587,6 +587,10 @@ function InlineCompDetail({ compId }: { compId: number }) {
     queryKey: ["/api/admin/competitions", compId, "detail"],
   });
 
+  const { data: breakdown } = useQuery<{ online: number; inPerson: number; total: number; onlineVoteWeight: number }>({
+    queryKey: ["/api/competitions", compId, "vote-breakdown"],
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8" data-testid={`inline-detail-loading-${compId}`}>
@@ -604,6 +608,29 @@ function InlineCompDetail({ compId }: { compId: number }) {
       <div className="rounded-md bg-white/5 border border-white/5 p-3">
         <p className="text-xs text-white/40">Total Votes</p>
         <p className="font-bold text-lg bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid={`inline-votes-${compId}`}>{totalVotes}</p>
+        {breakdown && (breakdown.online > 0 || breakdown.inPerson > 0) && (
+          <div className="mt-2">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                <span className="text-white/60">Online: <span className="text-white font-medium">{breakdown.online}</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+                <span className="text-white/60">In-Person: <span className="text-white font-medium">{breakdown.inPerson}</span></span>
+              </div>
+              {breakdown.onlineVoteWeight < 100 && (
+                <span className="text-white/30 text-[10px]">Online weight: {breakdown.onlineVoteWeight}%</span>
+              )}
+            </div>
+            {breakdown.total > 0 && (
+              <div className="mt-1.5 h-1.5 rounded-full bg-white/5 overflow-hidden flex">
+                <div className="bg-blue-400 h-full" style={{ width: `${(breakdown.online / breakdown.total) * 100}%` }} />
+                <div className="bg-orange-400 h-full" style={{ width: `${(breakdown.inPerson / breakdown.total) * 100}%` }} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {hosts.length > 0 && (
@@ -1436,6 +1463,21 @@ export default function AdminDashboard({ user }: { user: any }) {
                       data-testid={`button-full-detail-${comp.id}`}
                     >
                       <Eye className="h-4 w-4 mr-1" /> Full Details
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const a = document.createElement("a");
+                        a.href = `/api/competitions/${comp.id}/qrcode`;
+                        a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+                        a.click();
+                      }}
+                      className="text-white/40"
+                      title="Download QR Code for live voting"
+                      data-testid={`button-qr-${comp.id}`}
+                    >
+                      <QrCode className="h-4 w-4 mr-1" /> QR Code
                     </Button>
                     <Select value={comp.status} onValueChange={(val) => updateCompMutation.mutate({ id: comp.id, data: { status: val } })}>
                       <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm" data-testid={`select-status-${comp.id}`}>

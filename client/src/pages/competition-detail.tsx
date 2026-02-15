@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,13 @@ export default function CompetitionDetailPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const voteSource = useMemo(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("source") === "in_person" ? "in_person" : "online";
+  }, []);
+
+  const isInPersonVoting = voteSource === "in_person";
+
   const { getImage, getMedia } = useLivery();
   const { data: competition, isLoading } = useQuery<CompetitionDetail>({
     queryKey: ["/api/competitions", id],
@@ -71,7 +78,7 @@ export default function CompetitionDetailPage() {
 
   const voteMutation = useMutation({
     mutationFn: async (contestantId: number) => {
-      await apiRequest("POST", `/api/competitions/${id}/vote`, { contestantId });
+      await apiRequest("POST", `/api/competitions/${id}/vote`, { contestantId, source: voteSource });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/competitions", id] });
@@ -147,6 +154,15 @@ export default function CompetitionDetailPage() {
       </section>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {isInPersonVoting && (
+          <div className="mb-6 rounded-md bg-[#FF5A09]/10 border border-[#FF5A09]/30 px-4 py-3 flex flex-wrap items-center gap-3" data-testid="banner-in-person">
+            <Vote className="h-5 w-5 text-[#FF5A09] shrink-0" />
+            <p className="text-sm text-white/80">
+              <span className="font-bold text-[#FF5A09]">LIVE EVENT VOTING</span> — Your votes are recorded as in-person votes for this competition.
+            </p>
+          </div>
+        )}
+
         {competition.description && (
           <p className="text-white/40 mb-6 text-base max-w-3xl leading-relaxed" data-testid="text-description">
             {competition.description}
