@@ -100,22 +100,16 @@ const compCoverUpload = multer({
 });
 
 const liveryUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadsDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-      cb(null, name);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowedImages = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
-    const allowedVideos = /\.(mp4|webm|mov)$/i;
-    if (allowedImages.test(path.extname(file.originalname)) || allowedVideos.test(path.extname(file.originalname))) {
+  fileFilter: (_req: any, file: any, cb: any) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedImage = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
+    const allowedVideo = [".mp4", ".webm", ".mov"];
+    if (allowedImage.includes(ext) || allowedVideo.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files (jpg, png, gif, webp, svg) and video files (mp4, webm, mov) are allowed"));
+      cb(new Error("Only image and video files are allowed"));
     }
   },
 });
@@ -2094,19 +2088,17 @@ export async function registerRoutes(
     let mediaType: "image" | "video" = "image";
 
     if (req.file) {
-      const filePath = path.join(uploadsDir, req.file.filename);
       if (isVideoFile(req.file.originalname)) {
-        const duration = await getVideoDuration(filePath);
-        if (duration > 15) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({ message: `Video must be 15 seconds or less. Uploaded video is ${Math.round(duration)} seconds.` });
-        }
-        if (duration < 0) {
-          console.warn("Could not determine video duration, allowing upload");
-        }
         mediaType = "video";
       }
-      imageUrl = `/uploads/livery/${req.file.filename}`;
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const storagePath = `livery/${imageKey}${ext}`;
+      try {
+        imageUrl = await uploadToFirebaseStorage(storagePath, req.file.buffer, req.file.mimetype);
+      } catch (err: any) {
+        console.error("Firebase Storage livery upload error:", err);
+        return res.status(500).json({ message: "Failed to upload to storage: " + err.message });
+      }
     } else if (req.body.imageUrl !== undefined) {
       imageUrl = req.body.imageUrl || null;
       if (req.body.mediaType === "video") mediaType = "video";
@@ -2130,6 +2122,36 @@ export async function registerRoutes(
     const updated = await storage.updateLiveryImage(imageKey, null);
     if (!updated) return res.status(404).json({ message: "Livery item not found" });
     res.json(updated);
+  });
+
+  app.post("/api/admin/livery/migrate-to-firebase", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const items = await storage.getAllLivery();
+      const results: any[] = [];
+      for (const item of items) {
+        if (item.imageUrl && item.imageUrl.startsWith("/uploads/livery/")) {
+          const localPath = path.resolve(process.cwd(), "client/public" + item.imageUrl);
+          if (fs.existsSync(localPath)) {
+            const buffer = fs.readFileSync(localPath);
+            const ext = path.extname(localPath).toLowerCase();
+            const mimeMap: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime" };
+            const mimeType = mimeMap[ext] || "application/octet-stream";
+            const storagePath = `livery/${item.imageKey}${ext}`;
+            const firebaseUrl = await uploadToFirebaseStorage(storagePath, buffer, mimeType);
+            await storage.updateLiveryImage(item.imageKey, firebaseUrl, item.mediaType || "image");
+            results.push({ imageKey: item.imageKey, oldUrl: item.imageUrl, newUrl: firebaseUrl, status: "migrated" });
+          } else {
+            results.push({ imageKey: item.imageKey, oldUrl: item.imageUrl, status: "file_not_found" });
+          }
+        } else {
+          results.push({ imageKey: item.imageKey, url: item.imageUrl, status: "skipped" });
+        }
+      }
+      res.json({ message: "Migration complete", results });
+    } catch (error: any) {
+      console.error("Livery migration error:", error);
+      res.status(500).json({ message: "Migration failed: " + error.message });
+    }
   });
 
 
