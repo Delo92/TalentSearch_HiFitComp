@@ -465,7 +465,7 @@ export async function registerRoutes(
     res.json({ message: "Deleted" });
   });
 
-  app.get("/api/competitions/:id/qrcode", async (req, res) => {
+  app.get("/api/competitions/:id/qrcode", firebaseAuth, requireHost, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
@@ -474,9 +474,8 @@ export async function registerRoutes(
       if (!comp) return res.status(404).json({ message: "Competition not found" });
 
       const slug = `${slugify(comp.title)}-${comp.id}`;
-      const host = req.headers.host || "hifitcomp.com";
-      const protocol = req.headers["x-forwarded-proto"] || "https";
-      const votingUrl = `${protocol}://${host}/competition/${slug}?source=in_person`;
+      const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host || "hifitcomp.com"}`;
+      const votingUrl = `${baseUrl}/competition/${slug}?source=in_person`;
 
       const format = (req.query.format as string) || "png";
 
@@ -508,7 +507,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/competitions/:id/vote-breakdown", async (req, res) => {
+  app.get("/api/competitions/:id/vote-breakdown", firebaseAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
