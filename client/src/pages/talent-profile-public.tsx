@@ -8,6 +8,7 @@ import type { TalentProfile } from "@shared/schema";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { FallbackImage, getBackupUrl } from "@/components/fallback-image";
 
 export default function TalentProfilePublic() {
   const [, params] = useRoute("/talent/:id");
@@ -51,16 +52,23 @@ export default function TalentProfilePublic() {
     );
   }
 
-  const mainImage = profile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg");
+  const fallbackDefault = getImage("talent_profile_fallback", "/images/template/a1.jpg");
+  const mainImage = profile.imageUrls?.[0] || fallbackDefault;
+  const mainImageFallback = getBackupUrl(profile.imageUrls, (profile as any).imageBackupUrls, 0) || fallbackDefault;
 
   return (
     <div className="min-h-screen bg-black text-white">
       <SiteNavbar />
 
       <section
-        className="relative h-[270px] md:h-[340px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${mainImage}')`, backgroundSize: "cover" }}
+        className="relative h-[270px] md:h-[340px] overflow-hidden"
       >
+        <FallbackImage
+          src={mainImage}
+          fallbackSrc={mainImageFallback}
+          alt={profile.displayName || "Talent"}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
           <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">Talent Profile</p>
@@ -107,8 +115,9 @@ export default function TalentProfilePublic() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {profile.imageUrls.map((url, i) => (
                 <div key={i} className="relative aspect-square overflow-hidden group cursor-pointer">
-                  <img
+                  <FallbackImage
                     src={url}
+                    fallbackSrc={getBackupUrl(profile.imageUrls, (profile as any).imageBackupUrls, i)}
                     alt=""
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />

@@ -12,6 +12,7 @@ import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { slugify } from "@shared/slugify";
+import { FallbackImage, getBackupUrl } from "@/components/fallback-image";
 
 interface ContestantWithProfile {
   id: number;
@@ -25,6 +26,7 @@ interface ContestantWithProfile {
     bio: string | null;
     category: string | null;
     imageUrls: string[] | null;
+    imageBackupUrls?: string[] | null;
     location: string | null;
   };
 }
@@ -205,8 +207,9 @@ export default function CompetitionDetailPage() {
                   data-testid={`card-contestant-${contestant.id}`}
                 >
                   <div className="relative overflow-hidden h-52">
-                    <img
+                    <FallbackImage
                       src={(contestant as any).videoThumbnail || contestant.talentProfile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg")}
+                      fallbackSrc={getBackupUrl(contestant.talentProfile.imageUrls, contestant.talentProfile.imageBackupUrls, 0) || getImage("talent_profile_fallback", "/images/template/a1.jpg")}
                       alt={contestant.talentProfile.displayName}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />

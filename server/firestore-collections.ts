@@ -85,6 +85,7 @@ export interface FirestoreTalentProfile {
   category: string | null;
   location: string | null;
   imageUrls: string[];
+  imageBackupUrls?: string[];
   videoUrls: string[];
   socialLinks: string | null;
   role: string;

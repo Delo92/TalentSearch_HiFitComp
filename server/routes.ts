@@ -33,6 +33,8 @@ import {
   uploadImageToDrive,
   getFileStream,
   deleteFile,
+  getDriveImageUrl,
+  getDriveThumbnailUrl,
   createCompetitionDriveFolder,
   createContestantDriveFolders,
   getDriveStorageUsage,
@@ -1050,6 +1052,7 @@ export async function registerRoutes(
             stageName: c.talentProfile.stageName,
             category: c.talentProfile.category,
             imageUrls: c.talentProfile.imageUrls,
+            imageBackupUrls: (c.talentProfile as any).imageBackupUrls || [],
             voteCount: c.voteCount,
           })),
         });
@@ -1318,6 +1321,7 @@ export async function registerRoutes(
           stageName: (c.talentProfile as any).stageName || null,
           category: c.talentProfile.category,
           imageUrls: c.talentProfile.imageUrls,
+          imageBackupUrls: (c.talentProfile as any).imageBackupUrls || [],
           bio: c.talentProfile.bio,
           voteCount,
         });
@@ -2127,16 +2131,13 @@ export async function registerRoutes(
       const uniqueName = generateUniqueFilename(req.file.originalname);
       const storagePath = `talent-images/${comp.title}/${talentName}/${uniqueName}`;
 
-      const imageUrl = await uploadToFirebaseStorage(
+      const firebaseUrl = await uploadToFirebaseStorage(
         storagePath,
         req.file.buffer,
         req.file.mimetype
       );
 
-      await storage.updateTalentProfile(uid, {
-        imageUrls: [...currentUrls, imageUrl],
-      });
-
+      let primaryUrl = firebaseUrl;
       let driveFileId: string | null = null;
       try {
         const result = await uploadImageToDrive(
@@ -2147,15 +2148,34 @@ export async function registerRoutes(
           req.file.buffer
         );
         driveFileId = result.id;
+        primaryUrl = getDriveImageUrl(result.id);
       } catch (driveErr: any) {
-        console.log("Google Drive sync skipped (optional):", driveErr.message?.substring(0, 100));
+        console.log("Google Drive upload skipped, using Firebase Storage:", driveErr.message?.substring(0, 100));
       }
 
-      res.json({
-        fileId: uniqueName,
-        imageUrl,
-        thumbnailUrl: imageUrl,
+      const backupRef = getFirestore().collection("imageBackups").doc();
+      await backupRef.set({
+        talentProfileId: profile.id,
+        userId: uid,
+        primaryUrl,
+        firebaseUrl,
         storagePath,
+        driveFileId,
+        competitionId: comp.id,
+        createdAt: new Date().toISOString(),
+      });
+
+      const currentBackupUrls = (profile as any).imageBackupUrls || [];
+      await storage.updateTalentProfile(uid, {
+        imageUrls: [...currentUrls, primaryUrl],
+        imageBackupUrls: [...currentBackupUrls, firebaseUrl],
+      });
+
+      res.json({
+        fileId: driveFileId || uniqueName,
+        imageUrl: primaryUrl,
+        thumbnailUrl: driveFileId ? getDriveThumbnailUrl(driveFileId) : firebaseUrl,
+        fallbackUrl: firebaseUrl,
         driveSync: !!driveFileId,
       });
     } catch (error: any) {
@@ -2171,11 +2191,14 @@ export async function registerRoutes(
       if (!profile) return res.json([]);
 
       const imageUrls = profile.imageUrls || [];
+      const backupUrls = (profile as any).imageBackupUrls || [];
+
       res.json(imageUrls.map((url: string, idx: number) => ({
         id: `img-${idx}`,
         name: url.split("/").pop() || `image-${idx}`,
         imageUrl: url,
         thumbnailUrl: url,
+        fallbackUrl: backupUrls[idx] || null,
       })));
     } catch (error: any) {
       console.error("Image list error:", error);
@@ -2196,22 +2219,45 @@ export async function registerRoutes(
       const imageUrl = currentUrls[imageIndex];
       if (!imageUrl) return res.status(404).json({ message: "Image not found" });
 
-      if (imageUrl.includes("storage.googleapis.com")) {
-        const bucketMatch = imageUrl.match(/storage\.googleapis\.com\/([^/]+)\/(.+)$/);
-        if (bucketMatch) {
-          await deleteFromFirebaseStorage(decodeURIComponent(bucketMatch[2]));
+      const backupsSnap = await getFirestore().collection("imageBackups")
+        .where("userId", "==", uid)
+        .where("primaryUrl", "==", imageUrl)
+        .limit(1)
+        .get();
+
+      if (!backupsSnap.empty) {
+        const backupData = backupsSnap.docs[0].data();
+
+        if (backupData.storagePath) {
+          try {
+            await deleteFromFirebaseStorage(backupData.storagePath);
+          } catch {}
+        }
+
+        if (backupData.driveFileId) {
+          try {
+            await deleteFile(backupData.driveFileId);
+          } catch {}
+        }
+
+        await backupsSnap.docs[0].ref.delete();
+      } else {
+        if (imageUrl.includes("storage.googleapis.com")) {
+          const bucketMatch = imageUrl.match(/storage\.googleapis\.com\/([^/]+)\/(.+)$/);
+          if (bucketMatch) {
+            try { await deleteFromFirebaseStorage(decodeURIComponent(bucketMatch[2])); } catch {}
+          }
+        }
+        const driveMatch = imageUrl.match(/id=([a-zA-Z0-9_-]+)/);
+        if (driveMatch) {
+          try { await deleteFile(driveMatch[1]); } catch {}
         }
       }
 
-      try {
-        const driveMatch = imageUrl.match(/id=([a-zA-Z0-9_-]+)/);
-        if (driveMatch) {
-          await deleteFile(driveMatch[1]);
-        }
-      } catch {}
-
+      const currentBackupUrls = (profile as any).imageBackupUrls || [];
       await storage.updateTalentProfile(uid, {
         imageUrls: currentUrls.filter((_: string, i: number) => i !== imageIndex),
+        imageBackupUrls: currentBackupUrls.filter((_: string, i: number) => i !== imageIndex),
       });
 
       res.json({ message: "Image deleted" });

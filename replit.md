@@ -11,7 +11,9 @@ HiFitComp is a comprehensive talent competition and voting platform designed for
 - Animations and parallax effects
 - Template images stored in client/public/images/template/
 - Firebase for all auth (NOT Replit Auth)
-- Google Drive for talent images, Vimeo for talent videos
+- Firebase Storage as primary upload destination for talent images, Google Drive as primary display source (with Firebase as fallback), Vimeo for talent videos
+- Image upload flow: Firebase Storage first -> Google Drive sync -> display from Drive URL, fallback to Firebase URL
+- imageBackups Firestore collection tracks primaryUrl, firebaseUrl, storagePath, driveFileId per image
 
 ## System Architecture
 The platform is built with a modern web stack:

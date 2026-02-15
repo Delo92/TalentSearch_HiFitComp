@@ -10,6 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
+import { FallbackImage, getBackupUrl } from "@/components/fallback-image";
 
 interface ResolvedData {
   competition: {
@@ -47,6 +48,7 @@ interface ResolvedData {
       bio: string | null;
       category: string | null;
       imageUrls: string[] | null;
+      imageBackupUrls?: string[] | null;
       location: string | null;
     };
   };
@@ -116,7 +118,9 @@ export default function ContestantSharePage() {
 
   const { competition, contestant, totalVotes } = data;
   const profile = contestant.talentProfile;
-  const mainImage = contestant.videoThumbnail || profile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg");
+  const fallbackDefault = getImage("talent_profile_fallback", "/images/template/a1.jpg");
+  const mainImage = contestant.videoThumbnail || profile.imageUrls?.[0] || fallbackDefault;
+  const mainImageFallback = getBackupUrl(profile.imageUrls, profile.imageBackupUrls, 0) || fallbackDefault;
   const isVotingOpen = competition.status === "active" || competition.status === "voting";
   const votePercentage = totalVotes > 0 ? Math.round((contestant.voteCount / totalVotes) * 100) : 0;
 
@@ -125,9 +129,14 @@ export default function ContestantSharePage() {
       <SiteNavbar />
 
       <section
-        className="relative h-[270px] md:h-[400px] bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${mainImage}')`, backgroundSize: "cover" }}
+        className="relative h-[270px] md:h-[400px] overflow-hidden"
       >
+        <FallbackImage
+          src={mainImage}
+          fallbackSrc={mainImageFallback}
+          alt={profile.displayName || ""}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-40px)] max-w-[600px]">
           <p className="text-[#5f5f5f] text-xs uppercase mb-1" style={{ letterSpacing: "4px" }} data-testid="text-competition-context">
@@ -217,8 +226,9 @@ export default function ContestantSharePage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {profile.imageUrls.map((url, i) => (
                 <div key={i} className="relative aspect-square overflow-hidden group cursor-pointer">
-                  <img
+                  <FallbackImage
                     src={url}
+                    fallbackSrc={getBackupUrl(profile.imageUrls, profile.imageBackupUrls, i)}
                     alt=""
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />

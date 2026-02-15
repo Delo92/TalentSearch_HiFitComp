@@ -479,6 +479,11 @@ export default function TalentDashboard({ user, profile }: Props) {
                                 alt={img.name || "Photo"}
                                 className="w-full h-full object-cover rounded-md"
                                 loading="lazy"
+                                onError={(e) => {
+                                  if (img.fallbackUrl && (e.target as HTMLImageElement).src !== img.fallbackUrl) {
+                                    (e.target as HTMLImageElement).src = img.fallbackUrl;
+                                  }
+                                }}
                               />
                               <button
                                 onClick={() => deleteImageMutation.mutate(img.id)}
