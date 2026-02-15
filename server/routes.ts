@@ -2598,5 +2598,111 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/google-drive-setup", (_req, res) => {
+    const connected = isOAuthConnected();
+    const redirectUri = getOAuthRedirectUriForSetup();
+    const authUrl = getOAuthAuthorizationUrl();
+    res.json({ connected, redirectUri, authUrl });
+  });
+
+  app.get("/api/admin/google-drive-auth", (_req, res) => {
+    const authUrl = getOAuthAuthorizationUrl();
+    if (!authUrl) {
+      res.status(500).json({ message: "OAuth not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET." });
+      return;
+    }
+    res.redirect(authUrl);
+  });
+
+  app.get("/api/admin/google-drive-callback", async (req, res) => {
+    const code = req.query.code as string;
+    if (!code) {
+      res.status(400).send("No authorization code received");
+      return;
+    }
+    const result = await exchangeOAuthCode(code);
+    if (result.success) {
+      res.send(`
+        <html><body style="background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+          <div style="text-align:center">
+            <h1 style="color:#FF5A09">Google Drive Connected!</h1>
+            <p>You can close this window and return to your app.</p>
+          </div>
+        </body></html>
+      `);
+    } else {
+      res.status(500).send(`
+        <html><body style="background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+          <div style="text-align:center">
+            <h1 style="color:red">Connection Failed</h1>
+            <p>${result.error}</p>
+          </div>
+        </body></html>
+      `);
+    }
+  });
+
+  const driveUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 500 * 1024 * 1024 },
+  });
+
+  app.post("/api/admin/drive/upload", driveUpload.single('file'), async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { folderUrl } = req.body;
+      const file = req.file;
+      if (!file) { res.status(400).json({ message: "No file provided" }); return; }
+      if (!folderUrl) { res.status(400).json({ message: "No folder URL provided" }); return; }
+
+      const folderIdMatch = folderUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (!folderIdMatch) { res.status(400).json({ message: "Invalid Google Drive folder URL" }); return; }
+      const folderId = folderIdMatch[1];
+
+      const customFileName = req.body.customFileName;
+      const finalFilename = customFileName || file.originalname;
+
+      const result = await uploadFileToDriveFolder(folderId, finalFilename, file.mimetype, file.buffer);
+      console.log(`File uploaded to Google Drive: ${result.name} (${result.id})`);
+      res.json({
+        message: "File uploaded successfully",
+        file: { id: result.id, name: result.name, link: result.webViewLink, size: result.size },
+      });
+    } catch (error: any) {
+      console.error("Google Drive upload error:", error);
+      if (error.code === 403) {
+        res.status(403).json({ message: "Permission denied. Check Drive connection in admin settings." });
+      } else {
+        res.status(500).json({ message: error.message || "Failed to upload file to Google Drive" });
+      }
+    }
+  });
+
+  app.get("/api/admin/drive/folder-files", async (req: Request, res: Response): Promise<void> => {
+    try {
+      const folderUrl = req.query.folderUrl as string;
+      if (!folderUrl) { res.status(400).json({ message: "folderUrl query parameter required" }); return; }
+      const folderIdMatch = folderUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (!folderIdMatch) { res.status(400).json({ message: "Invalid Google Drive folder URL" }); return; }
+      const folderId = folderIdMatch[1];
+      const files = await listFilesInFolder(folderId);
+      res.json({ files });
+    } catch (error: any) {
+      console.error("List Drive folder files error:", error);
+      res.status(500).json({ message: error.message || "Failed to list files" });
+    }
+  });
+
+  app.delete("/api/admin/drive/file/:fileId", async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { fileId } = req.params;
+      await deleteFile(fileId);
+      console.log(`Deleted Drive file: ${fileId}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Delete Drive file error:", error);
+      res.status(500).json({ message: error.message || "Failed to delete file" });
+    }
+  });
+
   return httpServer;
 }
