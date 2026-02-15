@@ -50,6 +50,7 @@ async function vimeoRequest(path: string, options: RequestInit = {}): Promise<an
 
   if (!res.ok) {
     const text = await res.text();
+    console.error(`Vimeo API ${options.method || "GET"} ${path} → ${res.status}: ${text}`);
     throw new Error(`Vimeo API error ${res.status}: ${text}`);
   }
 
@@ -112,11 +113,18 @@ export async function listTalentVideos(competitionName: string, talentName: stri
     const data = await vimeoRequest(`${videosUri}?per_page=50&sort=date&direction=desc`);
     return data.data || [];
   } catch {
-    return [];
+    try {
+      const prefix = `${competitionName} - ${talentName} -`;
+      const data = await vimeoRequest(`/me/videos?per_page=50&sort=date&direction=desc&query=${encodeURIComponent(prefix)}`);
+      return (data.data || []).filter((v: VimeoVideo) => v.name?.startsWith(prefix));
+    } catch {
+      return [];
+    }
   }
 }
 
 export async function listAllTalentVideos(talentName: string): Promise<(VimeoVideo & { competitionFolder: string })[]> {
+  const safeTalentName = talentName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
   try {
     const root = await getHiFitCompFolder();
     const listPath = `${root.uri}/items?type=folder&per_page=100`;
@@ -124,7 +132,6 @@ export async function listAllTalentVideos(talentName: string): Promise<(VimeoVid
     const compFolders = data.data || [];
 
     const allVideos: (VimeoVideo & { competitionFolder: string })[] = [];
-    const safeTalentName = talentName.replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 
     for (const compFolder of compFolders) {
       try {
@@ -146,7 +153,18 @@ export async function listAllTalentVideos(talentName: string): Promise<(VimeoVid
     }
     return allVideos;
   } catch {
-    return [];
+    try {
+      const searchQuery = ` - ${safeTalentName} - `;
+      const data = await vimeoRequest(`/me/videos?per_page=100&sort=date&direction=desc&query=${encodeURIComponent(safeTalentName)}`);
+      return (data.data || [])
+        .filter((v: VimeoVideo) => v.name?.includes(searchQuery))
+        .map((v: VimeoVideo) => {
+          const parts = v.name?.split(" - ") || [];
+          return { ...v, competitionFolder: parts[0] || "Unknown" };
+        });
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -160,18 +178,29 @@ export async function createUploadTicket(
   videoUri: string;
   completeUri: string;
 }> {
-  const folder = await getTalentFolderInCompetition(competitionName, talentName);
+  let folderUri: string | undefined;
+  try {
+    const folder = await getTalentFolderInCompetition(competitionName, talentName);
+    folderUri = folder.uri;
+  } catch (folderErr: any) {
+    console.warn("Could not create/find Vimeo folder (uploading without folder):", folderErr.message);
+  }
+
+  const videoName = `${competitionName} - ${talentName} - ${fileName}`;
+  const body: any = {
+    upload: {
+      approach: "tus",
+      size: fileSize,
+    },
+    name: videoName,
+  };
+  if (folderUri) {
+    body.folder_uri = folderUri;
+  }
 
   const data = await vimeoRequest("/me/videos", {
     method: "POST",
-    body: JSON.stringify({
-      upload: {
-        approach: "tus",
-        size: fileSize,
-      },
-      name: fileName,
-      folder_uri: folder.uri,
-    }),
+    body: JSON.stringify(body),
   });
 
   return {
