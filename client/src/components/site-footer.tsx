@@ -28,13 +28,20 @@ export default function SiteFooter() {
           >
             Competitions
           </Link>
-          <a
-            href="/login"
+          <Link
+            href="/join"
             className="text-white/60 text-sm uppercase tracking-widest transition-colors duration-300 hover:text-white"
             data-testid="link-footer-join"
           >
             Join Now
-          </a>
+          </Link>
+          <Link
+            href="/about"
+            className="text-white/60 text-sm uppercase tracking-widest transition-colors duration-300 hover:text-white"
+            data-testid="link-footer-about"
+          >
+            About
+          </Link>
         </nav>
         <p className="text-xs text-white/30">
           &copy; {new Date().getFullYear()} HiFitComp

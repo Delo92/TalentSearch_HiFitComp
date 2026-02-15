@@ -74,6 +74,7 @@ export interface FirestoreCompetition {
   votingStartDate: string | null;
   votingEndDate: string | null;
   expectedContestants: number | null;
+  onlineVoteWeight: number;
   createdAt: string | null;
   createdBy: string | null;
 }
@@ -108,12 +109,15 @@ export interface FirestoreVote {
   voterIp: string | null;
   userId: string | null;
   purchaseId: number | null;
+  source: "online" | "in_person";
   votedAt: string;
 }
 
 export interface FirestoreVoteCount {
   contestantId: number;
   competitionId: number;
+  onlineCount?: number;
+  inPersonCount?: number;
   count: number;
   updatedAt: admin.firestore.Timestamp;
 }
@@ -295,6 +299,7 @@ function normalizeCompetition(data: any): FirestoreCompetition {
     endDateTbd: data.endDateTbd ?? false,
     maxImagesPerContestant: data.maxImagesPerContestant ?? null,
     maxVideosPerContestant: data.maxVideosPerContestant ?? null,
+    onlineVoteWeight: data.onlineVoteWeight ?? 100,
   } as FirestoreCompetition;
 }
 
@@ -494,6 +499,7 @@ export const firestoreVotes = {
     const id = await nextId("votes");
     const vote: FirestoreVote = {
       ...data,
+      source: data.source || "online",
       id,
       votedAt: new Date().toISOString(),
     };
@@ -502,9 +508,13 @@ export const firestoreVotes = {
     const countDocId = `${data.competitionId}_${data.contestantId}`;
     const countRef = db().collection(COLLECTIONS.VOTE_COUNTS).doc(countDocId);
     const countDoc = await countRef.get();
+    const sourceInc = vote.source === "in_person"
+      ? { inPersonCount: admin.firestore.FieldValue.increment(1) }
+      : { onlineCount: admin.firestore.FieldValue.increment(1) };
     if (countDoc.exists) {
       await countRef.update({
         count: admin.firestore.FieldValue.increment(1),
+        ...sourceInc,
         updatedAt: now(),
       });
     } else {
@@ -512,6 +522,8 @@ export const firestoreVotes = {
         contestantId: data.contestantId,
         competitionId: data.competitionId,
         count: 1,
+        onlineCount: vote.source === "online" ? 1 : 0,
+        inPersonCount: vote.source === "in_person" ? 1 : 0,
         updatedAt: now(),
       });
     }

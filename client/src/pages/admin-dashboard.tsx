@@ -762,6 +762,7 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [votingStartDate, setVotingStartDate] = useState("");
   const [votingEndDate, setVotingEndDate] = useState("");
   const [expectedContestants, setExpectedContestants] = useState("");
+  const [onlineVoteWeight, setOnlineVoteWeight] = useState("100");
   const [compDetailId, setCompDetailId] = useState<number | null>(null);
   const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
   const [userDetailId, setUserDetailId] = useState<number | null>(null);
@@ -888,6 +889,7 @@ export default function AdminDashboard({ user }: { user: any }) {
         votingStartDate: votingStartDate ? new Date(votingStartDate).toISOString() : null,
         votingEndDate: votingEndDate ? new Date(votingEndDate).toISOString() : null,
         expectedContestants: expectedContestants ? parseInt(expectedContestants) : null,
+        onlineVoteWeight: parseInt(onlineVoteWeight) || 100,
       });
     },
     onSuccess: () => {
@@ -904,6 +906,7 @@ export default function AdminDashboard({ user }: { user: any }) {
       setVotingStartDate("");
       setVotingEndDate("");
       setExpectedContestants("");
+      setOnlineVoteWeight("100");
       toast({ title: "Competition created!" });
     },
     onError: (err: Error) => {
@@ -1195,6 +1198,12 @@ export default function AdminDashboard({ user }: { user: any }) {
                     <Label className="text-white/60">Expected Contestants</Label>
                     <Input type="number" value={expectedContestants} onChange={(e) => setExpectedContestants(e.target.value)} placeholder="e.g., 20"
                       className="bg-white/5 border-white/10 text-white" data-testid="input-expected-contestants" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60">Online Vote Weight (%)</Label>
+                    <Input type="number" min="1" max="100" value={onlineVoteWeight} onChange={(e) => setOnlineVoteWeight(e.target.value)} placeholder="100"
+                      className="bg-white/5 border-white/10 text-white" data-testid="input-online-vote-weight" />
+                    <p className="text-white/30 text-xs">Percentage value of online votes vs in-person (QR) votes at final count. 100% = equal weight.</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

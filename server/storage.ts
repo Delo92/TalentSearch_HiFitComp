@@ -44,12 +44,12 @@ export interface IStorage {
   getContestant(competitionId: number, talentProfileId: number): Promise<FirestoreContestant | null>;
   getAllContestants(): Promise<(FirestoreContestant & { talentProfile: FirestoreTalentProfile; competitionTitle: string })[]>;
 
-  castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null }): Promise<FirestoreVote>;
+  castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null; source?: "online" | "in_person" }): Promise<FirestoreVote>;
   getVoteCount(contestantId: number): Promise<number>;
   getTotalVotesByCompetition(competitionId: number): Promise<number>;
   getVotesTodayByIp(competitionId: number, voterIp: string): Promise<number>;
 
-  castBulkVotes(data: { contestantId: number; competitionId: number; userId: string; purchaseId: number; voteCount: number }): Promise<void>;
+  castBulkVotes(data: { contestantId: number; competitionId: number; userId: string; purchaseId: number; voteCount: number; source?: "online" | "in_person" }): Promise<void>;
   getVoteCountForContestantInCompetition(contestantId: number, competitionId: number): Promise<number>;
 
   createVotePurchase(purchase: { userId: string; competitionId: number; contestantId: number; voteCount: number; amount: number }): Promise<FirestoreVotePurchase>;
@@ -199,13 +199,14 @@ export class FirestoreStorage implements IStorage {
     return results;
   }
 
-  async castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null }): Promise<FirestoreVote> {
+  async castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null; source?: "online" | "in_person" }): Promise<FirestoreVote> {
     return firestoreVotes.cast({
       contestantId: vote.contestantId,
       competitionId: vote.competitionId,
       voterIp: vote.voterIp,
       userId: vote.userId || null,
       purchaseId: vote.purchaseId || null,
+      source: vote.source || "online",
     });
   }
 
@@ -221,7 +222,7 @@ export class FirestoreStorage implements IStorage {
     return firestoreVotes.getVotesTodayByIp(competitionId, voterIp);
   }
 
-  async castBulkVotes(data: { contestantId: number; competitionId: number; userId: string; purchaseId: number; voteCount: number }): Promise<void> {
+  async castBulkVotes(data: { contestantId: number; competitionId: number; userId: string; purchaseId: number; voteCount: number; source?: "online" | "in_person" }): Promise<void> {
     for (let i = 0; i < data.voteCount; i++) {
       await firestoreVotes.cast({
         contestantId: data.contestantId,
@@ -229,6 +230,7 @@ export class FirestoreStorage implements IStorage {
         voterIp: null,
         userId: data.userId,
         purchaseId: data.purchaseId,
+        source: data.source || "online",
       });
     }
   }

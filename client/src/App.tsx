@@ -16,6 +16,7 @@ import JoinPage from "@/pages/join";
 import HostPage from "@/pages/host";
 import ContestantSharePage from "@/pages/contestant-share";
 import HostProfilePublic from "@/pages/host-profile-public";
+import AboutPage from "@/pages/about";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/my-purchases" component={MyPurchasesPage} />
       <Route path="/join" component={JoinPage} />
       <Route path="/host" component={HostPage} />
+      <Route path="/about" component={AboutPage} />
       <Route path="/host/:hostSlug" component={HostProfilePublic} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/:compSlug/:talentSlug" component={ContestantSharePage} />

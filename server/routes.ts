@@ -466,6 +466,7 @@ export async function registerRoutes(
 
   const voteBodySchema = z.object({
     contestantId: z.number().int().positive("contestantId is required"),
+    source: z.enum(["online", "in_person"]).optional().default("online"),
   });
 
   app.post("/api/competitions/:id/vote", async (req, res) => {
@@ -493,10 +494,12 @@ export async function registerRoutes(
       return res.status(429).json({ message: `Daily vote limit reached (${comp.maxVotesPerDay} per day)` });
     }
 
+    const { source } = parsed.data;
     const vote = await storage.castVote({
       contestantId,
       competitionId: compId,
       voterIp,
+      source,
     });
     res.status(201).json(vote);
   });

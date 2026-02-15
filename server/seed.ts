@@ -151,6 +151,15 @@ const LIVERY_DEFAULTS = [
   { imageKey: "competition_card_fallback", label: "Default Competition Card Image", defaultUrl: "/images/template/e1.jpg" },
   { imageKey: "talent_profile_fallback", label: "Default Talent Profile Image", defaultUrl: "/images/template/a1.jpg" },
   { imageKey: "hero_summary", label: "Hero Summary / Instructions", defaultUrl: "", itemType: "text" as const, defaultText: "Welcome to HiFitComp — the ultimate talent competition platform. Browse competitions, vote for your favorites, join as a competitor, or host your own event. Get started today!" },
+  { imageKey: "about_rules_text", label: "About Page - Rules & Guidelines", defaultUrl: "", itemType: "text" as const, defaultText: "Welcome to HiFitComp! Our platform connects talent with audiences through fair, transparent competitions.\n\n**Rules & Guidelines:**\n\n1. All participants must be 18 years or older.\n2. Each competitor may only enter a competition once.\n3. Voting is limited per IP address daily to ensure fairness.\n4. Content must be original and appropriate for all audiences.\n5. Hosts are responsible for managing their events and enforcing rules.\n6. Vote purchases are non-refundable once processed.\n7. HiFitComp reserves the right to remove content that violates community standards." },
+  { imageKey: "social_facebook", label: "Social - Facebook URL", defaultUrl: "", itemType: "text" as const, defaultText: "" },
+  { imageKey: "social_instagram", label: "Social - Instagram URL", defaultUrl: "", itemType: "text" as const, defaultText: "" },
+  { imageKey: "social_twitter", label: "Social - X / Twitter URL", defaultUrl: "", itemType: "text" as const, defaultText: "" },
+  { imageKey: "social_youtube", label: "Social - YouTube URL", defaultUrl: "", itemType: "text" as const, defaultText: "" },
+  { imageKey: "social_tiktok", label: "Social - TikTok URL", defaultUrl: "", itemType: "text" as const, defaultText: "" },
+  { imageKey: "contact_email", label: "Contact Email", defaultUrl: "", itemType: "text" as const, defaultText: "admin@hifitcomp.com" },
+  { imageKey: "contact_phone", label: "Contact Phone", defaultUrl: "", itemType: "text" as const, defaultText: "" },
+  { imageKey: "contact_address", label: "Contact Address", defaultUrl: "", itemType: "text" as const, defaultText: "" },
 ];
 
 export async function seedLivery() {
