@@ -2686,5 +2686,73 @@ export async function registerRoutes(
     }
   });
 
+  const socialCrawlerPattern = /facebookexternalhit|facebot|twitterbot|whatsapp|linkedinbot|slackbot|discordbot|telegrambot|applebot|googlebot|bingbot|yandexbot|pinterestbot|redditbot|rogerbot|embedly|quora|outbrain|vkShare|skypeuripreview|iframely|Slurp/i;
+
+  app.get("/:compSlug/:talentSlug", async (req, res, next) => {
+    try {
+      const { compSlug, talentSlug } = req.params;
+      if (compSlug.startsWith("api") || compSlug.startsWith("assets") || compSlug.includes(".")) {
+        return next();
+      }
+
+      const ua = req.headers["user-agent"] || "";
+      if (!socialCrawlerPattern.test(ua)) {
+        return next();
+      }
+
+      const { baseSlug: _compBase, id: compId } = extractIdFromSlug(compSlug);
+      const competitions = await storage.getCompetitions();
+      const comp = compId
+        ? competitions.find(c => c.id === compId)
+        : competitions.find(c => slugify(c.title) === compSlug);
+      if (!comp) return next();
+
+      const contestants = await storage.getContestantsByCompetition(comp.id);
+      const { baseSlug: _talentBase, id: talentId } = extractIdFromSlug(talentSlug);
+      const contestant = talentId
+        ? contestants.find(c => c.talentProfile.id === talentId)
+        : contestants.find(c =>
+            slugify(c.talentProfile.displayName) === talentSlug ||
+            (c.talentProfile.stageName && slugify(c.talentProfile.stageName) === talentSlug)
+          );
+      if (!contestant) return next();
+
+      const profile = contestant.talentProfile;
+      const displayName = profile.displayName || profile.stageName || "Contestant";
+      const ogTitle = `Vote for ${displayName} - ${comp.title} | HiFitComp`;
+      const ogDescription = `Hey, I need your vote to win! Vote for ${displayName} in ${comp.title} on HiFitComp!`;
+      const ogImage = profile.imageUrls?.[0] || comp.coverImage || "";
+      const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+      const ogUrl = `${protocol}://${req.get("host")}/${compSlug}/${talentSlug}`;
+
+      const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      const ogTags = `
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="${escHtml(ogTitle)}" />
+    <meta property="og:description" content="${escHtml(ogDescription)}" />
+    <meta property="og:image" content="${escHtml(ogImage)}" />
+    <meta property="og:url" content="${escHtml(ogUrl)}" />
+    <meta property="og:site_name" content="HiFitComp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escHtml(ogTitle)}" />
+    <meta name="twitter:description" content="${escHtml(ogDescription)}" />
+    <meta name="twitter:image" content="${escHtml(ogImage)}" />
+    <meta name="description" content="${escHtml(ogDescription)}" />
+    <title>${escHtml(ogTitle)}</title>`;
+
+      const clientTemplate = path.resolve(process.cwd(), "client", "index.html");
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      template = template.replace(
+        /<title>.*?<\/title>/,
+        ogTags
+      );
+      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+    } catch (error) {
+      console.error("OG meta injection error:", error);
+      next();
+    }
+  });
+
   return httpServer;
 }

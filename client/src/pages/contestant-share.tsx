@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, MapPin, Tag, ChevronRight, Play, Heart, ShoppingCart, Calendar, Users } from "lucide-react";
+import { Trophy, MapPin, Tag, ChevronRight, Play, Heart, ShoppingCart, Calendar, Users, Share2, Check, Copy } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -63,6 +63,7 @@ export default function ContestantSharePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { data, isLoading, error } = useQuery<ResolvedData>({
     queryKey: ["/api/resolve", compSlug, talentSlug],
@@ -123,6 +124,55 @@ export default function ContestantSharePage() {
   const mainImageFallback = getBackupUrl(profile.imageUrls, profile.imageBackupUrls, 0) || fallbackDefault;
   const isVotingOpen = competition.status === "active" || competition.status === "voting";
   const votePercentage = totalVotes > 0 ? Math.round((contestant.voteCount / totalVotes) * 100) : 0;
+
+  const getShareData = () => {
+    const shareUrl = `${window.location.origin}/${compSlug}/${talentSlug}`;
+    const shareText = `Hey, I need your vote to win! Vote for ${profile.displayName} in ${competition.title} on HiFitComp!`;
+    return { shareUrl, shareText };
+  };
+
+  const handleShare = async () => {
+    const { shareUrl, shareText } = getShareData();
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Vote for ${profile.displayName}`,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          fallbackCopy();
+        }
+      }
+    } else {
+      fallbackCopy();
+    }
+  };
+
+  const fallbackCopy = async () => {
+    const { shareUrl, shareText } = getShareData();
+    const fullText = `${shareText}\n${shareUrl}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(fullText);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = fullText;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      toast({ title: "Link copied!", description: "Share link copied to clipboard. Paste it in a text or message." });
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      toast({ title: "Copy failed", description: "Could not copy to clipboard", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -206,6 +256,18 @@ export default function ContestantSharePage() {
             </Link>
           </div>
         )}
+
+        <div className="flex justify-center mb-10">
+          <button
+            onClick={handleShare}
+            className="inline-flex items-center gap-2 bg-white/5 text-white/70 font-bold text-sm uppercase px-8 leading-[47px] border border-white/20 transition-all duration-500 hover:bg-white/10 hover:text-white hover:border-white/40 cursor-pointer"
+            style={{ letterSpacing: "2px" }}
+            data-testid="button-share"
+          >
+            {copied ? <Check className="h-4 w-4 text-green-400" /> : <Share2 className="h-4 w-4" />}
+            {copied ? "Copied!" : "Share"}
+          </button>
+        </div>
 
         {profile.bio && (
           <div className="mb-10 text-center">
