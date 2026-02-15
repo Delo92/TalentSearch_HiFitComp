@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
-import { slugify } from "@shared/slugify";
+import { slugify, extractIdFromSlug } from "@shared/slugify";
 import { FallbackImage, getBackupUrl } from "@/components/fallback-image";
 
 interface ContestantWithProfile {
@@ -48,8 +49,10 @@ interface CompetitionDetail {
 }
 
 export default function CompetitionDetailPage() {
-  const [, params] = useRoute("/competition/:id");
-  const id = params?.id;
+  const [, params] = useRoute("/competition/:slug");
+  const slug = params?.slug;
+  const { id: compId } = extractIdFromSlug(slug || "");
+  const id = compId?.toString();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -58,6 +61,13 @@ export default function CompetitionDetailPage() {
     queryKey: ["/api/competitions", id],
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (competition) {
+      document.title = `${competition.title} | HiFitComp`;
+    }
+    return () => { document.title = "HiFitComp - Talent Competition & Voting Platform"; };
+  }, [competition]);
 
   const voteMutation = useMutation({
     mutationFn: async (contestantId: number) => {

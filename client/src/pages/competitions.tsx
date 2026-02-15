@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Users, Search, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import type { Competition } from "@shared/schema";
+import { slugify } from "@shared/slugify";
 
 type CompetitionExt = Competition & { coverVideo?: string | null };
 import { useState } from "react";
@@ -98,7 +99,7 @@ function CompetitionCard({ competition }: { competition: CompetitionExt }) {
       className="group transition-all duration-500 hover:shadow-[0_5px_80px_0_rgba(0,0,0,0.2)]"
       data-testid={`card-competition-${competition.id}`}
     >
-      <Link href={`/competition/${competition.id}`}>
+      <Link href={`/competition/${slugify(competition.title)}-${competition.id}`}>
         <div className="cursor-pointer">
           <div className="overflow-hidden relative h-52">
             {competition.coverVideo ? (

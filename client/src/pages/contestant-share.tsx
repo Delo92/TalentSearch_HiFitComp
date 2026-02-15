@@ -3,7 +3,7 @@ import { useRoute } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, MapPin, Tag, ChevronRight, Play, Heart, ShoppingCart, Calendar, Users, Share2, Check, Copy } from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -11,6 +11,7 @@ import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { FallbackImage, getBackupUrl } from "@/components/fallback-image";
+import { slugify } from "@shared/slugify";
 
 interface ResolvedData {
   competition: {
@@ -69,6 +70,13 @@ export default function ContestantSharePage() {
     queryKey: ["/api/resolve", compSlug, talentSlug],
     enabled: !!compSlug && !!talentSlug,
   });
+
+  useEffect(() => {
+    if (data) {
+      document.title = `${data.contestant.talentProfile.displayName} - ${data.competition.title} | HiFitComp`;
+    }
+    return () => { document.title = "HiFitComp - Talent Competition & Voting Platform"; };
+  }, [data]);
 
   const voteMutation = useMutation({
     mutationFn: async () => {
@@ -346,7 +354,7 @@ export default function ContestantSharePage() {
         )}
 
         <div className="flex flex-wrap items-center justify-center gap-4 pb-10">
-          <Link href={`/competition/${competition.id}`}>
+          <Link href={`/competition/${slugify(competition.title)}-${competition.id}`}>
             <span
               className="inline-block bg-transparent text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] border border-white transition-all duration-500 hover:bg-white hover:text-black cursor-pointer text-center"
               data-testid="button-back-competition"
