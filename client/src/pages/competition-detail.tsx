@@ -205,7 +205,7 @@ export default function CompetitionDetailPage() {
                 >
                   <div className="relative overflow-hidden h-52">
                     <img
-                      src={contestant.talentProfile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg")}
+                      src={(contestant as any).videoThumbnail || contestant.talentProfile.imageUrls?.[0] || getImage("talent_profile_fallback", "/images/template/a1.jpg")}
                       alt={contestant.talentProfile.displayName}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />

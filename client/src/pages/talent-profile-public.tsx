@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, MapPin, Tag, ChevronRight } from "lucide-react";
+import { Trophy, MapPin, Tag, ChevronRight, Play } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
 import type { TalentProfile } from "@shared/schema";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
@@ -13,7 +14,9 @@ export default function TalentProfilePublic() {
   const id = params?.id;
   const { getImage } = useLivery();
 
-  const { data: profile, isLoading } = useQuery<TalentProfile>({
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+
+  const { data: profile, isLoading } = useQuery<TalentProfile & { videos?: any[] }>({
     queryKey: ["/api/talent-profiles", id],
     enabled: !!id,
   });
@@ -110,6 +113,53 @@ export default function TalentProfilePublic() {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-500" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {profile.videos && profile.videos.length > 0 && (
+          <div className="mb-10">
+            <div className="text-center mb-10">
+              <p className="text-[#5f5f5f] text-sm mb-1">Watch performances</p>
+              <h2 className="text-lg uppercase text-white font-normal" style={{ letterSpacing: "10px" }}>
+                Videos
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {profile.videos.map((video: any, i: number) => (
+                <div key={video.uri || i} className="relative" data-testid={`video-item-${i}`}>
+                  {playingVideo === video.embedUrl ? (
+                    <div className="aspect-video">
+                      <iframe
+                        src={`${video.embedUrl}?autoplay=1`}
+                        className="w-full h-full"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="relative aspect-video overflow-hidden group cursor-pointer"
+                      onClick={() => setPlayingVideo(video.embedUrl)}
+                    >
+                      <img
+                        src={video.thumbnail || "/images/template/a1.jpg"}
+                        alt={video.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors duration-500 flex items-center justify-center">
+                        <div className="w-14 h-14 bg-[#FF5A09] flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                          <Play className="h-6 w-6 text-white fill-white ml-0.5" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-white/50 text-sm mt-2 text-center truncate">{video.name}</p>
+                  {video.competitionFolder && (
+                    <p className="text-white/30 text-xs text-center">{video.competitionFolder}</p>
+                  )}
                 </div>
               ))}
             </div>

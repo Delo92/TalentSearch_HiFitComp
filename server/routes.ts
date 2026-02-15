@@ -371,9 +371,23 @@ export async function registerRoutes(
     const contestantsData = await storage.getContestantsByCompetition(id);
     const totalVotes = await storage.getTotalVotesByCompetition(id);
 
+    const enrichedContestants = await Promise.all(
+      contestantsData.map(async (contestant) => {
+        let videoThumbnail: string | null = null;
+        try {
+          const talentName = (contestant.talentProfile.displayName || contestant.talentProfile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+          const videos = await listTalentVideos(comp.title, talentName);
+          if (videos.length > 0) {
+            videoThumbnail = getVideoThumbnail(videos[0]);
+          }
+        } catch {}
+        return { ...contestant, videoThumbnail };
+      })
+    );
+
     res.json({
       ...comp,
-      contestants: contestantsData,
+      contestants: enrichedContestants,
       totalVotes,
     });
   });
@@ -575,7 +589,23 @@ export async function registerRoutes(
     if (isNaN(id)) return res.status(400).json({ message: "Invalid profile ID" });
     const profile = await storage.getTalentProfile(id);
     if (!profile) return res.status(404).json({ message: "Profile not found" });
-    res.json(profile);
+
+    let videos: any[] = [];
+    try {
+      const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const rawVideos = await listAllTalentVideos(talentName);
+      videos = rawVideos.map(v => ({
+        uri: v.uri,
+        name: v.name,
+        link: v.link,
+        embedUrl: v.player_embed_url,
+        duration: v.duration,
+        thumbnail: getVideoThumbnail(v),
+        competitionFolder: v.competitionFolder,
+      }));
+    } catch {}
+
+    res.json({ ...profile, videos });
   });
 
   app.get("/api/contestants/me", firebaseAuth, async (req, res) => {
