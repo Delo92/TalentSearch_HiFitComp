@@ -410,6 +410,8 @@ export async function registerRoutes(
     status: z.enum(["draft", "active", "voting", "completed"]).optional().default("active"),
     voteCost: z.number().int().min(0).optional().default(0),
     maxVotesPerDay: z.number().int().min(1).optional().default(10),
+    maxImagesPerContestant: z.number().int().min(1).optional().nullable(),
+    maxVideosPerContestant: z.number().int().min(1).optional().nullable(),
     coverImage: z.string().optional(),
     startDate: z.string().optional().nullable(),
     endDate: z.string().optional().nullable(),
@@ -426,11 +428,22 @@ export async function registerRoutes(
       return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid data" });
     }
 
+    const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+    const globalMaxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
+    const globalMaxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
+
+    let compMaxImages = parsed.data.maxImagesPerContestant ?? null;
+    let compMaxVideos = parsed.data.maxVideosPerContestant ?? null;
+    if (compMaxImages !== null && compMaxImages > globalMaxImages) compMaxImages = globalMaxImages;
+    if (compMaxVideos !== null && compMaxVideos > globalMaxVideos) compMaxVideos = globalMaxVideos;
+
     const comp = await storage.createCompetition({
       ...parsed.data,
       description: parsed.data.description || null,
       coverImage: parsed.data.coverImage || null,
       coverVideo: null,
+      maxImagesPerContestant: compMaxImages,
+      maxVideosPerContestant: compMaxVideos,
       startDate: parsed.data.startDate || null,
       endDate: parsed.data.endDate || null,
       votingStartDate: parsed.data.votingStartDate || null,
@@ -735,7 +748,20 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Not your competition" });
     }
 
-    const updated = await storage.updateCompetition(id, req.body);
+    const updateData = { ...req.body };
+    if (updateData.maxImagesPerContestant !== undefined || updateData.maxVideosPerContestant !== undefined) {
+      const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+      const globalMaxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
+      const globalMaxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
+      if (updateData.maxImagesPerContestant != null && updateData.maxImagesPerContestant > globalMaxImages) {
+        updateData.maxImagesPerContestant = globalMaxImages;
+      }
+      if (updateData.maxVideosPerContestant != null && updateData.maxVideosPerContestant > globalMaxVideos) {
+        updateData.maxVideosPerContestant = globalMaxVideos;
+      }
+    }
+
+    const updated = await storage.updateCompetition(id, updateData);
     if (!updated) return res.status(404).json({ message: "Competition not found" });
     res.json(updated);
   });
@@ -2122,7 +2148,9 @@ export async function registerRoutes(
       if (!comp) return res.status(404).json({ message: "Competition not found" });
 
       const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
-      const maxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
+      const globalMaxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
+      const compMaxImages = comp.maxImagesPerContestant;
+      const maxImages = compMaxImages != null ? Math.min(compMaxImages, globalMaxImages) : globalMaxImages;
 
       const currentUrls = profile.imageUrls || [];
       if (currentUrls.length >= maxImages) {
@@ -2345,7 +2373,9 @@ export async function registerRoutes(
       if (!comp) return res.status(404).json({ message: "Competition not found" });
 
       const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
-      const maxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
+      const globalMaxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
+      const compMaxVideos = comp.maxVideosPerContestant;
+      const maxVideos = compMaxVideos != null ? Math.min(compMaxVideos, globalMaxVideos) : globalMaxVideos;
 
       const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 

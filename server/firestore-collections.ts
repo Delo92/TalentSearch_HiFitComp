@@ -65,6 +65,8 @@ export interface FirestoreCompetition {
   status: string;
   voteCost: number;
   maxVotesPerDay: number;
+  maxImagesPerContestant: number | null;
+  maxVideosPerContestant: number | null;
   startDate: string | null;
   endDate: string | null;
   startDateTbd: boolean;
@@ -291,6 +293,8 @@ function normalizeCompetition(data: any): FirestoreCompetition {
     ...data,
     startDateTbd: data.startDateTbd ?? false,
     endDateTbd: data.endDateTbd ?? false,
+    maxImagesPerContestant: data.maxImagesPerContestant ?? null,
+    maxVideosPerContestant: data.maxVideosPerContestant ?? null,
   } as FirestoreCompetition;
 }
 

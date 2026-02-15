@@ -38,6 +38,8 @@ interface HostCompetition {
   status: string;
   voteCost: number;
   maxVotesPerDay: number;
+  maxImagesPerContestant: number | null;
+  maxVideosPerContestant: number | null;
   startDate: string | null;
   endDate: string | null;
   createdAt: string | null;
@@ -569,6 +571,8 @@ export default function HostDashboard({ user }: { user: any }) {
                                 endDateTbd: (comp as any).endDateTbd || false,
                                 maxVotesPerDay: comp.maxVotesPerDay,
                                 voteCost: comp.voteCost,
+                                maxImagesPerContestant: comp.maxImagesPerContestant,
+                                maxVideosPerContestant: comp.maxVideosPerContestant,
                               });
                               setExpandedCompId(comp.id);
                             }
@@ -690,6 +694,32 @@ export default function HostDashboard({ user }: { user: any }) {
                               className="bg-white/[0.08] border-white/20 text-white"
                               data-testid={`edit-votecost-${comp.id}`}
                             />
+                          </div>
+                          <div>
+                            <Label className="text-white/50 text-xs">Max Images Per Contestant</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={editForm.maxImagesPerContestant ?? ""}
+                              onChange={(e) => setEditForm({ ...editForm, maxImagesPerContestant: e.target.value ? parseInt(e.target.value) : null })}
+                              placeholder="Use global default"
+                              className="bg-white/[0.08] border-white/20 text-white"
+                              data-testid={`edit-max-images-${comp.id}`}
+                            />
+                            <p className="text-[10px] text-white/25 mt-1">Leave empty to use global default</p>
+                          </div>
+                          <div>
+                            <Label className="text-white/50 text-xs">Max Videos Per Contestant</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={editForm.maxVideosPerContestant ?? ""}
+                              onChange={(e) => setEditForm({ ...editForm, maxVideosPerContestant: e.target.value ? parseInt(e.target.value) : null })}
+                              placeholder="Use global default"
+                              className="bg-white/[0.08] border-white/20 text-white"
+                              data-testid={`edit-max-videos-${comp.id}`}
+                            />
+                            <p className="text-[10px] text-white/25 mt-1">Leave empty to use global default</p>
                           </div>
                         </div>
                         <div>
