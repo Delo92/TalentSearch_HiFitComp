@@ -2111,7 +2111,15 @@ export async function registerRoutes(
       });
     } catch (error: any) {
       console.error("Drive upload error:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      let userMessage = "Failed to upload image";
+      if (error.message?.includes("disabled") || error.message?.includes("Enable it")) {
+        userMessage = "Google Drive API is not enabled. Please contact the administrator to enable the Drive API in the Google Cloud Console.";
+      } else if (error.message?.includes("403") || error.message?.includes("permission")) {
+        userMessage = "Google Drive access denied. Please contact the administrator to check API permissions.";
+      } else if (error.message?.includes("quota") || error.message?.includes("limit")) {
+        userMessage = "Google Drive storage quota reached. Please contact the administrator.";
+      }
+      res.status(500).json({ message: userMessage });
     }
   });
 
@@ -2261,7 +2269,15 @@ export async function registerRoutes(
       res.json(ticket);
     } catch (error: any) {
       console.error("Vimeo upload ticket error:", error);
-      res.status(500).json({ message: "Failed to create upload ticket" });
+      let userMessage = "Failed to create upload ticket";
+      if (error.message?.includes("scope")) {
+        userMessage = "Vimeo API permissions need to be updated. The access token requires the 'upload', 'interact', and 'edit' scopes. Please contact the administrator.";
+      } else if (error.message?.includes("403")) {
+        userMessage = "Vimeo API access denied. Please contact the administrator to check API permissions.";
+      } else if (error.message?.includes("quota") || error.message?.includes("limit")) {
+        userMessage = "Vimeo storage quota reached. Please contact the administrator.";
+      }
+      res.status(500).json({ message: userMessage });
     }
   });
 

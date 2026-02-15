@@ -38,6 +38,8 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [imageUploading, setImageUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadError, setUploadError] = useState<{ type: "image" | "video"; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -140,6 +142,8 @@ export default function TalentDashboard({ user, profile }: Props) {
     if (!file || !selectedCompId) return;
 
     setImageUploading(true);
+    setUploadError(null);
+    setUploadStatus("Uploading photo to Google Drive...");
     try {
       const formData = new FormData();
       formData.append("image", file);
@@ -157,10 +161,13 @@ export default function TalentDashboard({ user, profile }: Props) {
         throw new Error(err.message || "Upload failed");
       }
 
+      setUploadStatus("");
       queryClient.invalidateQueries({ queryKey: ["/api/drive/images", selectedCompId] });
       queryClient.invalidateQueries({ queryKey: ["/api/talent-profiles/me"] });
       toast({ title: "Uploaded!", description: "Your photo has been saved to Google Drive." });
     } catch (err: any) {
+      setUploadStatus("");
+      setUploadError({ type: "image", message: err.message || "Photo upload failed" });
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
       setImageUploading(false);
@@ -174,6 +181,8 @@ export default function TalentDashboard({ user, profile }: Props) {
 
     setVideoUploading(true);
     setVideoUploadProgress(0);
+    setUploadError(null);
+    setUploadStatus("Preparing video upload...");
     try {
       const token = getAuthToken();
       const ticketRes = await fetch("/api/vimeo/upload-ticket", {
@@ -191,10 +200,11 @@ export default function TalentDashboard({ user, profile }: Props) {
 
       if (!ticketRes.ok) {
         const err = await ticketRes.json();
-        throw new Error(err.message || "Failed to get upload ticket");
+        throw new Error(err.message || "Failed to create upload ticket");
       }
 
       const ticket = await ticketRes.json();
+      setUploadStatus("Uploading video to Vimeo...");
 
       await new Promise<void>((resolve, reject) => {
         const upload = new tus.Upload(file, {
@@ -205,6 +215,9 @@ export default function TalentDashboard({ user, profile }: Props) {
           onProgress: (bytesUploaded, bytesTotal) => {
             const pct = Math.round((bytesUploaded / bytesTotal) * 100);
             setVideoUploadProgress(pct);
+            const mbUploaded = (bytesUploaded / (1024 * 1024)).toFixed(1);
+            const mbTotal = (bytesTotal / (1024 * 1024)).toFixed(1);
+            setUploadStatus(`Uploading video... ${mbUploaded} MB / ${mbTotal} MB`);
           },
           onSuccess: () => {
             resolve();
@@ -213,6 +226,7 @@ export default function TalentDashboard({ user, profile }: Props) {
         upload.start();
       });
 
+      setUploadStatus("Finalizing upload...");
       if (ticket.completeUri) {
         try {
           await fetch(`https://api.vimeo.com${ticket.completeUri}`, {
@@ -221,9 +235,12 @@ export default function TalentDashboard({ user, profile }: Props) {
         } catch {}
       }
 
+      setUploadStatus("");
       queryClient.invalidateQueries({ queryKey: ["/api/vimeo/videos", selectedCompId] });
       toast({ title: "Uploaded!", description: "Your video has been saved to Vimeo." });
     } catch (err: any) {
+      setUploadStatus("");
+      setUploadError({ type: "video", message: err.message || "Video upload failed" });
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
       setVideoUploading(false);
@@ -408,6 +425,29 @@ export default function TalentDashboard({ user, profile }: Props) {
                       </div>
                       <p className="text-xs text-white/30">Photos are uploaded to Google Drive in your competition folder.</p>
 
+                      {imageUploading && (
+                        <div className="flex items-center gap-3 bg-orange-500/10 border border-orange-500/20 rounded-md px-4 py-3" data-testid="status-image-uploading">
+                          <Loader2 className="h-5 w-5 animate-spin text-orange-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-orange-300">{uploadStatus || "Uploading..."}</p>
+                            <p className="text-xs text-white/40 mt-0.5">Please wait, do not close this page</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {uploadError?.type === "image" && (
+                        <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-md px-4 py-3" data-testid="error-image-upload">
+                          <X className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-red-300">Photo upload failed</p>
+                            <p className="text-xs text-red-400/70 mt-0.5">{uploadError.message}</p>
+                          </div>
+                          <button onClick={() => setUploadError(null)} className="text-white/30 hover:text-white/60 flex-shrink-0" data-testid="button-dismiss-image-error">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+
                       {imagesLoading ? (
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin text-orange-400" />
@@ -471,12 +511,36 @@ export default function TalentDashboard({ user, profile }: Props) {
                       <p className="text-xs text-white/30">Videos are uploaded to Vimeo in your competition folder.</p>
 
                       {videoUploading && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-2 text-sm">
-                            <span className="text-white/60">Uploading video...</span>
-                            <span className="text-orange-400 font-medium">{videoUploadProgress}%</span>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 bg-orange-500/10 border border-orange-500/20 rounded-md px-4 py-3" data-testid="status-video-uploading">
+                            <Loader2 className="h-5 w-5 animate-spin text-orange-400 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-orange-300">{uploadStatus || "Preparing upload..."}</p>
+                              <p className="text-xs text-white/40 mt-0.5">Please wait, do not close this page</p>
+                            </div>
                           </div>
-                          <Progress value={videoUploadProgress} className="h-2 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-amber-500" />
+                          {videoUploadProgress > 0 && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2 text-sm">
+                                <span className="text-white/60">Progress</span>
+                                <span className="text-orange-400 font-medium">{videoUploadProgress}%</span>
+                              </div>
+                              <Progress value={videoUploadProgress} className="h-2.5 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-amber-500" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {uploadError?.type === "video" && (
+                        <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-md px-4 py-3" data-testid="error-video-upload">
+                          <X className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-red-300">Video upload failed</p>
+                            <p className="text-xs text-red-400/70 mt-0.5">{uploadError.message}</p>
+                          </div>
+                          <button onClick={() => setUploadError(null)} className="text-white/30 hover:text-white/60 flex-shrink-0" data-testid="button-dismiss-video-error">
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
                       )}
 
