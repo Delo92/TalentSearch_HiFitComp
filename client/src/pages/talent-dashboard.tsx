@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen } from "lucide-react";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
@@ -29,6 +30,7 @@ export default function TalentDashboard({ user, profile }: Props) {
   const { toast } = useToast();
   const [displayName, setDisplayName] = useState(profile?.displayName || user.displayName || "");
   const [email, setEmail] = useState(profile?.email || user.email || "");
+  const [showEmail, setShowEmail] = useState(profile?.showEmail ?? false);
   const [bio, setBio] = useState(profile?.bio || "");
   const [category, setCategory] = useState(profile?.category || "");
   const [location, setLocation] = useState(profile?.location || "");
@@ -76,7 +78,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
   const saveProfileMutation = useMutation({
     mutationFn: async () => {
-      const data = { displayName, email, bio, category, location };
+      const data = { displayName, email, showEmail, bio, category, location };
       if (profile) {
         await apiRequest("PATCH", "/api/talent-profiles/me", data);
       } else {
@@ -300,6 +302,19 @@ export default function TalentDashboard({ user, profile }: Props) {
                     placeholder="your@email.com" data-testid="input-email"
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
                 </div>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-white/5 border border-white/5 px-4 py-3">
+                <div>
+                  <Label htmlFor="showEmail" className="text-white/80 text-sm font-medium cursor-pointer">Show email on my profile</Label>
+                  <p className="text-xs text-white/40 mt-0.5">Voters will see your email for booking inquiries</p>
+                </div>
+                <Switch
+                  id="showEmail"
+                  checked={showEmail}
+                  onCheckedChange={setShowEmail}
+                  data-testid="switch-show-email"
+                  className="data-[state=checked]:bg-orange-500"
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
