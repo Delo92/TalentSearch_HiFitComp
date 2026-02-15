@@ -161,10 +161,10 @@ export default function CompetitionDetailPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-6 text-sm text-white/40">
-            {competition.endDate && (
+            {(competition.endDate || (competition as any).endDateTbd) && (
               <span className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-white/30" />
-                Ends {new Date(competition.endDate).toLocaleDateString()}
+                {(competition as any).endDateTbd ? <span className="text-orange-400">Ends TBD</span> : `Ends ${new Date(competition.endDate).toLocaleDateString()}`}
               </span>
             )}
             <span className="flex items-center gap-1.5">

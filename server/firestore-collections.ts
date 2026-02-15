@@ -67,6 +67,8 @@ export interface FirestoreCompetition {
   maxVotesPerDay: number;
   startDate: string | null;
   endDate: string | null;
+  startDateTbd: boolean;
+  endDateTbd: boolean;
   votingStartDate: string | null;
   votingEndDate: string | null;
   expectedContestants: number | null;
@@ -283,10 +285,18 @@ export const firestoreCategories = {
   },
 };
 
+function normalizeCompetition(data: any): FirestoreCompetition {
+  return {
+    ...data,
+    startDateTbd: data.startDateTbd ?? false,
+    endDateTbd: data.endDateTbd ?? false,
+  } as FirestoreCompetition;
+}
+
 export const firestoreCompetitions = {
   async getAll(): Promise<FirestoreCompetition[]> {
     const snapshot = await db().collection(COLLECTIONS.COMPETITIONS).get();
-    const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    const comps = snapshot.docs.map(doc => normalizeCompetition(doc.data()));
     return comps.sort((a, b) => b.id - a.id);
   },
 
@@ -295,7 +305,7 @@ export const firestoreCompetitions = {
       .collection(COLLECTIONS.COMPETITIONS)
       .where("status", "==", status)
       .get();
-    const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    const comps = snapshot.docs.map(doc => normalizeCompetition(doc.data()));
     return comps.sort((a, b) => b.id - a.id);
   },
 
@@ -304,7 +314,7 @@ export const firestoreCompetitions = {
       .collection(COLLECTIONS.COMPETITIONS)
       .where("category", "==", category)
       .get();
-    const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    const comps = snapshot.docs.map(doc => normalizeCompetition(doc.data()));
     return comps.sort((a, b) => b.id - a.id);
   },
 
@@ -314,7 +324,7 @@ export const firestoreCompetitions = {
       .where("category", "==", category)
       .where("status", "==", status)
       .get();
-    const comps = snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    const comps = snapshot.docs.map(doc => normalizeCompetition(doc.data()));
     return comps.sort((a, b) => b.id - a.id);
   },
 
@@ -323,13 +333,13 @@ export const firestoreCompetitions = {
       .collection(COLLECTIONS.COMPETITIONS)
       .where("createdBy", "==", createdBy)
       .get();
-    return snapshot.docs.map(doc => doc.data() as FirestoreCompetition);
+    return snapshot.docs.map(doc => normalizeCompetition(doc.data()));
   },
 
   async get(id: number): Promise<FirestoreCompetition | null> {
     const doc = await db().collection(COLLECTIONS.COMPETITIONS).doc(String(id)).get();
     if (!doc.exists) return null;
-    return doc.data() as FirestoreCompetition;
+    return normalizeCompetition(doc.data());
   },
 
   async create(data: Omit<FirestoreCompetition, "id">): Promise<FirestoreCompetition> {
@@ -345,7 +355,7 @@ export const firestoreCompetitions = {
     if (!doc.exists) return null;
     await ref.update(data);
     const updated = await ref.get();
-    return updated.data() as FirestoreCompetition;
+    return normalizeCompetition(updated.data());
   },
 
   async delete(id: number): Promise<void> {

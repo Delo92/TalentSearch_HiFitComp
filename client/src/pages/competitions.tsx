@@ -128,7 +128,7 @@ function CompetitionCard({ competition }: { competition: CompetitionExt }) {
             <div className="mb-4">
               <span className="text-white/60 group-hover:text-black/60 text-[15px] transition-colors duration-500 inline-flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
-                {competition.endDate ? new Date(competition.endDate).toLocaleDateString() : "Open"}
+                {(competition as any).endDateTbd ? "TBD" : competition.endDate ? new Date(competition.endDate).toLocaleDateString() : "Open"}
               </span>
               <span className="text-white/40 group-hover:text-black/40 mx-3 transition-colors duration-500">|</span>
               <span className="text-white/60 group-hover:text-black/60 text-[15px] transition-colors duration-500 inline-flex items-center gap-1.5">

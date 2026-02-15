@@ -757,6 +757,8 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [voteCost, setVoteCost] = useState("0");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [startDateTbd, setStartDateTbd] = useState(false);
+  const [endDateTbd, setEndDateTbd] = useState(false);
   const [votingStartDate, setVotingStartDate] = useState("");
   const [votingEndDate, setVotingEndDate] = useState("");
   const [expectedContestants, setExpectedContestants] = useState("");
@@ -879,8 +881,10 @@ export default function AdminDashboard({ user }: { user: any }) {
         status: compStatus,
         maxVotesPerDay: parseInt(maxVotes) || 10,
         voteCost: parseInt(voteCost) || 0,
-        startDate: startDate ? new Date(startDate).toISOString() : null,
-        endDate: endDate ? new Date(endDate).toISOString() : null,
+        startDate: startDateTbd ? null : (startDate ? new Date(startDate).toISOString() : null),
+        endDate: endDateTbd ? null : (endDate ? new Date(endDate).toISOString() : null),
+        startDateTbd,
+        endDateTbd,
         votingStartDate: votingStartDate ? new Date(votingStartDate).toISOString() : null,
         votingEndDate: votingEndDate ? new Date(votingEndDate).toISOString() : null,
         expectedContestants: expectedContestants ? parseInt(expectedContestants) : null,
@@ -895,6 +899,8 @@ export default function AdminDashboard({ user }: { user: any }) {
       setCompCategory("");
       setStartDate("");
       setEndDate("");
+      setStartDateTbd(false);
+      setEndDateTbd(false);
       setVotingStartDate("");
       setVotingEndDate("");
       setExpectedContestants("");
@@ -1205,14 +1211,40 @@ export default function AdminDashboard({ user }: { user: any }) {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-white/60">Start Date & Time</Label>
-                    <Input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                      className="bg-white/5 border-white/10 text-white" data-testid="input-start-date" />
+                    <div className="flex items-center justify-between">
+                      <Label className="text-white/60">Start Date & Time</Label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <span className="text-[10px] text-white/40 uppercase tracking-wider">TBD</span>
+                        <Switch checked={startDateTbd} onCheckedChange={(v) => { setStartDateTbd(v); if (v) setStartDate(""); }}
+                          className="data-[state=checked]:bg-orange-500 scale-75" data-testid="switch-start-tbd" />
+                      </label>
+                    </div>
+                    {startDateTbd ? (
+                      <div className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-orange-400 font-medium" data-testid="text-start-tbd">
+                        TBD — Starts once enough contestants enter
+                      </div>
+                    ) : (
+                      <Input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                        className="bg-white/5 border-white/10 text-white" data-testid="input-start-date" />
+                    )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-white/60">End Date & Time</Label>
-                    <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                      className="bg-white/5 border-white/10 text-white" data-testid="input-end-date" />
+                    <div className="flex items-center justify-between">
+                      <Label className="text-white/60">End Date & Time</Label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <span className="text-[10px] text-white/40 uppercase tracking-wider">TBD</span>
+                        <Switch checked={endDateTbd} onCheckedChange={(v) => { setEndDateTbd(v); if (v) setEndDate(""); }}
+                          className="data-[state=checked]:bg-orange-500 scale-75" data-testid="switch-end-tbd" />
+                      </label>
+                    </div>
+                    {endDateTbd ? (
+                      <div className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-orange-400 font-medium" data-testid="text-end-tbd">
+                        TBD — End date to be determined
+                      </div>
+                    ) : (
+                      <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                        className="bg-white/5 border-white/10 text-white" data-testid="input-end-date" />
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -2297,8 +2329,8 @@ export default function AdminDashboard({ user }: { user: any }) {
                                   ) : calendarReport ? (
                                     <>
                                       <div className="text-xs text-white/40">
-                                        {calendarReport.competition.startDate && new Date(calendarReport.competition.startDate).toLocaleDateString()}
-                                        {calendarReport.competition.endDate && ` — ${new Date(calendarReport.competition.endDate).toLocaleDateString()}`}
+                                        {(calendarReport.competition as any).startDateTbd ? <span className="text-orange-400">TBD</span> : calendarReport.competition.startDate ? new Date(calendarReport.competition.startDate).toLocaleDateString() : null}
+                                        {(calendarReport.competition as any).endDateTbd ? <span> — <span className="text-orange-400">TBD</span></span> : calendarReport.competition.endDate ? ` — ${new Date(calendarReport.competition.endDate).toLocaleDateString()}` : null}
                                       </div>
                                       <div className="grid grid-cols-3 gap-2">
                                         <div className="bg-white/5 rounded-md p-2.5 text-center">

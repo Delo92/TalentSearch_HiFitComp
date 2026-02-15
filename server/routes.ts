@@ -384,6 +384,8 @@ export async function registerRoutes(
     coverImage: z.string().optional(),
     startDate: z.string().optional().nullable(),
     endDate: z.string().optional().nullable(),
+    startDateTbd: z.boolean().optional().default(false),
+    endDateTbd: z.boolean().optional().default(false),
     votingStartDate: z.string().optional().nullable(),
     votingEndDate: z.string().optional().nullable(),
     expectedContestants: z.number().int().min(0).optional().nullable(),

@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Calendar, Award, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Search, ShoppingCart, DollarSign, Pencil, Save, ImageUp } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
@@ -526,10 +527,11 @@ export default function HostDashboard({ user }: { user: any }) {
                           <Badge className={`border-0 text-xs ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`event-status-${comp.id}`}>
                             {comp.status}
                           </Badge>
-                          {comp.startDate && (
+                          {(comp.startDate || (comp as any).startDateTbd) && (
                             <span className="text-xs text-white/40 flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />{new Date(comp.startDate).toLocaleDateString()}
-                              {comp.endDate && <span> - {new Date(comp.endDate).toLocaleDateString()}</span>}
+                              <Calendar className="h-3 w-3" />
+                              {(comp as any).startDateTbd ? <span className="text-orange-400">TBD</span> : new Date(comp.startDate!).toLocaleDateString()}
+                              {(comp as any).endDateTbd ? <span> - <span className="text-orange-400">TBD</span></span> : comp.endDate ? <span> - {new Date(comp.endDate).toLocaleDateString()}</span> : null}
                             </span>
                           )}
                         </div>
@@ -563,6 +565,8 @@ export default function HostDashboard({ user }: { user: any }) {
                                 category: comp.category,
                                 startDate: comp.startDate ? comp.startDate.split("T")[0] : "",
                                 endDate: comp.endDate ? comp.endDate.split("T")[0] : "",
+                                startDateTbd: (comp as any).startDateTbd || false,
+                                endDateTbd: (comp as any).endDateTbd || false,
                                 maxVotesPerDay: comp.maxVotesPerDay,
                                 voteCost: comp.voteCost,
                               });
@@ -627,24 +631,44 @@ export default function HostDashboard({ user }: { user: any }) {
                             </Select>
                           </div>
                           <div>
-                            <Label className="text-white/50 text-xs">Start Date</Label>
-                            <Input
-                              type="date"
-                              value={editForm.startDate || ""}
-                              onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                              className="bg-white/[0.08] border-white/20 text-white"
-                              data-testid={`edit-start-${comp.id}`}
-                            />
+                            <div className="flex items-center justify-between mb-1">
+                              <Label className="text-white/50 text-xs">Start Date</Label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <span className="text-[10px] text-white/40">TBD</span>
+                                <Switch checked={editForm.startDateTbd || false}
+                                  onCheckedChange={(v) => setEditForm({ ...editForm, startDateTbd: v, ...(v ? { startDate: "" } : {}) })}
+                                  className="data-[state=checked]:bg-orange-500 scale-75" data-testid={`edit-start-tbd-${comp.id}`} />
+                              </label>
+                            </div>
+                            {editForm.startDateTbd ? (
+                              <div className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-orange-400 font-medium">
+                                TBD — Starts once enough enter
+                              </div>
+                            ) : (
+                              <Input type="date" value={editForm.startDate || ""}
+                                onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                                className="bg-white/[0.08] border-white/20 text-white" data-testid={`edit-start-${comp.id}`} />
+                            )}
                           </div>
                           <div>
-                            <Label className="text-white/50 text-xs">End Date</Label>
-                            <Input
-                              type="date"
-                              value={editForm.endDate || ""}
-                              onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                              className="bg-white/[0.08] border-white/20 text-white"
-                              data-testid={`edit-end-${comp.id}`}
-                            />
+                            <div className="flex items-center justify-between mb-1">
+                              <Label className="text-white/50 text-xs">End Date</Label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <span className="text-[10px] text-white/40">TBD</span>
+                                <Switch checked={editForm.endDateTbd || false}
+                                  onCheckedChange={(v) => setEditForm({ ...editForm, endDateTbd: v, ...(v ? { endDate: "" } : {}) })}
+                                  className="data-[state=checked]:bg-orange-500 scale-75" data-testid={`edit-end-tbd-${comp.id}`} />
+                              </label>
+                            </div>
+                            {editForm.endDateTbd ? (
+                              <div className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-orange-400 font-medium">
+                                TBD — End date to be determined
+                              </div>
+                            ) : (
+                              <Input type="date" value={editForm.endDate || ""}
+                                onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                                className="bg-white/[0.08] border-white/20 text-white" data-testid={`edit-end-${comp.id}`} />
+                            )}
                           </div>
                           <div>
                             <Label className="text-white/50 text-xs">Max Votes Per Day</Label>
@@ -726,10 +750,12 @@ export default function HostDashboard({ user }: { user: any }) {
                             disabled={editCompMutation.isPending}
                             onClick={() => {
                               const data: any = { ...editForm };
-                              if (data.startDate) data.startDate = new Date(data.startDate).toISOString();
-                              else data.startDate = null;
-                              if (data.endDate) data.endDate = new Date(data.endDate).toISOString();
-                              else data.endDate = null;
+                              if (data.startDateTbd) { data.startDate = null; }
+                              else if (data.startDate) { data.startDate = new Date(data.startDate).toISOString(); }
+                              else { data.startDate = null; }
+                              if (data.endDateTbd) { data.endDate = null; }
+                              else if (data.endDate) { data.endDate = new Date(data.endDate).toISOString(); }
+                              else { data.endDate = null; }
                               editCompMutation.mutate({ id: comp.id, data });
                             }}
                             className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
