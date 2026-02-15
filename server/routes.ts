@@ -1416,6 +1416,9 @@ export async function registerRoutes(
           imageUrls: c.talentProfile.imageUrls,
           imageBackupUrls: (c.talentProfile as any).imageBackupUrls || [],
           bio: c.talentProfile.bio,
+          email: (c.talentProfile as any).email || null,
+          location: (c.talentProfile as any).location || null,
+          socialLinks: (c.talentProfile as any).socialLinks || null,
           voteCount,
         });
       }

@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HardDrive, RefreshCw, FolderOpen, QrCode } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HardDrive, RefreshCw, FolderOpen, QrCode, MapPin, Download } from "lucide-react";
 import { InviteDialog, CreateUserDialog } from "@/components/invite-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
@@ -130,6 +130,9 @@ interface CompDetailContestant {
   category: string | null;
   imageUrls: string[] | null;
   bio: string | null;
+  email: string | null;
+  location: string | null;
+  socialLinks: string | null;
   voteCount: number;
 }
 
@@ -258,6 +261,34 @@ function CompetitionDetailModal({ compId }: { compId: number }) {
             <p className="font-bold text-lg bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid="comp-detail-votes">{totalVotes}</p>
           </div>
         </div>
+        <div className="mt-4 pt-3 border-t border-white/5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-orange-500/30 text-orange-400"
+            onClick={async () => {
+              try {
+                const token = getAuthToken();
+                const res = await fetch(`/api/competitions/${compId}/qrcode`, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                if (!res.ok) throw new Error("Failed to download QR code");
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `qr-${competition.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (err) {
+                console.error("QR download error:", err);
+              }
+            }}
+            data-testid="comp-detail-qr-download"
+          >
+            <Download className="h-4 w-4 mr-2" /> Download QR Code
+          </Button>
+        </div>
       </div>
 
       {hosts.length > 0 && (
@@ -285,22 +316,34 @@ function CompetitionDetailModal({ compId }: { compId: number }) {
           <div className="space-y-2">
             {contestants.map((c) => (
               <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 border border-white/5 p-3" data-testid={`comp-contestant-${c.id}`}>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <Avatar className="h-9 w-9 shrink-0">
                     <AvatarImage src={c.imageUrls?.[0] || ""} />
                     <AvatarFallback className="bg-orange-500/20 text-orange-400 text-xs font-bold">
                       {c.displayName?.charAt(0) || "?"}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-medium text-sm" data-testid={`contestant-name-${c.id}`}>{c.displayName}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       {c.stageName && <span className="text-xs text-white/40" data-testid={`contestant-stage-${c.id}`}>{c.stageName}</span>}
                       {c.category && <span className="text-xs text-white/30">{c.category}</span>}
                     </div>
+                    <div className="flex flex-wrap items-center gap-3 mt-1">
+                      {c.email && (
+                        <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-[11px] text-orange-400/70 hover:text-orange-400 truncate" data-testid={`contestant-email-${c.id}`}>
+                          <Mail className="h-3 w-3 shrink-0" /> {c.email}
+                        </a>
+                      )}
+                      {c.location && (
+                        <span className="flex items-center gap-1 text-[11px] text-white/30" data-testid={`contestant-location-${c.id}`}>
+                          <MapPin className="h-3 w-3 shrink-0" /> {c.location}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     <p className="text-sm font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid={`contestant-votes-${c.id}`}>{c.voteCount}</p>
                     <p className="text-[10px] text-white/30">votes</p>
