@@ -236,7 +236,7 @@ export async function deleteFile(fileId: string): Promise<void> {
 }
 
 export function getDriveImageUrl(fileId: string): string {
-  return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  return `https://lh3.googleusercontent.com/d/${fileId}`;
 }
 
 export function getDriveThumbnailUrl(fileId: string, size: number = 400): string {
