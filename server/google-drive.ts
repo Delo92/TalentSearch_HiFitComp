@@ -1,7 +1,12 @@
 import { google, drive_v3 } from "googleapis";
 import { Readable } from "stream";
+import * as fs from "fs";
+import * as path from "path";
 
 let driveClient: drive_v3.Drive | null = null;
+let oauthDriveClient: drive_v3.Drive | null = null;
+
+const REFRESH_TOKEN_PATH = path.join(process.cwd(), ".google-drive-refresh-token");
 
 function getDriveClient(): drive_v3.Drive {
   if (driveClient) return driveClient;
@@ -27,8 +32,96 @@ function getDriveClient(): drive_v3.Drive {
   return driveClient;
 }
 
+function getOAuth2Client() {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+
+  const redirectUri = getOAuthRedirectUri();
+  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+}
+
+function getOAuthRedirectUri(): string {
+  const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + "." + process.env.REPL_OWNER + ".repl.co";
+  return `https://${domain}/api/admin/google-drive-callback`;
+}
+
+function getSavedRefreshToken(): string | null {
+  try {
+    if (fs.existsSync(REFRESH_TOKEN_PATH)) {
+      return fs.readFileSync(REFRESH_TOKEN_PATH, "utf-8").trim();
+    }
+  } catch {}
+  return process.env.GOOGLE_DRIVE_REFRESH_TOKEN || null;
+}
+
+function saveRefreshToken(token: string) {
+  try {
+    fs.writeFileSync(REFRESH_TOKEN_PATH, token, "utf-8");
+    console.log("Google Drive refresh token saved");
+  } catch (err: any) {
+    console.error("Failed to save refresh token:", err.message);
+  }
+}
+
+function getOAuthDriveClient(): drive_v3.Drive | null {
+  if (oauthDriveClient) return oauthDriveClient;
+
+  const oauth2Client = getOAuth2Client();
+  if (!oauth2Client) return null;
+
+  const refreshToken = getSavedRefreshToken();
+  if (!refreshToken) return null;
+
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  oauthDriveClient = google.drive({ version: "v3", auth: oauth2Client });
+  return oauthDriveClient;
+}
+
+function getUploadDriveClient(): drive_v3.Drive {
+  const oauthClient = getOAuthDriveClient();
+  if (oauthClient) return oauthClient;
+  return getDriveClient();
+}
+
+export function getOAuthAuthorizationUrl(): string | null {
+  const oauth2Client = getOAuth2Client();
+  if (!oauth2Client) return null;
+
+  return oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: ["https://www.googleapis.com/auth/drive.file"],
+    prompt: "consent",
+  });
+}
+
+export async function exchangeOAuthCode(code: string): Promise<{ success: boolean; error?: string }> {
+  const oauth2Client = getOAuth2Client();
+  if (!oauth2Client) return { success: false, error: "OAuth client not configured" };
+
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    if (tokens.refresh_token) {
+      saveRefreshToken(tokens.refresh_token);
+      oauthDriveClient = null;
+      return { success: true };
+    }
+    return { success: false, error: "No refresh token received" };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export function isOAuthConnected(): boolean {
+  return !!getSavedRefreshToken();
+}
+
+export function getOAuthRedirectUriForSetup(): string {
+  return getOAuthRedirectUri();
+}
+
 export async function findOrCreateFolder(name: string, parentId?: string): Promise<string> {
-  const drive = getDriveClient();
+  const drive = getUploadDriveClient();
 
   let query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
   if (parentId) {
@@ -97,7 +190,7 @@ export async function uploadImageToDrive(
   mimeType: string,
   buffer: Buffer
 ): Promise<{ id: string; webViewLink: string; webContentLink: string; thumbnailLink: string }> {
-  const drive = getDriveClient();
+  const drive = getUploadDriveClient();
   const folderId = await getTalentMediaFolder(competitionName, talentName);
 
   const stream = new Readable();
@@ -129,6 +222,38 @@ export async function uploadImageToDrive(
     webViewLink: res.data.webViewLink || "",
     webContentLink: res.data.webContentLink || "",
     thumbnailLink: res.data.thumbnailLink || "",
+  };
+}
+
+export async function uploadFileToDriveFolder(
+  folderId: string,
+  fileName: string,
+  mimeType: string,
+  buffer: Buffer
+): Promise<{ id: string; name: string; webViewLink: string; size: string }> {
+  const drive = getUploadDriveClient();
+
+  const stream = new Readable();
+  stream.push(buffer);
+  stream.push(null);
+
+  const res = await drive.files.create({
+    requestBody: {
+      name: fileName,
+      parents: [folderId],
+    },
+    media: {
+      mimeType,
+      body: stream,
+    },
+    fields: "id, name, webViewLink, size",
+  });
+
+  return {
+    id: res.data.id!,
+    name: res.data.name || fileName,
+    webViewLink: res.data.webViewLink || "",
+    size: res.data.size || "0",
   };
 }
 
@@ -221,6 +346,36 @@ export async function listAllTalentImages(talentName: string): Promise<Array<{
   }
 }
 
+export async function listFilesInFolder(folderId: string): Promise<Array<{
+  id: string;
+  name: string;
+  mimeType: string;
+  thumbnailLink: string;
+  webViewLink: string;
+  webContentLink: string;
+  size: string;
+  createdTime: string;
+}>> {
+  const drive = getDriveClient();
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and trashed=false`,
+    fields: "files(id, name, mimeType, thumbnailLink, webViewLink, webContentLink, size, createdTime)",
+    orderBy: "createdTime desc",
+    pageSize: 100,
+  });
+
+  return (res.data.files || []).map(f => ({
+    id: f.id!,
+    name: f.name!,
+    mimeType: f.mimeType || "",
+    thumbnailLink: f.thumbnailLink || "",
+    webViewLink: f.webViewLink || "",
+    webContentLink: f.webContentLink || "",
+    size: f.size || "0",
+    createdTime: f.createdTime || "",
+  }));
+}
+
 export async function getFileStream(fileId: string): Promise<Readable> {
   const drive = getDriveClient();
   const res = await drive.files.get(
@@ -231,7 +386,7 @@ export async function getFileStream(fileId: string): Promise<Readable> {
 }
 
 export async function deleteFile(fileId: string): Promise<void> {
-  const drive = getDriveClient();
+  const drive = getUploadDriveClient();
   await drive.files.delete({ fileId });
 }
 

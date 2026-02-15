@@ -31,6 +31,8 @@ import {
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import {
   uploadImageToDrive,
+  uploadFileToDriveFolder,
+  listFilesInFolder,
   getFileStream,
   deleteFile,
   getDriveImageUrl,
@@ -38,6 +40,10 @@ import {
   createCompetitionDriveFolder,
   createContestantDriveFolders,
   getDriveStorageUsage,
+  getOAuthAuthorizationUrl,
+  exchangeOAuthCode,
+  isOAuthConnected,
+  getOAuthRedirectUriForSetup,
 } from "./google-drive";
 import {
   listTalentVideos,
