@@ -14,6 +14,7 @@ export const talentProfiles = pgTable("talent_profiles", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
   displayName: text("display_name").notNull(),
+  email: text("email"),
   stageName: text("stage_name"),
   bio: text("bio"),
   category: text("category"),
