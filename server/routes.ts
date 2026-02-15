@@ -61,11 +61,6 @@ import path from "path";
 import fs from "fs";
 import { slugify, extractIdFromSlug } from "../shared/slugify";
 
-const uploadsDir = path.resolve(process.cwd(), "client/public/uploads/livery");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
 function generateUniqueFilename(originalName: string): string {
   const ext = path.extname(originalName);
   const timestamp = Date.now();
@@ -73,25 +68,14 @@ function generateUniqueFilename(originalName: string): string {
   return `${timestamp}-${random}${ext}`;
 }
 
-const compCoversDir = path.resolve(process.cwd(), "client/public/uploads/covers");
-if (!fs.existsSync(compCoversDir)) {
-  fs.mkdirSync(compCoversDir, { recursive: true });
-}
-
 const compCoverUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, compCoversDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-      cb(null, name);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowedImages = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
-    const allowedVideos = /\.(mp4|webm|mov)$/i;
-    if (allowedImages.test(path.extname(file.originalname)) || allowedVideos.test(path.extname(file.originalname))) {
+  fileFilter: (_req: any, file: any, cb: any) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedImage = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
+    const allowedVideo = [".mp4", ".webm", ".mov"];
+    if (allowedImage.includes(ext) || allowedVideo.includes(ext)) {
       cb(null, true);
     } else {
       cb(new Error("Only image and video files are allowed"));
@@ -118,16 +102,21 @@ function isVideoFile(filename: string): boolean {
   return /\.(mp4|webm|mov)$/i.test(filename);
 }
 
-async function getVideoDuration(filePath: string): Promise<number> {
+async function getVideoDurationFromBuffer(buffer: Buffer): Promise<number> {
   const { execSync } = require("child_process");
+  const os = require("os");
+  const tmpPath = path.join(os.tmpdir(), `vid-check-${Date.now()}.mp4`);
   try {
+    fs.writeFileSync(tmpPath, buffer);
     const output = execSync(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tmpPath}"`,
       { encoding: "utf-8", timeout: 10000 }
     );
     return parseFloat(output.trim());
   } catch {
     return -1;
+  } finally {
+    try { fs.unlinkSync(tmpPath); } catch {}
   }
 }
 
@@ -773,23 +762,24 @@ export async function registerRoutes(
 
       if (!req.file) return res.status(400).json({ message: "No file provided" });
 
-      const filePath = path.join(compCoversDir, req.file.filename);
       const isVideo = isVideoFile(req.file.originalname);
 
       if (isVideo) {
-        const duration = await getVideoDuration(filePath);
+        const duration = await getVideoDurationFromBuffer(req.file.buffer);
         if (duration > 30) {
-          fs.unlinkSync(filePath);
           return res.status(400).json({ message: `Video must be 30 seconds or less. Uploaded video is ${Math.round(duration)} seconds.` });
         }
       }
 
-      const url = `/uploads/covers/${req.file.filename}`;
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const storagePath = `covers/${id}-${Date.now()}${ext}`;
+      const firebaseUrl = await uploadToFirebaseStorage(storagePath, req.file.buffer, req.file.mimetype);
+
       const updateData: any = {};
       if (isVideo) {
-        updateData.coverVideo = url;
+        updateData.coverVideo = firebaseUrl;
       } else {
-        updateData.coverImage = url;
+        updateData.coverImage = firebaseUrl;
       }
 
       const updated = await storage.updateCompetition(id, updateData);
@@ -1108,23 +1098,24 @@ export async function registerRoutes(
 
       if (!req.file) return res.status(400).json({ message: "No file provided" });
 
-      const filePath = path.join(compCoversDir, req.file.filename);
       const isVideo = isVideoFile(req.file.originalname);
 
       if (isVideo) {
-        const duration = await getVideoDuration(filePath);
+        const duration = await getVideoDurationFromBuffer(req.file.buffer);
         if (duration > 30) {
-          fs.unlinkSync(filePath);
           return res.status(400).json({ message: `Video must be 30 seconds or less. Uploaded video is ${Math.round(duration)} seconds.` });
         }
       }
 
-      const url = `/uploads/covers/${req.file.filename}`;
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const storagePath = `covers/${id}-${Date.now()}${ext}`;
+      const firebaseUrl = await uploadToFirebaseStorage(storagePath, req.file.buffer, req.file.mimetype);
+
       const updateData: any = {};
       if (isVideo) {
-        updateData.coverVideo = url;
+        updateData.coverVideo = firebaseUrl;
       } else {
-        updateData.coverImage = url;
+        updateData.coverImage = firebaseUrl;
       }
 
       const updated = await storage.updateCompetition(id, updateData);
@@ -2123,37 +2114,6 @@ export async function registerRoutes(
     if (!updated) return res.status(404).json({ message: "Livery item not found" });
     res.json(updated);
   });
-
-  app.post("/api/admin/livery/migrate-to-firebase", firebaseAuth, requireAdmin, async (req, res) => {
-    try {
-      const items = await storage.getAllLivery();
-      const results: any[] = [];
-      for (const item of items) {
-        if (item.imageUrl && item.imageUrl.startsWith("/uploads/livery/")) {
-          const localPath = path.resolve(process.cwd(), "client/public" + item.imageUrl);
-          if (fs.existsSync(localPath)) {
-            const buffer = fs.readFileSync(localPath);
-            const ext = path.extname(localPath).toLowerCase();
-            const mimeMap: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime" };
-            const mimeType = mimeMap[ext] || "application/octet-stream";
-            const storagePath = `livery/${item.imageKey}${ext}`;
-            const firebaseUrl = await uploadToFirebaseStorage(storagePath, buffer, mimeType);
-            await storage.updateLiveryImage(item.imageKey, firebaseUrl, item.mediaType || "image");
-            results.push({ imageKey: item.imageKey, oldUrl: item.imageUrl, newUrl: firebaseUrl, status: "migrated" });
-          } else {
-            results.push({ imageKey: item.imageKey, oldUrl: item.imageUrl, status: "file_not_found" });
-          }
-        } else {
-          results.push({ imageKey: item.imageKey, url: item.imageUrl, status: "skipped" });
-        }
-      }
-      res.json({ message: "Migration complete", results });
-    } catch (error: any) {
-      console.error("Livery migration error:", error);
-      res.status(500).json({ message: "Migration failed: " + error.message });
-    }
-  });
-
 
   app.post("/api/drive/upload", firebaseAuth, talentImageUpload.single("image"), async (req, res) => {
     try {
