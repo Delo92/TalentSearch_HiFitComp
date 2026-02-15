@@ -20,6 +20,7 @@ export function getFirebaseAdmin(): admin.app.App {
   firebaseApp = admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     projectId: "hifitcomp",
+    storageBucket: "hifitcomp.firebasestorage.app",
   });
 
   return firebaseApp;
@@ -121,4 +122,42 @@ export async function updateFirestoreUser(uid: string, data: Partial<Omit<Firest
 export async function getAllFirestoreUsers(): Promise<FirestoreUser[]> {
   const snapshot = await getFirestore().collection("users").get();
   return snapshot.docs.map(doc => doc.data() as FirestoreUser);
+}
+
+export function getFirebaseStorage() {
+  return getFirebaseAdmin().storage();
+}
+
+export async function uploadToFirebaseStorage(
+  filePath: string,
+  buffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const bucket = getFirebaseStorage().bucket();
+  const file = bucket.file(filePath);
+  await file.save(buffer, {
+    metadata: { contentType: mimeType },
+    public: true,
+  });
+  const publicUrl = `https://storage.googleapis.com/${bucket.name}/${encodeURIComponent(filePath)}`;
+  return publicUrl;
+}
+
+export async function deleteFromFirebaseStorage(filePath: string): Promise<void> {
+  const bucket = getFirebaseStorage().bucket();
+  const file = bucket.file(filePath);
+  try {
+    await file.delete();
+  } catch (err: any) {
+    console.error("Firebase Storage delete error:", err.message);
+  }
+}
+
+export async function listFirebaseStorageFiles(prefix: string): Promise<Array<{ name: string; url: string }>> {
+  const bucket = getFirebaseStorage().bucket();
+  const [files] = await bucket.getFiles({ prefix });
+  return files.map(f => ({
+    name: f.name,
+    url: `https://storage.googleapis.com/${bucket.name}/${encodeURIComponent(f.name)}`,
+  }));
 }

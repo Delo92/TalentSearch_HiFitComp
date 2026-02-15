@@ -11,6 +11,9 @@ import {
   updateFirestoreUser,
   getFirebaseAuth,
   getFirestore,
+  uploadToFirebaseStorage,
+  deleteFromFirebaseStorage,
+  listFirebaseStorageFiles,
 } from "./firebase-admin";
 import {
   firestoreCategories,
@@ -28,12 +31,8 @@ import {
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import {
   uploadImageToDrive,
-  listTalentImages,
-  listAllTalentImages,
   getFileStream,
   deleteFile,
-  getDriveImageUrl,
-  getDriveThumbnailUrl,
   createCompetitionDriveFolder,
   createContestantDriveFolders,
   getDriveStorageUsage,
@@ -61,6 +60,13 @@ import { slugify, extractIdFromSlug } from "../shared/slugify";
 const uploadsDir = path.resolve(process.cwd(), "client/public/uploads/livery");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+function generateUniqueFilename(originalName: string): string {
+  const ext = path.extname(originalName);
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${random}${ext}`;
 }
 
 const compCoversDir = path.resolve(process.cwd(), "client/public/uploads/covers");
@@ -1374,16 +1380,15 @@ export async function registerRoutes(
 
       const talentName = ((profile as any).displayName || (profile as any).stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 
-      let driveImages: any[] = [];
+      const profileImageUrls = (profile as any).imageUrls || [];
+      const driveImages = profileImageUrls.map((url: string, idx: number) => ({
+        id: `img-${idx}`,
+        name: url.split("/").pop() || `image-${idx}`,
+        imageUrl: url,
+        thumbnailUrl: url,
+      }));
+
       let vimeoVideos: any[] = [];
-      try {
-        driveImages = await listAllTalentImages(talentName);
-        driveImages = driveImages.map(img => ({
-          ...img,
-          imageUrl: getDriveImageUrl(img.id),
-          thumbnailUrl: getDriveThumbnailUrl(img.id),
-        }));
-      } catch {}
       try {
         const rawVideos = await listAllTalentVideos(talentName);
         vimeoVideos = rawVideos.map(v => ({
@@ -2113,48 +2118,49 @@ export async function registerRoutes(
       const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
       const maxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
 
+      const currentUrls = profile.imageUrls || [];
+      if (currentUrls.length >= maxImages) {
+        return res.status(400).json({ message: `Upload limit reached. Maximum ${maxImages} images allowed per contestant.` });
+      }
+
       const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const uniqueName = generateUniqueFilename(req.file.originalname);
+      const storagePath = `talent-images/${comp.title}/${talentName}/${uniqueName}`;
 
-      try {
-        const existingImages = await listTalentImages(comp.title, talentName);
-        if (existingImages.length >= maxImages) {
-          return res.status(400).json({ message: `Upload limit reached. Maximum ${maxImages} images allowed per contestant.` });
-        }
-      } catch {}
-
-      const result = await uploadImageToDrive(
-        comp.title,
-        talentName,
-        req.file.originalname,
-        req.file.mimetype,
-        req.file.buffer
+      const imageUrl = await uploadToFirebaseStorage(
+        storagePath,
+        req.file.buffer,
+        req.file.mimetype
       );
 
-      const imageUrl = getDriveImageUrl(result.id);
-      const thumbnailUrl = getDriveThumbnailUrl(result.id);
-
-      const currentUrls = profile.imageUrls || [];
       await storage.updateTalentProfile(uid, {
         imageUrls: [...currentUrls, imageUrl],
       });
 
+      let driveFileId: string | null = null;
+      try {
+        const result = await uploadImageToDrive(
+          comp.title,
+          talentName,
+          req.file.originalname,
+          req.file.mimetype,
+          req.file.buffer
+        );
+        driveFileId = result.id;
+      } catch (driveErr: any) {
+        console.log("Google Drive sync skipped (optional):", driveErr.message?.substring(0, 100));
+      }
+
       res.json({
-        fileId: result.id,
+        fileId: uniqueName,
         imageUrl,
-        thumbnailUrl,
-        webViewLink: result.webViewLink,
+        thumbnailUrl: imageUrl,
+        storagePath,
+        driveSync: !!driveFileId,
       });
     } catch (error: any) {
-      console.error("Drive upload error:", error);
-      let userMessage = "Failed to upload image";
-      if (error.message?.includes("disabled") || error.message?.includes("Enable it")) {
-        userMessage = "Google Drive API is not enabled. Please contact the administrator to enable the Drive API in the Google Cloud Console.";
-      } else if (error.message?.includes("403") || error.message?.includes("permission")) {
-        userMessage = "Google Drive access denied. Please contact the administrator to check API permissions.";
-      } else if (error.message?.includes("quota") || error.message?.includes("limit")) {
-        userMessage = "Google Drive storage quota reached. Please contact the administrator.";
-      }
-      res.status(500).json({ message: userMessage });
+      console.error("Upload error:", error);
+      res.status(500).json({ message: "Failed to upload image" });
     }
   });
 
@@ -2164,28 +2170,15 @@ export async function registerRoutes(
       const profile = await storage.getTalentProfileByUserId(uid);
       if (!profile) return res.json([]);
 
-      const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : null;
-      const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
-
-      if (competitionId) {
-        const comp = await storage.getCompetition(competitionId);
-        if (!comp) return res.json([]);
-        const images = await listTalentImages(comp.title, talentName);
-        res.json(images.map(img => ({
-          ...img,
-          imageUrl: getDriveImageUrl(img.id),
-          thumbnailUrl: getDriveThumbnailUrl(img.id),
-        })));
-      } else {
-        const allImages = await listAllTalentImages(talentName);
-        res.json(allImages.map(img => ({
-          ...img,
-          imageUrl: getDriveImageUrl(img.id),
-          thumbnailUrl: getDriveThumbnailUrl(img.id),
-        })));
-      }
+      const imageUrls = profile.imageUrls || [];
+      res.json(imageUrls.map((url: string, idx: number) => ({
+        id: `img-${idx}`,
+        name: url.split("/").pop() || `image-${idx}`,
+        imageUrl: url,
+        thumbnailUrl: url,
+      })));
     } catch (error: any) {
-      console.error("Drive list error:", error);
+      console.error("Image list error:", error);
       res.status(500).json({ message: "Failed to list images" });
     }
   });
@@ -2197,17 +2190,33 @@ export async function registerRoutes(
       if (!profile) return res.status(400).json({ message: "Profile not found" });
 
       const { fileId } = req.params;
-      await deleteFile(fileId);
-
-      const imageUrl = getDriveImageUrl(fileId);
       const currentUrls = profile.imageUrls || [];
+
+      const imageIndex = parseInt(fileId.replace("img-", ""));
+      const imageUrl = currentUrls[imageIndex];
+      if (!imageUrl) return res.status(404).json({ message: "Image not found" });
+
+      if (imageUrl.includes("storage.googleapis.com")) {
+        const bucketMatch = imageUrl.match(/storage\.googleapis\.com\/([^/]+)\/(.+)$/);
+        if (bucketMatch) {
+          await deleteFromFirebaseStorage(decodeURIComponent(bucketMatch[2]));
+        }
+      }
+
+      try {
+        const driveMatch = imageUrl.match(/id=([a-zA-Z0-9_-]+)/);
+        if (driveMatch) {
+          await deleteFile(driveMatch[1]);
+        }
+      } catch {}
+
       await storage.updateTalentProfile(uid, {
-        imageUrls: currentUrls.filter(url => url !== imageUrl),
+        imageUrls: currentUrls.filter((_: string, i: number) => i !== imageIndex),
       });
 
       res.json({ message: "Image deleted" });
     } catch (error: any) {
-      console.error("Drive delete error:", error);
+      console.error("Image delete error:", error);
       res.status(500).json({ message: "Failed to delete image" });
     }
   });

@@ -55,16 +55,16 @@ export default function TalentDashboard({ user, profile }: Props) {
   });
 
   const { data: driveImages, isLoading: imagesLoading } = useQuery<any[]>({
-    queryKey: ["/api/drive/images", selectedCompId],
+    queryKey: ["/api/drive/images"],
     queryFn: async () => {
       const token = getAuthToken();
-      const res = await fetch(`/api/drive/images?competitionId=${selectedCompId}`, {
+      const res = await fetch(`/api/drive/images`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error("Failed to load images");
       return res.json();
     },
-    enabled: !!profile && !!selectedCompId,
+    enabled: !!profile,
   });
 
   const { data: vimeoVideos, isLoading: videosLoading } = useQuery<any[]>({
@@ -116,9 +116,9 @@ export default function TalentDashboard({ user, profile }: Props) {
       await apiRequest("DELETE", `/api/drive/images/${fileId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/drive/images", selectedCompId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/drive/images"] });
       queryClient.invalidateQueries({ queryKey: ["/api/talent-profiles/me"] });
-      toast({ title: "Deleted", description: "Image removed from Google Drive." });
+      toast({ title: "Deleted", description: "Image removed successfully." });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
@@ -180,9 +180,9 @@ export default function TalentDashboard({ user, profile }: Props) {
       }
 
       setUploadStatus("");
-      queryClient.invalidateQueries({ queryKey: ["/api/drive/images", selectedCompId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/drive/images"] });
       queryClient.invalidateQueries({ queryKey: ["/api/talent-profiles/me"] });
-      toast({ title: "Uploaded!", description: "Your photo has been saved to Google Drive." });
+      toast({ title: "Uploaded!", description: "Your photo has been uploaded successfully." });
     } catch (err: any) {
       setUploadStatus("");
       setUploadError({ type: "image", message: err.message || "Photo upload failed" });
@@ -475,7 +475,7 @@ export default function TalentDashboard({ user, profile }: Props) {
                           {driveImages.map((img: any) => (
                             <div key={img.id} className="relative group rounded-md overflow-visible bg-white/5 aspect-square">
                               <img
-                                src={`/api/drive/proxy/${img.id}`}
+                                src={img.imageUrl}
                                 alt={img.name || "Photo"}
                                 className="w-full h-full object-cover rounded-md"
                                 loading="lazy"
