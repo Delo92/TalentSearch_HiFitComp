@@ -230,9 +230,15 @@ export default function CompetitionDetailPage() {
                     )}
                   </div>
                   <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-6 px-4 transition-all duration-500">
-                    <h4 className="text-white group-hover:text-black uppercase font-bold text-base mb-2 transition-colors duration-500" data-testid={`text-contestant-name-${contestant.id}`}>
-                      {contestant.talentProfile.displayName}
-                    </h4>
+                    <Link
+                      href={`/${slugify(competition.title)}/${slugify(contestant.talentProfile.displayName)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`link-contestant-name-${contestant.id}`}
+                    >
+                      <h4 className="text-white group-hover:text-black uppercase font-bold text-base mb-2 transition-colors duration-500 hover:text-[#FF5A09] group-hover:hover:text-[#FF5A09]" data-testid={`text-contestant-name-${contestant.id}`}>
+                        {contestant.talentProfile.displayName}
+                      </h4>
+                    </Link>
                     <div className="mb-3">
                       <span className="text-white/60 group-hover:text-black/60 text-sm transition-colors duration-500" data-testid={`text-votes-${contestant.id}`}>
                         {contestant.voteCount} votes
