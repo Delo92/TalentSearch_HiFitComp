@@ -512,7 +512,7 @@ export async function registerRoutes(
 
     if (autoApprove) {
       try {
-        const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+        const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
         await Promise.all([
           createContestantDriveFolders(comp.title, talentName),
           createContestantVimeoFolder(comp.title, talentName),
@@ -670,7 +670,7 @@ export async function registerRoutes(
       try {
         const profile = await storage.getTalentProfile(updated.talentProfileId);
         if (profile && comp) {
-          const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+          const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
           await Promise.all([
             createContestantDriveFolders(comp.title, talentName),
             createContestantVimeoFolder(comp.title, talentName),
@@ -811,7 +811,7 @@ export async function registerRoutes(
         const profile = await storage.getTalentProfile(updated.talentProfileId);
         const comp = await storage.getCompetition(updated.competitionId);
         if (profile && comp) {
-          const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+          const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
           await Promise.all([
             createContestantDriveFolders(comp.title, talentName),
             createContestantVimeoFolder(comp.title, talentName),
@@ -1341,7 +1341,7 @@ export async function registerRoutes(
         });
       }
 
-      const talentName = ((profile as any).stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const talentName = ((profile as any).displayName || (profile as any).stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 
       let driveImages: any[] = [];
       let vimeoVideos: any[] = [];
@@ -1415,7 +1415,7 @@ export async function registerRoutes(
       });
 
       try {
-        const talentName = ((profile as any).stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+        const talentName = ((profile as any).displayName || (profile as any).stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
         await Promise.all([
           createContestantDriveFolders(comp.title, talentName),
           createContestantVimeoFolder(comp.title, talentName),
@@ -2082,7 +2082,7 @@ export async function registerRoutes(
       const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
       const maxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
 
-      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 
       try {
         const existingImages = await listTalentImages(comp.title, talentName);
@@ -2134,7 +2134,7 @@ export async function registerRoutes(
       if (!profile) return res.json([]);
 
       const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : null;
-      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 
       if (competitionId) {
         const comp = await storage.getCompetition(competitionId);
@@ -2201,7 +2201,7 @@ export async function registerRoutes(
       if (!profile) return res.json([]);
 
       const competitionId = req.query.competitionId ? parseInt(req.query.competitionId as string) : null;
-      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 
       if (competitionId) {
         const comp = await storage.getCompetition(competitionId);
@@ -2259,7 +2259,7 @@ export async function registerRoutes(
       const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
       const maxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
 
-      const talentName = (profile.stageName || profile.displayName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
 
       try {
         const existingVideos = await listTalentVideos(comp.title, talentName);
