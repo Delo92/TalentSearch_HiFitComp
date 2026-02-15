@@ -1467,11 +1467,23 @@ export default function AdminDashboard({ user }: { user: any }) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        const a = document.createElement("a");
-                        a.href = `/api/competitions/${comp.id}/qrcode`;
-                        a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
-                        a.click();
+                      onClick={async () => {
+                        try {
+                          const token = getAuthToken();
+                          const res = await fetch(`/api/competitions/${comp.id}/qrcode`, {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          if (!res.ok) throw new Error("Failed to download QR code");
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch (err) {
+                          console.error("QR download error:", err);
+                        }
                       }}
                       className="text-white/40"
                       title="Download QR Code for live voting"

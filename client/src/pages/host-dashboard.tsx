@@ -19,7 +19,7 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useMemo } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, getAuthToken } from "@/hooks/use-auth";
 
 interface HostStats {
   totalCompetitions: number;
@@ -97,11 +97,23 @@ function EventAnalyticsCard({ comp }: { comp: HostCompetition }) {
           <Badge className={`border-0 text-[10px] ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/50"}`}>{comp.status}</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => {
-            const a = document.createElement("a");
-            a.href = `/api/competitions/${comp.id}/qrcode`;
-            a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
-            a.click();
+          <Button variant="ghost" size="sm" onClick={async () => {
+            try {
+              const token = getAuthToken();
+              const res = await fetch(`/api/competitions/${comp.id}/qrcode`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+              if (!res.ok) throw new Error("Failed to download QR code");
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch (err) {
+              console.error("QR download error:", err);
+            }
           }} className="text-white/40 text-xs" title="Download QR Code" data-testid={`analytics-qr-${comp.id}`}>
             <QrCode className="h-3 w-3 mr-1" /> QR
           </Button>
@@ -362,7 +374,6 @@ export default function HostDashboard({ user }: { user: any }) {
     mutationFn: async ({ id, file }: { id: number; file: File }) => {
       const formData = new FormData();
       formData.append("cover", file);
-      const { getAuthToken } = await import("@/hooks/use-auth");
       const token = getAuthToken();
       const res = await fetch(`/api/host/competitions/${id}/cover`, {
         method: "PUT",
@@ -633,11 +644,23 @@ export default function HostDashboard({ user }: { user: any }) {
                             <SelectItem value="completed">Completed</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button variant="ghost" size="icon" onClick={() => {
-                          const a = document.createElement("a");
-                          a.href = `/api/competitions/${comp.id}/qrcode`;
-                          a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
-                          a.click();
+                        <Button variant="ghost" size="icon" onClick={async () => {
+                          try {
+                            const token = getAuthToken();
+                            const res = await fetch(`/api/competitions/${comp.id}/qrcode`, {
+                              headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (!res.ok) throw new Error("Failed to download QR code");
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          } catch (err) {
+                            console.error("QR download error:", err);
+                          }
                         }} title="Download QR Code for live voting" data-testid={`button-qr-${comp.id}`}>
                           <QrCode className="h-4 w-4 text-white/60" />
                         </Button>
