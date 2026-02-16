@@ -452,7 +452,9 @@ export async function registerRoutes(
   });
 
   app.patch("/api/competitions/:id", firebaseAuth, async (req, res) => {
-    const { uid, role } = req.firebaseUser!;
+    const { uid } = req.firebaseUser!;
+    const profile = await storage.getTalentProfileByUserId(uid);
+    const role = profile?.role;
     if (role !== "admin" && role !== "host") {
       return res.status(403).json({ message: "Admin or host access required" });
     }
@@ -1405,7 +1407,9 @@ export async function registerRoutes(
 
   app.get("/api/competitions/:id/detail", firebaseAuth, async (req, res) => {
     try {
-      const { uid, role } = req.firebaseUser!;
+      const { uid } = req.firebaseUser!;
+      const profile = await storage.getTalentProfileByUserId(uid);
+      const role = profile?.role;
       if (role !== "admin" && role !== "host") {
         return res.status(403).json({ message: "Admin or host access required" });
       }
