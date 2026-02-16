@@ -1387,7 +1387,12 @@ export default function AdminDashboard({ user }: { user: any }) {
                 );
               })}
             </div>
-            {liveryItems?.filter((item: any) => item.itemType === "text").map((item: any) => {
+            {liveryItems?.filter((item: any) => item.itemType === "text").sort((a: any, b: any) => {
+              const order = ["hero_summary", "about_rules_text", "about_details_text", "contact_email", "contact_phone", "contact_address", "social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"];
+              const ai = order.indexOf(a.imageKey);
+              const bi = order.indexOf(b.imageKey);
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            }).map((item: any) => {
               const currentText = item.textContent || item.defaultText || "";
               const isCustomText = !!item.textContent;
               return (
