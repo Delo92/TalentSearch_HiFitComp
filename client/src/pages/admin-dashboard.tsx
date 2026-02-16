@@ -1313,7 +1313,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                 const isCustom = !!item.imageUrl;
                 const isVideo = item.mediaType === "video";
                 return (
-                  <div key={item.imageKey} className="rounded-md bg-white/5 border border-white/5 overflow-visible" data-testid={`livery-item-${item.imageKey}`}>
+                  <div key={item.imageKey} className="rounded-md bg-zinc-900 border border-white/15 overflow-visible" data-testid={`livery-item-${item.imageKey}`}>
                     <div className="relative aspect-video bg-black/50">
                       {isVideo ? (
                         <video
@@ -1410,7 +1410,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                         key={`${item.imageKey}-${currentText}`}
                         defaultValue={currentText}
                         rows={3}
-                        className="bg-white/10 border-white/20 text-white text-xs mb-1"
+                        className="bg-zinc-800 border-white/25 text-white text-xs mb-1"
                         data-testid={`textarea-livery-${item.imageKey}`}
                         onBlur={(e) => {
                           const newText = e.target.value.trim();
@@ -1421,7 +1421,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                       <Input
                         key={`${item.imageKey}-${currentText}`}
                         defaultValue={currentText}
-                        className="bg-white/10 border-white/20 text-white text-xs h-8 mb-1"
+                        className="bg-zinc-800 border-white/25 text-white text-xs h-8 mb-1"
                         data-testid={`textarea-livery-${item.imageKey}`}
                         onBlur={(e) => {
                           const newText = e.target.value.trim();
@@ -1441,7 +1441,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                 if (items.length === 0) return null;
                 const hasLong = items.some((it: any) => isLongField(it.imageKey));
                 return (
-                  <details key={group.label} className="mt-4 rounded-md bg-white/[0.03] border border-white/10 overflow-visible">
+                  <details key={group.label} className="mt-4 rounded-md bg-zinc-900 border border-white/15 overflow-visible">
                     <summary className="cursor-pointer px-3 py-2 flex items-center justify-between gap-2 select-none" data-testid={`livery-group-${group.label.toLowerCase().replace(/\s/g, "-")}`}>
                       <div className="flex items-center gap-2">
                         <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold">{group.label}</h3>
