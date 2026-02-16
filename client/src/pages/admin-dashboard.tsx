@@ -1394,96 +1394,63 @@ export default function AdminDashboard({ user }: { user: any }) {
                 { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"] },
                 { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"] },
               ];
+              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary");
+              const renderField = (item: any) => {
+                const currentText = item.textContent || item.defaultText || "";
+                const isCustomText = !!item.textContent;
+                const shortLabel = item.label.replace(/^(Category |Hero |Social - |About Page - )/, "");
+                return (
+                  <div key={item.imageKey} data-testid={`livery-item-${item.imageKey}`}>
+                    <div className="flex items-center justify-between gap-1 mb-1 flex-wrap">
+                      <label className="text-xs text-white/60 font-medium" data-testid={`livery-label-${item.imageKey}`}>{shortLabel}</label>
+                      {isCustomText && <Badge className="bg-orange-500/80 text-white border-0 text-[9px] leading-tight">Edited</Badge>}
+                    </div>
+                    {isLongField(item.imageKey) ? (
+                      <Textarea
+                        key={`${item.imageKey}-${currentText}`}
+                        defaultValue={currentText}
+                        rows={3}
+                        className="bg-white/10 border-white/20 text-white text-xs mb-1"
+                        data-testid={`textarea-livery-${item.imageKey}`}
+                        onBlur={(e) => {
+                          const newText = e.target.value.trim();
+                          if (newText !== currentText) updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
+                        }}
+                      />
+                    ) : (
+                      <Input
+                        key={`${item.imageKey}-${currentText}`}
+                        defaultValue={currentText}
+                        className="bg-white/10 border-white/20 text-white text-xs h-8 mb-1"
+                        data-testid={`textarea-livery-${item.imageKey}`}
+                        onBlur={(e) => {
+                          const newText = e.target.value.trim();
+                          if (newText !== currentText) updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
+                        }}
+                      />
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" onClick={() => { const el = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLInputElement; if (el) updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: el.value.trim() }); }} disabled={updateLiveryTextMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-2" data-testid={`button-save-text-${item.imageKey}`}>Save</Button>
+                      {isCustomText && <Button size="sm" variant="ghost" onClick={() => { updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: "" }); const el = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLInputElement; if (el) el.value = item.defaultText || ""; }} disabled={updateLiveryTextMutation.isPending} className="text-white/40 text-[10px] h-6 px-2" data-testid={`button-reset-text-${item.imageKey}`}><RotateCcw className="h-2.5 w-2.5 mr-0.5" />Reset</Button>}
+                    </div>
+                  </div>
+                );
+              };
               return groups.map((group) => {
                 const items = group.keys.map(k => textItems.find((t: any) => t.imageKey === k)).filter(Boolean) as any[];
                 if (items.length === 0) return null;
+                const hasLong = items.some((it: any) => isLongField(it.imageKey));
                 return (
-                  <details key={group.label} className="mt-6 rounded-md bg-white/5 border border-white/5 overflow-visible" open>
-                    <summary className="cursor-pointer px-4 py-3 flex items-center justify-between gap-2 select-none" data-testid={`livery-group-${group.label.toLowerCase().replace(/\s/g, "-")}`}>
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-sm uppercase tracking-widest text-orange-400 font-bold">{group.label}</h3>
-                        <Badge className="bg-white/10 text-white/50 border-0 text-[10px]">{items.length} {items.length === 1 ? "field" : "fields"}</Badge>
+                  <details key={group.label} className="mt-4 rounded-md bg-white/[0.03] border border-white/10 overflow-visible">
+                    <summary className="cursor-pointer px-3 py-2 flex items-center justify-between gap-2 select-none" data-testid={`livery-group-${group.label.toLowerCase().replace(/\s/g, "-")}`}>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold">{group.label}</h3>
+                        <Badge className="bg-white/10 text-white/50 border-0 text-[9px]">{items.length}</Badge>
                       </div>
-                      <ChevronDown className="h-4 w-4 text-white/30 transition-transform [details[open]>&]:rotate-180" />
+                      <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform [details[open]>&]:rotate-180" />
                     </summary>
-                    <div className="px-4 pb-4 space-y-4">
-                      {items.map((item: any) => {
-                        const currentText = item.textContent || item.defaultText || "";
-                        const isCustomText = !!item.textContent;
-                        const isShortField = !item.imageKey.includes("rules") && !item.imageKey.includes("details") && !item.imageKey.includes("summary");
-                        return (
-                          <div key={item.imageKey} className="rounded-md bg-black/20 border border-white/5 p-3" data-testid={`livery-item-${item.imageKey}`}>
-                            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                              <div>
-                                <h4 className="font-medium text-sm" data-testid={`livery-label-${item.imageKey}`}>{item.label}</h4>
-                              </div>
-                              {isCustomText && (
-                                <Badge className="bg-orange-500 text-white border-0 text-xs">Custom</Badge>
-                              )}
-                            </div>
-                            {isShortField ? (
-                              <Input
-                                key={`${item.imageKey}-${currentText}`}
-                                defaultValue={currentText}
-                                className="bg-black/30 border-white/10 text-white text-sm mb-2"
-                                data-testid={`textarea-livery-${item.imageKey}`}
-                                onBlur={(e) => {
-                                  const newText = e.target.value.trim();
-                                  if (newText !== currentText) {
-                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <Textarea
-                                key={`${item.imageKey}-${currentText}`}
-                                defaultValue={currentText}
-                                rows={4}
-                                className="bg-black/30 border-white/10 text-white text-sm mb-2"
-                                data-testid={`textarea-livery-${item.imageKey}`}
-                                onBlur={(e) => {
-                                  const newText = e.target.value.trim();
-                                  if (newText !== currentText) {
-                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
-                                  }
-                                }}
-                              />
-                            )}
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  const el = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLInputElement;
-                                  if (el) {
-                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: el.value.trim() });
-                                  }
-                                }}
-                                disabled={updateLiveryTextMutation.isPending}
-                                className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-xs"
-                                data-testid={`button-save-text-${item.imageKey}`}
-                              >
-                                Save
-                              </Button>
-                              {isCustomText && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: "" });
-                                    const el = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLInputElement;
-                                    if (el) el.value = item.defaultText || "";
-                                  }}
-                                  disabled={updateLiveryTextMutation.isPending}
-                                  className="text-white/40 text-xs"
-                                  data-testid={`button-reset-text-${item.imageKey}`}
-                                >
-                                  <RotateCcw className="h-3 w-3 mr-1" /> Reset
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className={`px-3 pb-3 ${hasLong ? "space-y-3" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"}`}>
+                      {items.map((item: any) => renderField(item))}
                     </div>
                   </details>
                 );
