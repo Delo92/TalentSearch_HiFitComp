@@ -1388,11 +1388,11 @@ export default function AdminDashboard({ user }: { user: any }) {
             {(() => {
               const textItems = liveryItems?.filter((item: any) => item.itemType === "text") || [];
               const groups = [
-                { label: "Hero Section", keys: ["hero_title_top", "hero_title_main", "hero_summary"] },
-                { label: "Category Cards", keys: ["category_music_title", "category_music_desc", "category_modeling_title", "category_modeling_desc", "category_bodybuilding_title", "category_bodybuilding_desc", "category_dance_title", "category_dance_desc"] },
-                { label: "About Page", keys: ["about_rules_text", "about_details_text"] },
-                { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"] },
-                { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"] },
+                { label: "Hero Section", keys: ["hero_title_top", "hero_title_main", "hero_summary"], pairs: null },
+                { label: "Category Cards", keys: ["category_music_title", "category_music_desc", "category_modeling_title", "category_modeling_desc", "category_bodybuilding_title", "category_bodybuilding_desc", "category_dance_title", "category_dance_desc"], pairs: [["category_music_title","category_music_desc"],["category_modeling_title","category_modeling_desc"],["category_bodybuilding_title","category_bodybuilding_desc"],["category_dance_title","category_dance_desc"]] },
+                { label: "About Page", keys: ["about_rules_text", "about_details_text"], pairs: null },
+                { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"], pairs: null },
+                { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"], pairs: null },
               ];
               const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary");
               const renderField = (item: any) => {
@@ -1449,8 +1449,28 @@ export default function AdminDashboard({ user }: { user: any }) {
                       </div>
                       <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform [details[open]>&]:rotate-180" />
                     </summary>
-                    <div className={`px-3 pb-3 ${hasLong ? "space-y-3" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"}`}>
-                      {items.map((item: any) => renderField(item))}
+                    <div className="px-3 pb-3">
+                      {group.pairs ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {group.pairs.map((pair) => {
+                            const pairItems = pair.map(k => textItems.find((t: any) => t.imageKey === k)).filter(Boolean) as any[];
+                            if (pairItems.length === 0) return null;
+                            const pairLabel = (pairItems[0]?.label || "").replace(/^Category (Title|Description) - /, "");
+                            return (
+                              <div key={pair[0]} className="rounded-md bg-zinc-800/60 border border-white/10 p-3">
+                                <h4 className="text-xs text-orange-300/80 font-semibold uppercase tracking-wider mb-2">{pairLabel}</h4>
+                                <div className="space-y-2">
+                                  {pairItems.map((item: any) => renderField(item))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : hasLong ? (
+                        <div className="space-y-3">{items.map((item: any) => renderField(item))}</div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{items.map((item: any) => renderField(item))}</div>
+                      )}
                     </div>
                   </details>
                 );
