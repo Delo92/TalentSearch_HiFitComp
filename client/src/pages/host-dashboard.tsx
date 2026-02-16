@@ -187,51 +187,176 @@ function EventAnalyticsCard({ comp }: { comp: HostCompetition }) {
   );
 }
 
-function InlineHostCompDetail({ compId }: { compId: number }) {
+function HostCompetitionDetailModal({ compId, comp }: { compId: number; comp: HostCompetition }) {
   const { data: contestants = [], isLoading } = useQuery<ContestantItem[]>({
     queryKey: ["/api/host/competitions", compId, "contestants"],
   });
 
+  const { data: breakdown } = useQuery<{ online: number; inPerson: number; total: number; onlineVoteWeight: number; inPersonOnly: boolean }>({
+    queryKey: ["/api/competitions", compId, "vote-breakdown"],
+  });
+
+  const toggleInPersonMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      await apiRequest("PATCH", `/api/competitions/${compId}`, { inPersonOnly: value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/host/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions", compId, "vote-breakdown"] });
+    },
+  });
+
   if (isLoading) {
     return (
-      <div className="p-4 text-center text-white/30 text-sm">Loading contestants...</div>
+      <div className="flex items-center justify-center py-12" data-testid="host-comp-detail-loading">
+        <div className="text-white/40 text-sm">Loading competition details...</div>
+      </div>
     );
   }
 
+  const totalVotes = contestants.reduce((sum, c) => sum + (c.voteCount || 0), 0);
+
   return (
-    <div className="border-t border-white/5 p-4 space-y-3" data-testid={`inline-detail-${compId}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <span className="text-xs text-white/40 uppercase tracking-wider">Contestants ({contestants.length})</span>
-        <Link href={`/competitions/${compId}`} className="text-xs text-orange-400 flex items-center gap-1" data-testid={`link-view-app-${compId}`}>
-          <Eye className="h-3 w-3" /> View in App
-        </Link>
-      </div>
-      {contestants.length === 0 ? (
-        <p className="text-sm text-white/30">No contestants have applied yet.</p>
-      ) : (
-        <div className="space-y-2">
-          {contestants.map(c => (
-            <div key={c.id} className="flex flex-wrap items-center gap-3 rounded-md bg-white/[0.03] p-2" data-testid={`inline-contestant-${c.id}`}>
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={c.talentProfile?.imageUrls?.[0] || ""} alt={c.talentProfile?.displayName || ""} />
-                <AvatarFallback className="bg-white/10 text-white text-xs">
-                  {(c.talentProfile?.displayName || "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" data-testid={`inline-contestant-name-${c.id}`}>{c.talentProfile?.displayName || "Unknown"}</p>
-                <p className="text-xs text-white/40">{c.talentProfile?.category || "No category"}</p>
-              </div>
-              <Badge className={`border-0 text-xs ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                {c.applicationStatus}
-              </Badge>
-              <Link href={"/talent/" + c.talentProfileId} className="text-xs text-orange-400 flex items-center gap-1" data-testid={`link-profile-${c.id}`}>
-                <ExternalLink className="h-3 w-3" /> Profile
-              </Link>
-            </div>
-          ))}
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1" data-testid="host-comp-detail-content">
+      <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="host-comp-detail-info">
+        <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Competition Info</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs text-white/40">Title</p>
+            <p className="font-medium" data-testid="host-comp-detail-title">{comp.title}</p>
+          </div>
+          <div>
+            <p className="text-xs text-white/40">Category</p>
+            <p className="font-medium" data-testid="host-comp-detail-category">{comp.category}</p>
+          </div>
+          <div>
+            <p className="text-xs text-white/40">Status</p>
+            <Badge className={`border-0 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60"}`} data-testid="host-comp-detail-status">
+              {comp.status}
+            </Badge>
+          </div>
+          <div>
+            <p className="text-xs text-white/40">Total Votes</p>
+            <p className="font-bold text-lg bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid="host-comp-detail-votes">{totalVotes}</p>
+          </div>
         </div>
-      )}
+        <div className="mt-4 pt-3 border-t border-white/5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-orange-500/30 text-orange-400"
+            onClick={async () => {
+              try {
+                const token = getAuthToken();
+                const res = await fetch(`/api/competitions/${compId}/qrcode`, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                if (!res.ok) throw new Error("Failed to download QR code");
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `qr-${comp.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (err) {
+                console.error("QR download error:", err);
+              }
+            }}
+            data-testid="host-comp-detail-qr-download"
+          >
+            <Download className="h-4 w-4 mr-2" /> Download QR Code
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="host-comp-detail-vote-breakdown">
+        <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Vote Breakdown</h3>
+        {breakdown && (breakdown.online > 0 || breakdown.inPerson > 0) ? (
+          <div>
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                <span className="text-white/60">Online: <span className="text-white font-medium">{breakdown.online}</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+                <span className="text-white/60">In-Person: <span className="text-white font-medium">{breakdown.inPerson}</span></span>
+              </div>
+              {breakdown.onlineVoteWeight < 100 && (
+                <span className="text-white/30 text-[10px]">Online weight: {breakdown.onlineVoteWeight}%</span>
+              )}
+            </div>
+            {breakdown.total > 0 && (
+              <div className="mt-1.5 h-1.5 rounded-full bg-white/5 overflow-hidden flex">
+                <div className="bg-blue-400 h-full" style={{ width: `${(breakdown.online / breakdown.total) * 100}%` }} />
+                <div className="bg-orange-400 h-full" style={{ width: `${(breakdown.inPerson / breakdown.total) * 100}%` }} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-white/30">No votes recorded yet.</p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-md bg-white/[0.04] border border-white/10 px-3 py-2.5">
+        <div>
+          <p className="text-xs text-white/70 font-medium">In-Person Only Event</p>
+          <p className="text-[10px] text-white/30">Only QR code votes accepted when enabled</p>
+        </div>
+        <Switch
+          checked={breakdown?.inPersonOnly || false}
+          onCheckedChange={(v) => toggleInPersonMutation.mutate(v)}
+          disabled={toggleInPersonMutation.isPending}
+          className="data-[state=checked]:bg-orange-500"
+          data-testid={`toggle-in-person-modal-${compId}`}
+        />
+      </div>
+
+      <div data-testid="host-comp-detail-contestants">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Contestants ({contestants.length})</h3>
+          <Link href={`/competitions/${compId}`} className="text-xs text-orange-400 flex items-center gap-1" data-testid={`link-view-app-${compId}`}>
+            <Eye className="h-3 w-3" /> View in App
+          </Link>
+        </div>
+        {contestants.length > 0 ? (
+          <div className="space-y-2">
+            {contestants.map(c => (
+              <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 border border-white/5 p-3" data-testid={`host-contestant-${c.id}`}>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarImage src={c.talentProfile?.imageUrls?.[0] || ""} alt={c.talentProfile?.displayName || ""} />
+                    <AvatarFallback className="bg-orange-500/20 text-orange-400 text-xs font-bold">
+                      {(c.talentProfile?.displayName || "?").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate" data-testid={`host-contestant-name-${c.id}`}>{c.talentProfile?.displayName || "Unknown"}</p>
+                    <p className="text-xs text-white/40">{c.talentProfile?.category || "No category"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-right">
+                    <p className="text-sm font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid={`host-contestant-votes-${c.id}`}>{c.voteCount}</p>
+                    <p className="text-[10px] text-white/30">votes</p>
+                  </div>
+                  <Badge className={`border-0 text-xs ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                    {c.applicationStatus}
+                  </Badge>
+                  <Link href={"/talent/" + c.talentProfileId} className="text-xs text-orange-400 flex items-center gap-1" data-testid={`host-link-profile-${c.id}`}>
+                    <ExternalLink className="h-3 w-3" /> Profile
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md bg-white/5 border border-white/5 p-4 text-center">
+            <p className="text-sm text-white/30">No contestants have applied yet.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -242,6 +367,7 @@ export default function HostDashboard({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCompId, setSelectedCompId] = useState<number | null>(null);
+  const [compDetailId, setCompDetailId] = useState<number | null>(null);
   const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
   const [compSearch, setCompSearch] = useState("");
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
@@ -598,12 +724,11 @@ export default function HostDashboard({ user }: { user: any }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-xs text-white/60"
-                          onClick={() => setExpandedCompId(expandedCompId === comp.id ? null : comp.id)}
-                          data-testid={`button-expand-${comp.id}`}
+                          className="text-xs text-orange-400"
+                          onClick={() => setCompDetailId(comp.id)}
+                          data-testid={`button-details-${comp.id}`}
                         >
-                          {expandedCompId === comp.id ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
-                          View Details
+                          <Eye className="h-4 w-4 mr-1" /> Details
                         </Button>
                         <Button
                           variant="ghost"
@@ -886,7 +1011,6 @@ export default function HostDashboard({ user }: { user: any }) {
                         </div>
                       </div>
                     )}
-                    {expandedCompId === comp.id && editingCompId !== comp.id && <InlineHostCompDetail compId={comp.id} />}
                   </div>
                 ))}
               </div>
@@ -1235,6 +1359,21 @@ export default function HostDashboard({ user }: { user: any }) {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={compDetailId !== null} onOpenChange={(open) => { if (!open) setCompDetailId(null); }}>
+        <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-2xl" data-testid="host-comp-detail-modal">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-serif bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">
+              Competition Details
+            </DialogTitle>
+          </DialogHeader>
+          {compDetailId && (() => {
+            const comp = competitions.find(c => c.id === compDetailId);
+            if (!comp) return <div className="text-white/40 text-sm py-4 text-center">Competition not found.</div>;
+            return <HostCompetitionDetailModal compId={compDetailId} comp={comp} />;
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
