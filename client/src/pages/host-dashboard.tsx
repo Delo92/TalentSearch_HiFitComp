@@ -277,7 +277,7 @@ export default function HostDashboard({ user }: { user: any }) {
   });
 
   const hostCategories = useMemo(() => {
-    const cats = [...new Set(competitions.map(c => c.category).filter(Boolean))];
+    const cats = Array.from(new Set(competitions.map(c => c.category).filter(Boolean)));
     return cats.sort();
   }, [competitions]);
 
