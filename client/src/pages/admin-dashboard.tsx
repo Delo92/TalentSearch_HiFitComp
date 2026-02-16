@@ -1385,75 +1385,110 @@ export default function AdminDashboard({ user }: { user: any }) {
                 );
               })}
             </div>
-            {liveryItems?.filter((item: any) => item.itemType === "text").sort((a: any, b: any) => {
-              const order = ["hero_title_top", "hero_title_main", "hero_summary", "category_music_title", "category_music_desc", "category_modeling_title", "category_modeling_desc", "category_bodybuilding_title", "category_bodybuilding_desc", "category_dance_title", "category_dance_desc", "about_rules_text", "about_details_text", "contact_email", "contact_phone", "contact_address", "social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"];
-              const ai = order.indexOf(a.imageKey);
-              const bi = order.indexOf(b.imageKey);
-              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-            }).map((item: any) => {
-              const currentText = item.textContent || item.defaultText || "";
-              const isCustomText = !!item.textContent;
-              return (
-                <div key={item.imageKey} className="mt-6 rounded-md bg-white/5 border border-white/5 p-4" data-testid={`livery-item-${item.imageKey}`}>
-                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <div>
-                      <h4 className="font-medium text-sm" data-testid={`livery-label-${item.imageKey}`}>{item.label}</h4>
-                      <p className="text-xs text-white/30 font-mono">{item.imageKey}</p>
+            {(() => {
+              const textItems = liveryItems?.filter((item: any) => item.itemType === "text") || [];
+              const groups = [
+                { label: "Hero Section", keys: ["hero_title_top", "hero_title_main", "hero_summary"] },
+                { label: "Category Cards", keys: ["category_music_title", "category_music_desc", "category_modeling_title", "category_modeling_desc", "category_bodybuilding_title", "category_bodybuilding_desc", "category_dance_title", "category_dance_desc"] },
+                { label: "About Page", keys: ["about_rules_text", "about_details_text"] },
+                { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"] },
+                { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"] },
+              ];
+              return groups.map((group) => {
+                const items = group.keys.map(k => textItems.find((t: any) => t.imageKey === k)).filter(Boolean) as any[];
+                if (items.length === 0) return null;
+                return (
+                  <details key={group.label} className="mt-6 rounded-md bg-white/5 border border-white/5 overflow-visible" open>
+                    <summary className="cursor-pointer px-4 py-3 flex items-center justify-between gap-2 select-none" data-testid={`livery-group-${group.label.toLowerCase().replace(/\s/g, "-")}`}>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm uppercase tracking-widest text-orange-400 font-bold">{group.label}</h3>
+                        <Badge className="bg-white/10 text-white/50 border-0 text-[10px]">{items.length} {items.length === 1 ? "field" : "fields"}</Badge>
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-white/30 transition-transform [details[open]>&]:rotate-180" />
+                    </summary>
+                    <div className="px-4 pb-4 space-y-4">
+                      {items.map((item: any) => {
+                        const currentText = item.textContent || item.defaultText || "";
+                        const isCustomText = !!item.textContent;
+                        const isShortField = !item.imageKey.includes("rules") && !item.imageKey.includes("details") && !item.imageKey.includes("summary");
+                        return (
+                          <div key={item.imageKey} className="rounded-md bg-black/20 border border-white/5 p-3" data-testid={`livery-item-${item.imageKey}`}>
+                            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                              <div>
+                                <h4 className="font-medium text-sm" data-testid={`livery-label-${item.imageKey}`}>{item.label}</h4>
+                              </div>
+                              {isCustomText && (
+                                <Badge className="bg-orange-500 text-white border-0 text-xs">Custom</Badge>
+                              )}
+                            </div>
+                            {isShortField ? (
+                              <Input
+                                key={`${item.imageKey}-${currentText}`}
+                                defaultValue={currentText}
+                                className="bg-black/30 border-white/10 text-white text-sm mb-2"
+                                data-testid={`textarea-livery-${item.imageKey}`}
+                                onBlur={(e) => {
+                                  const newText = e.target.value.trim();
+                                  if (newText !== currentText) {
+                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <Textarea
+                                key={`${item.imageKey}-${currentText}`}
+                                defaultValue={currentText}
+                                rows={4}
+                                className="bg-black/30 border-white/10 text-white text-sm mb-2"
+                                data-testid={`textarea-livery-${item.imageKey}`}
+                                onBlur={(e) => {
+                                  const newText = e.target.value.trim();
+                                  if (newText !== currentText) {
+                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
+                                  }
+                                }}
+                              />
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  const el = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLInputElement;
+                                  if (el) {
+                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: el.value.trim() });
+                                  }
+                                }}
+                                disabled={updateLiveryTextMutation.isPending}
+                                className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-xs"
+                                data-testid={`button-save-text-${item.imageKey}`}
+                              >
+                                Save
+                              </Button>
+                              {isCustomText && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: "" });
+                                    const el = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLInputElement;
+                                    if (el) el.value = item.defaultText || "";
+                                  }}
+                                  disabled={updateLiveryTextMutation.isPending}
+                                  className="text-white/40 text-xs"
+                                  data-testid={`button-reset-text-${item.imageKey}`}
+                                >
+                                  <RotateCcw className="h-3 w-3 mr-1" /> Reset
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {isCustomText && (
-                        <Badge className="bg-orange-500 text-white border-0 text-xs">Custom</Badge>
-                      )}
-                    </div>
-                  </div>
-                  <Textarea
-                    key={`${item.imageKey}-${currentText}`}
-                    defaultValue={currentText}
-                    rows={4}
-                    className="bg-black/30 border-white/10 text-white text-sm mb-3"
-                    data-testid={`textarea-livery-${item.imageKey}`}
-                    onBlur={(e) => {
-                      const newText = e.target.value.trim();
-                      if (newText !== currentText) {
-                        updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: newText });
-                      }
-                    }}
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        const textarea = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLTextAreaElement;
-                        if (textarea) {
-                          updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: textarea.value.trim() });
-                        }
-                      }}
-                      disabled={updateLiveryTextMutation.isPending}
-                      className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-xs"
-                      data-testid={`button-save-text-${item.imageKey}`}
-                    >
-                      Save Text
-                    </Button>
-                    {isCustomText && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          updateLiveryTextMutation.mutate({ imageKey: item.imageKey, textContent: "" });
-                          const textarea = document.querySelector(`[data-testid="textarea-livery-${item.imageKey}"]`) as HTMLTextAreaElement;
-                          if (textarea) textarea.value = item.defaultText || "";
-                        }}
-                        disabled={updateLiveryTextMutation.isPending}
-                        className="text-white/40 text-xs"
-                        data-testid={`button-reset-text-${item.imageKey}`}
-                      >
-                        <RotateCcw className="h-3 w-3 mr-1" /> Reset to Default
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  </details>
+                );
+              });
+            })()}
             {(!liveryItems || liveryItems.length === 0) && (
               <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
                 <Image className="h-8 w-8 text-white/10 mx-auto mb-2" />
