@@ -78,6 +78,12 @@ interface JoinSubmission {
   nominatorName?: string | null;
   nominatorEmail?: string | null;
   nominatorPhone?: string | null;
+  nominationStatus?: "pending" | "joined" | "unsure" | "not_interested" | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  socialLinks?: string | null;
 }
 
 interface HostSubmission {
@@ -896,6 +902,21 @@ export default function AdminDashboard({ user }: { user: any }) {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
     },
   });
+
+  const updateNominationStatusMutation = useMutation({
+    mutationFn: async ({ id, nominationStatus }: { id: string; nominationStatus: string }) => {
+      await apiRequest("PATCH", `/api/admin/join/submissions/${id}/nomination-status`, { nominationStatus });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/join/submissions"] });
+      toast({ title: "Nomination status updated!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
 
   const updateHostSettingsMutation = useMutation({
     mutationFn: async (data: Partial<JoinHostSettings>) => {
@@ -1834,29 +1855,33 @@ export default function AdminDashboard({ user }: { user: any }) {
                 {joinSubmissions && joinSubmissions.length > 0 ? (
                   <div className="space-y-3">
                     {joinSubmissions.map((sub) => (
-                      <div key={sub.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`join-sub-${sub.id}`}>
-                        <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div key={sub.id} className="rounded-md bg-white/5 border border-white/5" data-testid={`join-sub-${sub.id}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-4 p-4">
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-medium">{sub.fullName}</h4>
                               {sub.type === "nomination" && (
                                 <Badge className="border-0 bg-purple-500/20 text-purple-400 text-[10px]">Nomination</Badge>
                               )}
+                              {sub.type === "nomination" && sub.nominationStatus && sub.nominationStatus !== "pending" && (
+                                <Badge className={`border-0 text-[10px] ${
+                                  sub.nominationStatus === "joined" ? "bg-green-500/20 text-green-400" :
+                                  sub.nominationStatus === "unsure" ? "bg-yellow-500/20 text-yellow-400" :
+                                  "bg-red-500/20 text-red-400"
+                                }`}>
+                                  {sub.nominationStatus === "not_interested" ? "Not Interested" : sub.nominationStatus === "joined" ? "Joined" : "Unsure"}
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-xs text-white/30">{sub.email} {sub.category && `| ${sub.category}`}</p>
-                            {sub.bio && <p className="text-xs text-white/40 mt-1 line-clamp-2">{sub.bio}</p>}
                             {sub.type === "nomination" && sub.nominatorName && (
                               <p className="text-xs text-purple-300/60 mt-1">
-                                Nominated by: {sub.nominatorName} ({sub.nominatorEmail})
-                                {sub.nominatorPhone && ` | ${sub.nominatorPhone}`}
+                                Nominated by: {sub.nominatorName}
                               </p>
-                            )}
-                            {sub.amountPaid > 0 && (
-                              <p className="text-xs text-green-400 mt-1">Paid ${(sub.amountPaid / 100).toFixed(2)} {sub.transactionId && `(${sub.transactionId})`}</p>
                             )}
                             <p className="text-xs text-white/20 mt-1">{new Date(sub.createdAt).toLocaleDateString()}</p>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge className={`border-0 ${sub.status === "approved" ? "bg-green-500/20 text-green-400" : sub.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
                               {sub.status}
                             </Badge>
@@ -1872,8 +1897,130 @@ export default function AdminDashboard({ user }: { user: any }) {
                                 </Button>
                               </>
                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setExpandedSubmission(expandedSubmission === sub.id ? null : sub.id)}
+                              className="border-white/10 text-white/60 text-xs"
+                              data-testid={`button-details-${sub.id}`}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              {expandedSubmission === sub.id ? "Hide" : "Details"}
+                            </Button>
                           </div>
                         </div>
+
+                        {expandedSubmission === sub.id && (
+                          <div className="border-t border-white/5 p-4 space-y-4" data-testid={`details-panel-${sub.id}`}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-3">
+                                <h5 className="text-xs uppercase tracking-wider text-orange-400 font-semibold">
+                                  {sub.type === "nomination" ? "Nominee Information" : "Applicant Information"}
+                                </h5>
+                                <div>
+                                  <p className="text-[10px] text-white/30 uppercase tracking-wider">Full Name</p>
+                                  <p className="text-sm text-white">{sub.fullName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-white/30 uppercase tracking-wider">Email</p>
+                                  <a href={`mailto:${sub.email}`} className="text-sm text-[#FF5A09] hover:underline">{sub.email}</a>
+                                </div>
+                                {sub.phone && (
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase tracking-wider">Phone</p>
+                                    <a href={`tel:${sub.phone}`} className="text-sm text-[#FF5A09] hover:underline">{sub.phone}</a>
+                                  </div>
+                                )}
+                                {sub.category && (
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase tracking-wider">Category</p>
+                                    <p className="text-sm text-white">{sub.category}</p>
+                                  </div>
+                                )}
+                                {sub.bio && (
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase tracking-wider">Bio</p>
+                                    <p className="text-sm text-white/70">{sub.bio}</p>
+                                  </div>
+                                )}
+                                {(sub.address || sub.city || sub.state || sub.zip) && (
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase tracking-wider">Address</p>
+                                    <p className="text-sm text-white/70">
+                                      {[sub.address, sub.city, sub.state, sub.zip].filter(Boolean).join(", ")}
+                                    </p>
+                                  </div>
+                                )}
+                                {sub.socialLinks && (
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase tracking-wider">Social Links</p>
+                                    <p className="text-sm text-white/70">{sub.socialLinks}</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {sub.type === "nomination" && (
+                                <div className="space-y-3">
+                                  <h5 className="text-xs uppercase tracking-wider text-purple-400 font-semibold">Nominator Information</h5>
+                                  {sub.nominatorName && (
+                                    <div>
+                                      <p className="text-[10px] text-white/30 uppercase tracking-wider">Nominator Name</p>
+                                      <p className="text-sm text-white">{sub.nominatorName}</p>
+                                    </div>
+                                  )}
+                                  {sub.nominatorEmail && (
+                                    <div>
+                                      <p className="text-[10px] text-white/30 uppercase tracking-wider">Nominator Email</p>
+                                      <a href={`mailto:${sub.nominatorEmail}`} className="text-sm text-[#FF5A09] hover:underline">{sub.nominatorEmail}</a>
+                                    </div>
+                                  )}
+                                  {sub.nominatorPhone && (
+                                    <div>
+                                      <p className="text-[10px] text-white/30 uppercase tracking-wider">Nominator Phone</p>
+                                      <a href={`tel:${sub.nominatorPhone}`} className="text-sm text-[#FF5A09] hover:underline">{sub.nominatorPhone}</a>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {sub.amountPaid > 0 && (
+                              <div className="rounded-md bg-green-500/5 border border-green-500/10 p-3">
+                                <p className="text-xs text-green-400">
+                                  Payment: ${(sub.amountPaid / 100).toFixed(2)}
+                                  {sub.transactionId && <span className="text-white/30 ml-2">Transaction: {sub.transactionId}</span>}
+                                </p>
+                              </div>
+                            )}
+
+                            {sub.type === "nomination" && (
+                              <div className="rounded-md bg-white/[0.03] border border-white/5 p-4">
+                                <p className="text-xs uppercase tracking-wider text-white/40 mb-3 font-semibold">Nomination Status</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {([
+                                    { value: "joined", label: "Joined", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+                                    { value: "unsure", label: "Unsure", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
+                                    { value: "not_interested", label: "Not Interested", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+                                    { value: "pending", label: "Pending", color: "bg-white/10 text-white/50 border-white/10" },
+                                  ] as const).map(opt => (
+                                    <button
+                                      key={opt.value}
+                                      onClick={() => updateNominationStatusMutation.mutate({ id: sub.id, nominationStatus: opt.value })}
+                                      className={`px-4 py-2 text-xs uppercase tracking-wider font-bold border transition-all duration-200 ${
+                                        (sub.nominationStatus || "pending") === opt.value
+                                          ? `${opt.color} ring-1 ring-white/20`
+                                          : "bg-white/[0.03] text-white/30 border-white/5 hover:border-white/15 hover:text-white/50"
+                                      }`}
+                                      data-testid={`button-nom-status-${opt.value}-${sub.id}`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

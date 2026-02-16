@@ -1820,6 +1820,7 @@ export async function registerRoutes(
         nominatorName: null,
         nominatorEmail: null,
         nominatorPhone: null,
+        nominationStatus: null,
       });
 
       if (autoApproved) {
@@ -1908,6 +1909,7 @@ export async function registerRoutes(
         nominatorName: nominatorName.trim(),
         nominatorEmail: nominatorEmail.toLowerCase().trim(),
         nominatorPhone: nominatorPhone || null,
+        nominationStatus: "pending",
       });
 
       res.status(201).json(submission);
@@ -1917,6 +1919,21 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Payment failed: ${error.errorMessage}` });
       }
       res.status(500).json({ message: "Nomination failed. Please try again." });
+    }
+  });
+
+  app.patch("/api/admin/join/submissions/:id/nomination-status", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { nominationStatus } = req.body;
+      if (!["pending", "joined", "unsure", "not_interested"].includes(nominationStatus)) {
+        return res.status(400).json({ message: "Invalid nomination status" });
+      }
+      const updated = await firestoreJoinSubmissions.updateNominationStatus(req.params.id, nominationStatus);
+      if (!updated) return res.status(404).json({ message: "Submission not found" });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Update nomination status error:", error);
+      res.status(500).json({ message: "Failed to update nomination status" });
     }
   });
 

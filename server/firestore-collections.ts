@@ -216,6 +216,7 @@ export interface FirestoreJoinSubmission {
   nominatorName: string | null;
   nominatorEmail: string | null;
   nominatorPhone: string | null;
+  nominationStatus: "pending" | "joined" | "unsure" | "not_interested" | null;
 }
 
 export interface FirestoreHostSettings {
@@ -941,6 +942,15 @@ export const firestoreJoinSubmissions = {
     const doc = await ref.get();
     if (!doc.exists) return null;
     await ref.update({ status });
+    const updated = await ref.get();
+    return updated.data() as FirestoreJoinSubmission;
+  },
+
+  async updateNominationStatus(id: string, nominationStatus: "pending" | "joined" | "unsure" | "not_interested"): Promise<FirestoreJoinSubmission | null> {
+    const ref = db().collection(COLLECTIONS.JOIN_SUBMISSIONS).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return null;
+    await ref.update({ nominationStatus });
     const updated = await ref.get();
     return updated.data() as FirestoreJoinSubmission;
   },
