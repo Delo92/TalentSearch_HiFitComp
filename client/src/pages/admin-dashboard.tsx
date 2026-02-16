@@ -1386,7 +1386,7 @@ export default function AdminDashboard({ user }: { user: any }) {
               })}
             </div>
             {liveryItems?.filter((item: any) => item.itemType === "text").sort((a: any, b: any) => {
-              const order = ["hero_title_top", "hero_title_main", "hero_summary", "about_rules_text", "about_details_text", "contact_email", "contact_phone", "contact_address", "social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"];
+              const order = ["hero_title_top", "hero_title_main", "hero_summary", "category_music_title", "category_music_desc", "category_modeling_title", "category_modeling_desc", "category_bodybuilding_title", "category_bodybuilding_desc", "category_dance_title", "category_dance_desc", "about_rules_text", "about_details_text", "contact_email", "contact_phone", "contact_address", "social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"];
               const ai = order.indexOf(a.imageKey);
               const bi = order.indexOf(b.imageKey);
               return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);

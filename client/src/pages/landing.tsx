@@ -139,10 +139,10 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Music, label: "Music", desc: "Singers, rappers, DJs & producers", media: getMedia("category_music", "/images/template/a1.jpg") },
-              { icon: Camera, label: "Modeling", desc: "Fashion, fitness & swimwear models", media: getMedia("category_modeling", "/images/template/a2.jpg") },
-              { icon: Dumbbell, label: "Bodybuilding", desc: "Physique, classic & open divisions", media: getMedia("category_bodybuilding", "/images/template/b1.jpg") },
-              { icon: Star, label: "Dance", desc: "Hip-hop, contemporary & freestyle", media: getMedia("category_dance", "/images/template/a4.jpg") },
+              { icon: Music, label: getText("category_music_title", "Music"), desc: getText("category_music_desc", "Singers, rappers, DJs & producers"), media: getMedia("category_music", "/images/template/a1.jpg") },
+              { icon: Camera, label: getText("category_modeling_title", "Modeling"), desc: getText("category_modeling_desc", "Fashion, fitness & swimwear models"), media: getMedia("category_modeling", "/images/template/a2.jpg") },
+              { icon: Dumbbell, label: getText("category_bodybuilding_title", "Bodybuilding"), desc: getText("category_bodybuilding_desc", "Physique, classic & open divisions"), media: getMedia("category_bodybuilding", "/images/template/b1.jpg") },
+              { icon: Star, label: getText("category_dance_title", "Dance"), desc: getText("category_dance_desc", "Hip-hop, contemporary & freestyle"), media: getMedia("category_dance", "/images/template/a4.jpg") },
             ].map((cat, i) => (
               <Link href="/competitions" key={cat.label}>
                 <div
