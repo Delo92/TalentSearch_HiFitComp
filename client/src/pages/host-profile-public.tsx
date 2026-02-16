@@ -150,7 +150,7 @@ export default function HostProfilePublic() {
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                       />
                       <div className="absolute top-3 right-3 px-2 py-1 text-[10px] uppercase font-bold" style={{ letterSpacing: "2px", background: comp.status === "active" || comp.status === "voting" ? "#FF5A09" : comp.status === "completed" ? "#333" : "#555", color: "white" }}>
-                        {comp.status}
+                        {comp.status === "voting" ? "Active" : comp.status}
                       </div>
                     </div>
                     <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-5 px-4 transition-all duration-500">

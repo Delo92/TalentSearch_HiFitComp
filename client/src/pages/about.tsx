@@ -204,8 +204,8 @@ export default function AboutPage() {
                               Ends {MONTHS[end.getMonth()]} {end.getDate()}, {end.getFullYear()}
                             </span>
                           )}
-                          <span className={`text-xs uppercase tracking-wider px-2 py-0.5 ${comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60"}`}>
-                            {comp.status}
+                          <span className={`text-xs uppercase tracking-wider px-2 py-0.5 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60"}`}>
+                            {comp.status === "voting" ? "Active" : comp.status}
                           </span>
                         </div>
                       </div>

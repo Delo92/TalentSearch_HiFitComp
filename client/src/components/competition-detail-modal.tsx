@@ -86,7 +86,7 @@ export function CompetitionDetailModal({ compId }: { compId: number }) {
           <div>
             <p className="text-xs text-white/40">Status</p>
             <Badge className={`border-0 ${competition.status === "active" || competition.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60"}`} data-testid="comp-detail-status">
-              {competition.status}
+              {competition.status === "voting" ? "Active" : competition.status}
             </Badge>
           </div>
           <div>

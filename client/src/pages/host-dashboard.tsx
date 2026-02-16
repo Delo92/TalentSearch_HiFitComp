@@ -95,7 +95,7 @@ function EventAnalyticsCard({ comp }: { comp: HostCompetition }) {
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <h4 className="text-sm font-medium text-white/80 truncate">{comp.title}</h4>
-          <Badge className={`border-0 text-[10px] ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/50"}`}>{comp.status}</Badge>
+          <Badge className={`border-0 text-[10px] ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/50"}`}>{comp.status === "voting" ? "Active" : comp.status}</Badge>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={async () => {
@@ -529,7 +529,7 @@ export default function HostDashboard({ user }: { user: any }) {
                         <div className="flex flex-wrap items-center gap-2 mt-1">
                           <Badge className="border-0 text-xs bg-white/10 text-white/80">{comp.category}</Badge>
                           <Badge className={`border-0 text-xs ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`event-status-${comp.id}`}>
-                            {comp.status}
+                            {comp.status === "voting" ? "Active" : comp.status}
                           </Badge>
                           {(comp as any).inPersonOnly && (
                             <Badge className="border-0 text-xs bg-purple-500/20 text-purple-300" data-testid={`badge-in-person-${comp.id}`}>
@@ -598,7 +598,6 @@ export default function HostDashboard({ user }: { user: any }) {
                           <SelectContent className="bg-[#222] border-white/20 text-white">
                             <SelectItem value="draft">Draft</SelectItem>
                             <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="voting">Voting</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1028,7 +1027,7 @@ export default function HostDashboard({ user }: { user: any }) {
                 });
               };
 
-              const statusColor = (s: string) => s === "active" ? "bg-green-500" : s === "upcoming" ? "bg-blue-500" : s === "voting" ? "bg-orange-500" : "bg-zinc-500";
+              const statusColor = (s: string) => s === "active" || s === "voting" ? "bg-green-500" : s === "upcoming" ? "bg-blue-500" : "bg-zinc-500";
               const days: (number | null)[] = [];
               for (let i = 0; i < firstDay; i++) days.push(null);
               for (let d = 1; d <= daysInMonth; d++) days.push(d);
@@ -1050,7 +1049,6 @@ export default function HostDashboard({ user }: { user: any }) {
 
                   <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-white/40">
                     <span className="flex items-center gap-1"><span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-green-500 inline-block" /> Active</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-orange-500 inline-block" /> Voting</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-zinc-500 inline-block" /> Other</span>
                     <span className="text-white/25 hidden sm:inline">Dots show start & end dates only</span>
                   </div>
@@ -1116,8 +1114,8 @@ export default function HostDashboard({ user }: { user: any }) {
                                   <span className="text-sm text-white/80">{c.title}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Badge className={`border-0 text-[10px] ${c.status === "active" ? "bg-green-500/20 text-green-400" : c.status === "voting" ? "bg-orange-500/20 text-orange-400" : "bg-zinc-500/20 text-zinc-400"}`}>
-                                    {c.status}
+                                  <Badge className={`border-0 text-[10px] ${c.status === "active" || c.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-zinc-500/20 text-zinc-400"}`}>
+                                    {c.status === "voting" ? "Active" : c.status}
                                   </Badge>
                                   {calendarSelectedComp === c.id ? <ChevronUp className="h-3 w-3 text-white/30" /> : <ChevronDown className="h-3 w-3 text-white/30" />}
                                 </div>

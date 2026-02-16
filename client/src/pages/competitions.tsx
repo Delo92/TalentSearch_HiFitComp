@@ -26,6 +26,7 @@ export default function Competitions() {
 
   const filtered = competitions?.filter((c) => {
     if (filter === "all") return c.status !== "draft";
+    if (filter === "active") return c.status === "active" || c.status === "voting";
     return c.status === filter;
   }) || [];
 
@@ -54,7 +55,7 @@ export default function Competitions() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex flex-wrap items-center gap-2 mb-10">
-          {["all", "active", "voting", "completed"].map((f) => (
+          {["all", "active", "completed"].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
