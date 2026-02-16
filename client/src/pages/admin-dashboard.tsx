@@ -225,6 +225,21 @@ function CompetitionDetailModal({ compId }: { compId: number }) {
     queryKey: ["/api/admin/competitions", compId, "detail"],
   });
 
+  const { data: breakdown } = useQuery<{ online: number; inPerson: number; total: number; onlineVoteWeight: number; inPersonOnly: boolean }>({
+    queryKey: ["/api/competitions", compId, "vote-breakdown"],
+  });
+
+  const toggleInPersonMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      await apiRequest("PATCH", `/api/competitions/${compId}`, { inPersonOnly: value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions", compId, "vote-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/competitions", compId, "detail"] });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12" data-testid="comp-detail-loading">
@@ -289,6 +304,49 @@ function CompetitionDetailModal({ compId }: { compId: number }) {
             <Download className="h-4 w-4 mr-2" /> Download QR Code
           </Button>
         </div>
+      </div>
+
+      <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="comp-detail-vote-breakdown">
+        <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Vote Breakdown</h3>
+        {breakdown && (breakdown.online > 0 || breakdown.inPerson > 0) ? (
+          <div>
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                <span className="text-white/60">Online: <span className="text-white font-medium">{breakdown.online}</span></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+                <span className="text-white/60">In-Person: <span className="text-white font-medium">{breakdown.inPerson}</span></span>
+              </div>
+              {breakdown.onlineVoteWeight < 100 && (
+                <span className="text-white/30 text-[10px]">Online weight: {breakdown.onlineVoteWeight}%</span>
+              )}
+            </div>
+            {breakdown.total > 0 && (
+              <div className="mt-1.5 h-1.5 rounded-full bg-white/5 overflow-hidden flex">
+                <div className="bg-blue-400 h-full" style={{ width: `${(breakdown.online / breakdown.total) * 100}%` }} />
+                <div className="bg-orange-400 h-full" style={{ width: `${(breakdown.inPerson / breakdown.total) * 100}%` }} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-white/30">No votes recorded yet.</p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-md bg-white/[0.04] border border-white/10 px-3 py-2.5">
+        <div>
+          <p className="text-xs text-white/70 font-medium">In-Person Only Event</p>
+          <p className="text-[10px] text-white/30">Only QR code votes accepted when enabled</p>
+        </div>
+        <Switch
+          checked={breakdown?.inPersonOnly || false}
+          onCheckedChange={(v) => toggleInPersonMutation.mutate(v)}
+          disabled={toggleInPersonMutation.isPending}
+          className="data-[state=checked]:bg-orange-500"
+          data-testid={`toggle-in-person-modal-${compId}`}
+        />
       </div>
 
       {hosts.length > 0 && (
@@ -625,153 +683,6 @@ function TalentDetailModal({ profileId, competitions }: { profileId: number; com
   );
 }
 
-function InlineCompDetail({ compId }: { compId: number }) {
-  const { data, isLoading } = useQuery<CompDetailResponse>({
-    queryKey: ["/api/admin/competitions", compId, "detail"],
-  });
-
-  const { data: breakdown } = useQuery<{ online: number; inPerson: number; total: number; onlineVoteWeight: number; inPersonOnly: boolean }>({
-    queryKey: ["/api/competitions", compId, "vote-breakdown"],
-  });
-
-  const toggleInPersonMutation = useMutation({
-    mutationFn: async (value: boolean) => {
-      await apiRequest("PATCH", `/api/competitions/${compId}`, { inPersonOnly: value });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/competitions", compId, "vote-breakdown"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/competitions", compId, "detail"] });
-    },
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8" data-testid={`inline-detail-loading-${compId}`}>
-        <div className="text-white/40 text-sm">Loading details...</div>
-      </div>
-    );
-  }
-
-  if (!data) return <div className="text-white/40 text-sm py-4 text-center">Failed to load details.</div>;
-
-  const { totalVotes, hosts, contestants } = data;
-
-  return (
-    <div className="space-y-4 p-4 pt-0" data-testid={`inline-detail-${compId}`}>
-      <div className="rounded-md bg-white/5 border border-white/5 p-3">
-        <p className="text-xs text-white/40">Total Votes</p>
-        <p className="font-bold text-lg bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid={`inline-votes-${compId}`}>{totalVotes}</p>
-        {breakdown && (breakdown.online > 0 || breakdown.inPerson > 0) && (
-          <div className="mt-2">
-            <div className="flex flex-wrap items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
-                <span className="text-white/60">Online: <span className="text-white font-medium">{breakdown.online}</span></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
-                <span className="text-white/60">In-Person: <span className="text-white font-medium">{breakdown.inPerson}</span></span>
-              </div>
-              {breakdown.onlineVoteWeight < 100 && (
-                <span className="text-white/30 text-[10px]">Online weight: {breakdown.onlineVoteWeight}%</span>
-              )}
-            </div>
-            {breakdown.total > 0 && (
-              <div className="mt-1.5 h-1.5 rounded-full bg-white/5 overflow-hidden flex">
-                <div className="bg-blue-400 h-full" style={{ width: `${(breakdown.online / breakdown.total) * 100}%` }} />
-                <div className="bg-orange-400 h-full" style={{ width: `${(breakdown.inPerson / breakdown.total) * 100}%` }} />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between rounded-md bg-white/[0.04] border border-white/10 px-3 py-2.5">
-        <div>
-          <p className="text-xs text-white/70 font-medium">In-Person Only Event</p>
-          <p className="text-[10px] text-white/30">Only QR code votes accepted when enabled</p>
-        </div>
-        <Switch
-          checked={breakdown?.inPersonOnly || false}
-          onCheckedChange={(v) => toggleInPersonMutation.mutate(v)}
-          disabled={toggleInPersonMutation.isPending}
-          className="data-[state=checked]:bg-orange-500"
-          data-testid={`toggle-in-person-${compId}`}
-        />
-      </div>
-
-      {hosts.length > 0 && (
-        <div data-testid={`inline-hosts-${compId}`}>
-          <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-2">Host(s)</h4>
-          <div className="space-y-2">
-            {hosts.map((host) => (
-              <div key={host.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 p-3" data-testid={`inline-host-${host.id}`}>
-                <div>
-                  <p className="font-medium text-sm">{host.fullName}</p>
-                  <p className="text-xs text-white/30">{host.email} {host.organization && `| ${host.organization}`}</p>
-                </div>
-                <Badge className={`border-0 ${host.status === "approved" ? "bg-green-500/20 text-green-400" : host.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                  {host.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div data-testid={`inline-contestants-${compId}`}>
-        <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-2">Contestants ({contestants.length})</h4>
-        {contestants.length > 0 ? (
-          <div className="space-y-2">
-            {contestants.map((c) => (
-              <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 border border-white/5 p-3" data-testid={`inline-contestant-${c.id}`}>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={c.imageUrls?.[0] || ""} />
-                    <AvatarFallback className="bg-orange-500/20 text-orange-400 text-xs font-bold">
-                      {c.displayName?.charAt(0) || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium text-sm" data-testid={`inline-cname-${c.id}`}>{c.displayName}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {c.stageName && <span className="text-xs text-white/40">{c.stageName}</span>}
-                      {c.category && <span className="text-xs text-white/30">{c.category}</span>}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-sm font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent" data-testid={`inline-cvotes-${c.id}`}>{c.voteCount}</p>
-                    <p className="text-[10px] text-white/30">votes</p>
-                  </div>
-                  <Badge className={`border-0 text-xs ${c.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : c.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`inline-cstatus-${c.id}`}>
-                    {c.applicationStatus}
-                  </Badge>
-                  <Link href={"/talent/" + c.talentProfileId}>
-                    <Button variant="ghost" size="sm" className="text-orange-400" data-testid={`link-view-profile-${c.id}`}>
-                      <ExternalLink className="h-3 w-3 mr-1" /> Profile
-                    </Button>
-                  </Link>
-                  <Link href={"/competitions/" + compId}>
-                    <Button variant="ghost" size="sm" className="text-white/40" data-testid={`link-view-comp-${c.id}`}>
-                      <Eye className="h-3 w-3 mr-1" /> Entry
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-md bg-white/5 border border-white/5 p-4 text-center">
-            <p className="text-sm text-white/30">No contestants in this competition.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function ExpandedHostComps({ hostUid, hostName }: { hostUid: string; hostName: string }) {
   const { data, isLoading } = useQuery<HostCompetitionDetail[]>({
@@ -863,7 +774,6 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [onlineVoteWeight, setOnlineVoteWeight] = useState("100");
   const [inPersonOnly, setInPersonOnly] = useState(false);
   const [compDetailId, setCompDetailId] = useState<number | null>(null);
-  const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
   const [userDetailId, setUserDetailId] = useState<number | null>(null);
   const [userSearch, setUserSearch] = useState("");
   const [usersView, setUsersView] = useState<"users" | "applications">("users");
@@ -1537,21 +1447,11 @@ export default function AdminDashboard({ user }: { user: any }) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setExpandedCompId(expandedCompId === comp.id ? null : comp.id)}
-                      className="text-orange-400"
-                      data-testid={`button-view-detail-${comp.id}`}
-                    >
-                      {expandedCompId === comp.id ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
-                      {expandedCompId === comp.id ? "Hide Details" : "View Details"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       onClick={() => setCompDetailId(comp.id)}
-                      className="text-white/40"
+                      className="text-orange-400"
                       data-testid={`button-full-detail-${comp.id}`}
                     >
-                      <Eye className="h-4 w-4 mr-1" /> Full Details
+                      <Eye className="h-4 w-4 mr-1" /> Details
                     </Button>
                     <Button
                       variant="ghost"
@@ -1592,7 +1492,6 @@ export default function AdminDashboard({ user }: { user: any }) {
                       </SelectContent>
                     </Select>
                   </div>
-                  {expandedCompId === comp.id && <InlineCompDetail compId={comp.id} />}
                 </div>
               ))}
             </div>
