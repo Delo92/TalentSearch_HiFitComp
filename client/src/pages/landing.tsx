@@ -58,9 +58,10 @@ export default function Landing() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="text-white text-sm sm:text-lg uppercase mb-5 block tracking-[8px] sm:tracking-[20px]"
           >
-            The Ultimate
+            {getText("hero_title_top", "The Ultimate")}
           </motion.h6>
 
+          {getText("hero_title_main", "Talent Platform") && (
           <motion.h2
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -74,10 +75,11 @@ export default function Landing() {
                 animation: "textsonar 6s linear infinite",
               }}
             >
-              Talent Platform
+              {getText("hero_title_main", "Talent Platform")}
             </span>
-            Talent Platform
+            {getText("hero_title_main", "Talent Platform")}
           </motion.h2>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
