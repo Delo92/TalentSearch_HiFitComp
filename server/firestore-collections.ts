@@ -75,6 +75,7 @@ export interface FirestoreCompetition {
   votingEndDate: string | null;
   expectedContestants: number | null;
   onlineVoteWeight: number;
+  inPersonOnly: boolean;
   createdAt: string | null;
   createdBy: string | null;
 }
@@ -300,6 +301,7 @@ function normalizeCompetition(data: any): FirestoreCompetition {
     maxImagesPerContestant: data.maxImagesPerContestant ?? null,
     maxVideosPerContestant: data.maxVideosPerContestant ?? null,
     onlineVoteWeight: data.onlineVoteWeight ?? 100,
+    inPersonOnly: data.inPersonOnly ?? false,
   } as FirestoreCompetition;
 }
 

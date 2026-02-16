@@ -404,6 +404,8 @@ export async function registerRoutes(
     votingStartDate: z.string().optional().nullable(),
     votingEndDate: z.string().optional().nullable(),
     expectedContestants: z.number().int().min(0).optional().nullable(),
+    onlineVoteWeight: z.number().int().min(1).max(100).optional().default(100),
+    inPersonOnly: z.boolean().optional().default(false),
   });
 
   app.post("/api/competitions", firebaseAuth, requireHost, async (req, res) => {
@@ -533,6 +535,7 @@ export async function registerRoutes(
         competitionId: id,
         ...breakdown,
         onlineVoteWeight: (comp as any).onlineVoteWeight ?? 100,
+        inPersonOnly: (comp as any).inPersonOnly ?? false,
         contestants: contestantBreakdowns,
       });
     } catch (err: any) {
@@ -562,6 +565,10 @@ export async function registerRoutes(
 
     if (comp.status !== "voting" && comp.status !== "active") {
       return res.status(400).json({ message: "Voting is not open for this competition" });
+    }
+
+    if ((comp as any).inPersonOnly && parsed.data.source !== "in_person") {
+      return res.status(400).json({ message: "This is an in-person only event. Please scan the QR code at the venue to vote." });
     }
 
     const voterIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";

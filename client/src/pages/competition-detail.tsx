@@ -120,6 +120,8 @@ export default function CompetitionDetailPage() {
 
   const maxVotes = Math.max(...(competition.contestants?.map((c) => c.voteCount) || [1]), 1);
   const isVotingOpen = competition.status === "voting" || competition.status === "active";
+  const isInPersonOnlyEvent = (competition as any).inPersonOnly === true;
+  const canVote = isVotingOpen && (!isInPersonOnlyEvent || isInPersonVoting);
   const sorted = [...(competition.contestants || [])].sort((a, b) => b.voteCount - a.voteCount);
 
   return (
@@ -160,6 +162,14 @@ export default function CompetitionDetailPage() {
             <Vote className="h-5 w-5 text-[#FF5A09] shrink-0" />
             <p className="text-sm text-white/80">
               <span className="font-bold text-[#FF5A09]">LIVE EVENT VOTING</span> — Your votes are recorded as in-person votes for this competition.
+            </p>
+          </div>
+        )}
+        {isInPersonOnlyEvent && !isInPersonVoting && (
+          <div className="mb-6 rounded-md bg-purple-500/10 border border-purple-500/30 px-4 py-3 flex flex-wrap items-center gap-3" data-testid="banner-in-person-only">
+            <Vote className="h-5 w-5 text-purple-400 shrink-0" />
+            <p className="text-sm text-white/80">
+              <span className="font-bold text-purple-400">IN-PERSON ONLY EVENT</span> — This competition accepts votes only at the live venue. Scan the QR code at the event to cast your vote.
             </p>
           </div>
         )}
@@ -287,7 +297,7 @@ export default function CompetitionDetailPage() {
                       >
                         Profile
                       </Link>
-                      {isVotingOpen && (
+                      {canVote && (
                         <>
                           <button
                             onClick={(e) => {
@@ -302,17 +312,24 @@ export default function CompetitionDetailPage() {
                             <Heart className="inline h-3.5 w-3.5 mr-1.5" />
                             {voteMutation.isPending ? "Voting..." : "Vote"}
                           </button>
-                          <Link
-                            href={`/checkout/${competition.id}/${contestant.id}`}
-                            className="inline-block bg-[#FF5A09] text-white font-bold text-sm capitalize px-6 leading-[40px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
-                            style={{ letterSpacing: "2px" }}
-                            onClick={(e) => e.stopPropagation()}
-                            data-testid={`button-buy-votes-${contestant.id}`}
-                          >
-                            <ShoppingCart className="inline h-3.5 w-3.5 mr-1.5" />
-                            Buy Votes
-                          </Link>
+                          {!isInPersonOnlyEvent && (
+                            <Link
+                              href={`/checkout/${competition.id}/${contestant.id}`}
+                              className="inline-block bg-[#FF5A09] text-white font-bold text-sm capitalize px-6 leading-[40px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
+                              style={{ letterSpacing: "2px" }}
+                              onClick={(e) => e.stopPropagation()}
+                              data-testid={`button-buy-votes-${contestant.id}`}
+                            >
+                              <ShoppingCart className="inline h-3.5 w-3.5 mr-1.5" />
+                              Buy Votes
+                            </Link>
+                          )}
                         </>
+                      )}
+                      {isVotingOpen && isInPersonOnlyEvent && !isInPersonVoting && (
+                        <span className="text-[11px] text-white/40 uppercase" style={{ letterSpacing: "3px" }} data-testid={`text-in-person-only-${contestant.id}`}>
+                          Scan QR to Vote
+                        </span>
                       )}
                     </div>
                   </div>

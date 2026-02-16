@@ -630,8 +630,19 @@ function InlineCompDetail({ compId }: { compId: number }) {
     queryKey: ["/api/admin/competitions", compId, "detail"],
   });
 
-  const { data: breakdown } = useQuery<{ online: number; inPerson: number; total: number; onlineVoteWeight: number }>({
+  const { data: breakdown } = useQuery<{ online: number; inPerson: number; total: number; onlineVoteWeight: number; inPersonOnly: boolean }>({
     queryKey: ["/api/competitions", compId, "vote-breakdown"],
+  });
+
+  const toggleInPersonMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      await apiRequest("PATCH", `/api/competitions/${compId}`, { inPersonOnly: value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions", compId, "vote-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/competitions", compId, "detail"] });
+    },
   });
 
   if (isLoading) {
@@ -674,6 +685,20 @@ function InlineCompDetail({ compId }: { compId: number }) {
             )}
           </div>
         )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-md bg-white/[0.04] border border-white/10 px-3 py-2.5">
+        <div>
+          <p className="text-xs text-white/70 font-medium">In-Person Only Event</p>
+          <p className="text-[10px] text-white/30">Only QR code votes accepted when enabled</p>
+        </div>
+        <Switch
+          checked={breakdown?.inPersonOnly || false}
+          onCheckedChange={(v) => toggleInPersonMutation.mutate(v)}
+          disabled={toggleInPersonMutation.isPending}
+          className="data-[state=checked]:bg-orange-500"
+          data-testid={`toggle-in-person-${compId}`}
+        />
       </div>
 
       {hosts.length > 0 && (
@@ -769,6 +794,9 @@ function ExpandedHostComps({ hostUid, hostName }: { hostUid: string; hostName: s
               <Badge className={`border-0 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`}>
                 {comp.status}
               </Badge>
+              {(comp as any).inPersonOnly && (
+                <Badge className="border-0 text-xs bg-purple-500/20 text-purple-300">In-Person Only</Badge>
+              )}
               <Link href={`/competitions/${comp.id}`}>
                 <Button variant="ghost" size="icon" className="text-white/40" data-testid={`link-comp-page-${comp.id}`}>
                   <ExternalLink className="h-4 w-4" />
@@ -833,6 +861,7 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [votingEndDate, setVotingEndDate] = useState("");
   const [expectedContestants, setExpectedContestants] = useState("");
   const [onlineVoteWeight, setOnlineVoteWeight] = useState("100");
+  const [inPersonOnly, setInPersonOnly] = useState(false);
   const [compDetailId, setCompDetailId] = useState<number | null>(null);
   const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
   const [userDetailId, setUserDetailId] = useState<number | null>(null);
@@ -960,6 +989,7 @@ export default function AdminDashboard({ user }: { user: any }) {
         votingEndDate: votingEndDate ? new Date(votingEndDate).toISOString() : null,
         expectedContestants: expectedContestants ? parseInt(expectedContestants) : null,
         onlineVoteWeight: parseInt(onlineVoteWeight) || 100,
+        inPersonOnly,
       });
     },
     onSuccess: () => {
@@ -977,6 +1007,7 @@ export default function AdminDashboard({ user }: { user: any }) {
       setVotingEndDate("");
       setExpectedContestants("");
       setOnlineVoteWeight("100");
+      setInPersonOnly(false);
       toast({ title: "Competition created!" });
     },
     onError: (err: Error) => {
@@ -1276,6 +1307,18 @@ export default function AdminDashboard({ user }: { user: any }) {
                     <p className="text-white/30 text-xs">Percentage value of online votes vs in-person (QR) votes at final count. 100% = equal weight.</p>
                   </div>
                 </div>
+                <div className="flex items-center justify-between rounded-md bg-white/[0.04] border border-white/10 px-4 py-3">
+                  <div>
+                    <Label className="text-white/70 text-sm font-medium">In-Person Only Event</Label>
+                    <p className="text-white/30 text-xs mt-0.5">When enabled, only QR code votes are accepted. Online voting is disabled.</p>
+                  </div>
+                  <Switch
+                    checked={inPersonOnly}
+                    onCheckedChange={setInPersonOnly}
+                    className="data-[state=checked]:bg-orange-500"
+                    data-testid="switch-in-person-only"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-white/60">Max Votes/Day</Label>
@@ -1484,6 +1527,9 @@ export default function AdminDashboard({ user }: { user: any }) {
                         <Badge className={`border-0 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60"}`}>
                           {comp.status}
                         </Badge>
+                        {(comp as any).inPersonOnly && (
+                          <Badge className="border-0 text-xs bg-purple-500/20 text-purple-300">In-Person Only</Badge>
+                        )}
                       </div>
                     </div>
                   </div>

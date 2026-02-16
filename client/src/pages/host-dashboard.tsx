@@ -578,6 +578,11 @@ export default function HostDashboard({ user }: { user: any }) {
                           <Badge className={`border-0 text-xs ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`event-status-${comp.id}`}>
                             {comp.status}
                           </Badge>
+                          {(comp as any).inPersonOnly && (
+                            <Badge className="border-0 text-xs bg-purple-500/20 text-purple-300" data-testid={`badge-in-person-${comp.id}`}>
+                              In-Person Only
+                            </Badge>
+                          )}
                           {(comp.startDate || (comp as any).startDateTbd) && (
                             <span className="text-xs text-white/40 flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
@@ -622,6 +627,7 @@ export default function HostDashboard({ user }: { user: any }) {
                                 voteCost: comp.voteCost,
                                 maxImagesPerContestant: comp.maxImagesPerContestant,
                                 maxVideosPerContestant: comp.maxVideosPerContestant,
+                                inPersonOnly: (comp as any).inPersonOnly || false,
                               });
                               setExpandedCompId(comp.id);
                             }
@@ -789,6 +795,20 @@ export default function HostDashboard({ user }: { user: any }) {
                               data-testid={`edit-max-videos-${comp.id}`}
                             />
                             <p className="text-[10px] text-white/25 mt-1">Leave empty to use global default</p>
+                          </div>
+                          <div className="col-span-2">
+                            <div className="flex items-center justify-between rounded-md bg-white/[0.04] border border-white/10 px-3 py-2.5">
+                              <div>
+                                <Label className="text-white/70 text-xs font-medium">In-Person Only Event</Label>
+                                <p className="text-[10px] text-white/30 mt-0.5">When enabled, only QR code votes are accepted. Online voting is disabled.</p>
+                              </div>
+                              <Switch
+                                checked={editForm.inPersonOnly || false}
+                                onCheckedChange={(v) => setEditForm({ ...editForm, inPersonOnly: v })}
+                                className="data-[state=checked]:bg-orange-500"
+                                data-testid={`edit-in-person-only-${comp.id}`}
+                              />
+                            </div>
                           </div>
                         </div>
                         <div>
