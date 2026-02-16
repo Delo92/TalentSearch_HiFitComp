@@ -187,6 +187,8 @@ export interface FirestoreJoinSettings {
   pageDescription: string;
   requiredFields: string[];
   isActive: boolean;
+  charityName: string;
+  charityPercentage: number;
   updatedAt: admin.firestore.Timestamp;
 }
 
@@ -873,6 +875,8 @@ const JOIN_SETTINGS_DEFAULTS: Omit<FirestoreJoinSettings, "updatedAt"> = {
   pageDescription: "Ready to showcase your talent? Submit your application to join an upcoming competition. Fill out the form below with your details and we'll review your entry.",
   requiredFields: ["fullName", "email", "phone", "bio", "category"],
   isActive: true,
+  charityName: "",
+  charityPercentage: 0,
 };
 
 export const firestoreJoinSettings = {

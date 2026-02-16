@@ -56,6 +56,8 @@ interface JoinHostSettings {
   pageDescription: string;
   requiredFields: string[];
   isActive: boolean;
+  charityName?: string;
+  charityPercentage?: number;
 }
 
 interface JoinSubmission {
@@ -1661,7 +1663,8 @@ export default function AdminDashboard({ user }: { user: any }) {
                       <Settings className="h-5 w-5 text-orange-400" />
                       <h3 className="font-bold text-lg">Join Settings</h3>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <InviteDialog senderLevel={4} />
                       <span className="text-xs text-white/40">Active</span>
                       <Switch
                         checked={joinSettings.isActive}
@@ -1741,6 +1744,48 @@ export default function AdminDashboard({ user }: { user: any }) {
                         })}
                       </div>
                       <p className="text-xs text-white/20 mt-1">Click to toggle required fields on the join form.</p>
+                    </div>
+                    <div className="mt-4 rounded-md bg-white/5 border border-white/10 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className="h-4 w-4 text-orange-400" />
+                        <Label className="text-white/80 font-semibold">Non-Profit / Charity</Label>
+                      </div>
+                      <p className="text-xs text-white/30 mb-3">Specify a non-profit to receive a portion of voting proceeds.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-white/60">Charity Name</Label>
+                          <Input
+                            key={`charity-name-${joinSettings.charityName}`}
+                            defaultValue={joinSettings.charityName || ""}
+                            placeholder="e.g. Hawaii Food Bank"
+                            onBlur={(e) => updateJoinSettingsMutation.mutate({ charityName: e.target.value.trim() })}
+                            className="bg-white/5 border-white/10 text-white"
+                            data-testid="input-charity-name"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-white/60">Percentage of Proceeds</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              key={`charity-pct-${joinSettings.charityPercentage}`}
+                              defaultValue={joinSettings.charityPercentage || 0}
+                              onBlur={(e) => {
+                                const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                                updateJoinSettingsMutation.mutate({ charityPercentage: val });
+                              }}
+                              className="bg-white/5 border-white/10 text-white"
+                              data-testid="input-charity-percentage"
+                            />
+                            <span className="text-white/40 text-sm">%</span>
+                          </div>
+                          {(joinSettings.charityPercentage || 0) > 0 && joinSettings.charityName && (
+                            <p className="text-xs text-orange-400/70">{joinSettings.charityPercentage}% of voting proceeds go to {joinSettings.charityName}</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
