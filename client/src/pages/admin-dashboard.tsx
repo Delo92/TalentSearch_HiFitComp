@@ -595,6 +595,55 @@ export default function AdminDashboard({ user }: { user: any }) {
 
   const { data: allContestants } = useQuery<ContestantAdmin[]>({ queryKey: ["/api/admin/contestants"] });
   const { data: liveryItems } = useQuery<SiteLivery[]>({ queryKey: ["/api/livery"] });
+  const { data: firestoreCategories } = useQuery<any[]>({ queryKey: ["/api/categories"] });
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatDesc, setNewCatDesc] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+
+  const addCategoryMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string }) => {
+      const order = (firestoreCategories?.length || 0);
+      const res = await apiRequest("POST", "/api/admin/categories", { ...data, order, isActive: true });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      setNewCatName("");
+      setNewCatDesc("");
+      setAddingCategory(false);
+      toast({ title: "Category added" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to add category", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; name?: string; description?: string; imageUrl?: string | null }) => {
+      const res = await apiRequest("PATCH", `/api/admin/categories/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({ title: "Category updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to update", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/admin/categories/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({ title: "Category deleted" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to delete", description: err.message, variant: "destructive" });
+    },
+  });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const { data: joinSettings } = useQuery<JoinHostSettings>({ queryKey: ["/api/join/settings"] });
@@ -1389,7 +1438,6 @@ export default function AdminDashboard({ user }: { user: any }) {
               const textItems = liveryItems?.filter((item: any) => item.itemType === "text") || [];
               const groups = [
                 { label: "Hero Section", keys: ["hero_title_top", "hero_title_main", "hero_summary"], pairs: null },
-                { label: "Category Cards", keys: ["category_music_title", "category_music_desc", "category_modeling_title", "category_modeling_desc", "category_bodybuilding_title", "category_bodybuilding_desc", "category_dance_title", "category_dance_desc"], pairs: [["category_music_title","category_music_desc"],["category_modeling_title","category_modeling_desc"],["category_bodybuilding_title","category_bodybuilding_desc"],["category_dance_title","category_dance_desc"]] },
                 { label: "About Page", keys: ["about_rules_text", "about_details_text"], pairs: null },
                 { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"], pairs: null },
                 { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"], pairs: null },
@@ -1476,6 +1524,126 @@ export default function AdminDashboard({ user }: { user: any }) {
                 );
               });
             })()}
+
+            <details className="mt-4 rounded-md bg-zinc-900 border border-white/15 overflow-visible">
+              <summary className="cursor-pointer px-3 py-2 flex items-center justify-between gap-2 select-none" data-testid="livery-group-category-cards">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Category Cards</h3>
+                  <Badge className="bg-white/10 text-white/50 border-0 text-[9px]">{firestoreCategories?.length || 0}</Badge>
+                </div>
+                <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform [details[open]>&]:rotate-180" />
+              </summary>
+              <div className="px-3 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(firestoreCategories || []).map((cat: any) => (
+                    <div key={cat.id} className="rounded-md bg-zinc-800/60 border border-white/10 p-3">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <h4 className="text-xs text-orange-300/80 font-semibold uppercase tracking-wider">{cat.name}</h4>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => { if (confirm(`Delete "${cat.name}" category?`)) deleteCategoryMutation.mutate(cat.id); }}
+                          disabled={deleteCategoryMutation.isPending}
+                          className="text-red-400/60 hover:text-red-400 text-[10px] h-6 px-2"
+                          data-testid={`button-delete-category-${cat.id}`}
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-xs text-white/60 font-medium mb-1 block">Title</label>
+                          <Input
+                            key={`cat-name-${cat.id}-${cat.name}`}
+                            defaultValue={cat.name}
+                            className="bg-zinc-800 border-white/25 text-white text-xs h-8 mb-1"
+                            data-testid={`input-category-name-${cat.id}`}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val && val !== cat.name) updateCategoryMutation.mutate({ id: cat.id, name: val });
+                            }}
+                          />
+                          <Button size="sm" onClick={() => { const el = document.querySelector(`[data-testid="input-category-name-${cat.id}"]`) as HTMLInputElement; if (el && el.value.trim() && el.value.trim() !== cat.name) updateCategoryMutation.mutate({ id: cat.id, name: el.value.trim() }); }} disabled={updateCategoryMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-2" data-testid={`button-save-category-name-${cat.id}`}>Save</Button>
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/60 font-medium mb-1 block">Description</label>
+                          <Input
+                            key={`cat-desc-${cat.id}-${cat.description}`}
+                            defaultValue={cat.description || ""}
+                            className="bg-zinc-800 border-white/25 text-white text-xs h-8 mb-1"
+                            data-testid={`input-category-desc-${cat.id}`}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val !== (cat.description || "")) updateCategoryMutation.mutate({ id: cat.id, description: val });
+                            }}
+                          />
+                          <Button size="sm" onClick={() => { const el = document.querySelector(`[data-testid="input-category-desc-${cat.id}"]`) as HTMLInputElement; if (el) updateCategoryMutation.mutate({ id: cat.id, description: el.value.trim() }); }} disabled={updateCategoryMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-2" data-testid={`button-save-category-desc-${cat.id}`}>Save</Button>
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/60 font-medium mb-1 block">Image URL</label>
+                          <Input
+                            key={`cat-img-${cat.id}-${cat.imageUrl}`}
+                            defaultValue={cat.imageUrl || ""}
+                            placeholder="/images/template/a1.jpg"
+                            className="bg-zinc-800 border-white/25 text-white text-xs h-8 mb-1"
+                            data-testid={`input-category-img-${cat.id}`}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val !== (cat.imageUrl || "")) updateCategoryMutation.mutate({ id: cat.id, imageUrl: val || null } as any);
+                            }}
+                          />
+                          <Button size="sm" onClick={() => { const el = document.querySelector(`[data-testid="input-category-img-${cat.id}"]`) as HTMLInputElement; if (el) updateCategoryMutation.mutate({ id: cat.id, imageUrl: el.value.trim() || null } as any); }} disabled={updateCategoryMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-2" data-testid={`button-save-category-img-${cat.id}`}>Save</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {addingCategory ? (
+                  <div className="mt-3 rounded-md bg-zinc-800/60 border border-orange-500/30 p-3">
+                    <h4 className="text-xs text-orange-300/80 font-semibold uppercase tracking-wider mb-2">New Category</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-white/60 font-medium mb-1 block">Title</label>
+                        <Input
+                          value={newCatName}
+                          onChange={(e) => setNewCatName(e.target.value)}
+                          placeholder="Category name"
+                          className="bg-zinc-800 border-white/25 text-white text-xs h-8"
+                          data-testid="input-new-category-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-white/60 font-medium mb-1 block">Description</label>
+                        <Input
+                          value={newCatDesc}
+                          onChange={(e) => setNewCatDesc(e.target.value)}
+                          placeholder="Short description"
+                          className="bg-zinc-800 border-white/25 text-white text-xs h-8"
+                          data-testid="input-new-category-desc"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button size="sm" onClick={() => { if (newCatName.trim()) addCategoryMutation.mutate({ name: newCatName.trim(), description: newCatDesc.trim() }); }} disabled={!newCatName.trim() || addCategoryMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-3" data-testid="button-save-new-category">
+                          <Check className="h-3 w-3 mr-1" />Add
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setAddingCategory(false); setNewCatName(""); setNewCatDesc(""); }} className="text-white/40 text-[10px] h-6 px-2" data-testid="button-cancel-new-category">Cancel</Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => setAddingCategory(true)}
+                    className="mt-3 bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-7 px-3"
+                    data-testid="button-add-category"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />Add Category
+                  </Button>
+                )}
+              </div>
+            </details>
+
             {(!liveryItems || liveryItems.length === 0) && (
               <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
                 <Image className="h-8 w-8 text-white/10 mx-auto mb-2" />

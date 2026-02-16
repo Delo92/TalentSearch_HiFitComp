@@ -27,6 +27,7 @@ The platform is built with a modern web stack:
     - **Media Management**: Talents can upload images to Google Drive and videos to Vimeo through integrated APIs.
     - **Authentication**: Firebase Auth (email/password) with JWT Bearer tokens.
     - **Site Branding (Livery)**: Admins can manage site-wide images and text content.
+    - **Dynamic Categories**: Competition categories are stored in Firestore and managed from the Livery tab. Admins can add, edit, rename, and delete categories. The landing page renders categories dynamically from the API.
     - **Invitation System**: Token-based invitations allowing higher-level users to invite lower-level users.
     - **Payment Processing**: Integrated for vote purchases, hosting packages, and join/host fees, including sales tax configuration.
     - **Reporting & Analytics**: Dashboards provide specific analytics for hosts (their own events) and comprehensive platform analytics for admins.

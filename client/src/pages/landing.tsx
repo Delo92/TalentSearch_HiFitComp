@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ChevronRight, Music, Camera, Dumbbell, Star } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
@@ -31,6 +32,27 @@ export default function Landing() {
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
   const { getImage, getMedia, getText } = useLivery();
+  const { data: dynamicCategories } = useQuery<any[]>({ queryKey: ["/api/categories"] });
+
+  const defaultImages: Record<string, string> = {
+    "Music": "/images/template/a1.jpg",
+    "Modeling": "/images/template/a2.jpg",
+    "Bodybuilding": "/images/template/b1.jpg",
+    "Dance": "/images/template/a4.jpg",
+    "Comedy": "/images/template/e1.jpg",
+    "Acting": "/images/template/e2.jpg",
+  };
+
+  const fallbackCategories = [
+    { id: "fb-music", name: "Music", description: "Singers, rappers, DJs & producers", imageUrl: "/images/template/a1.jpg", isActive: true },
+    { id: "fb-modeling", name: "Modeling", description: "Fashion, fitness & swimwear models", imageUrl: "/images/template/a2.jpg", isActive: true },
+    { id: "fb-bodybuilding", name: "Bodybuilding", description: "Physique, classic & open divisions", imageUrl: "/images/template/b1.jpg", isActive: true },
+    { id: "fb-dance", name: "Dance", description: "Hip-hop, contemporary & freestyle", imageUrl: "/images/template/a4.jpg", isActive: true },
+  ];
+
+  const activeCategories = (dynamicCategories && dynamicCategories.length > 0)
+    ? dynamicCategories.filter((c: any) => c.isActive)
+    : fallbackCategories;
 
   const cats = useInView();
   const featured = useInView();
@@ -137,32 +159,25 @@ export default function Landing() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: Music, label: getText("category_music_title", "Music"), desc: getText("category_music_desc", "Singers, rappers, DJs & producers"), media: getMedia("category_music", "/images/template/a1.jpg") },
-              { icon: Camera, label: getText("category_modeling_title", "Modeling"), desc: getText("category_modeling_desc", "Fashion, fitness & swimwear models"), media: getMedia("category_modeling", "/images/template/a2.jpg") },
-              { icon: Dumbbell, label: getText("category_bodybuilding_title", "Bodybuilding"), desc: getText("category_bodybuilding_desc", "Physique, classic & open divisions"), media: getMedia("category_bodybuilding", "/images/template/b1.jpg") },
-              { icon: Star, label: getText("category_dance_title", "Dance"), desc: getText("category_dance_desc", "Hip-hop, contemporary & freestyle"), media: getMedia("category_dance", "/images/template/a4.jpg") },
-            ].map((cat, i) => (
-              <Link href="/competitions" key={cat.label}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${(activeCategories.length) <= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-6`}>
+            {activeCategories.map((cat: any, i: number) => {
+              const imgUrl = cat.imageUrl || defaultImages[cat.name] || "/images/template/a1.jpg";
+              return (
+              <Link href="/competitions" key={cat.id}>
                 <div
                   className={`group cursor-pointer transition-all duration-500 ${cats.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
                   style={{ transitionDelay: `${i * 100}ms` }}
-                  data-testid={`card-category-${cat.label.toLowerCase()}`}
+                  data-testid={`card-category-${cat.name.toLowerCase()}`}
                 >
                   <div className="overflow-hidden">
-                    {cat.media.type === "video" ? (
-                      <video src={cat.media.url} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" autoPlay muted loop playsInline />
-                    ) : (
-                      <img src={cat.media.url} alt={cat.label} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" />
-                    )}
+                    <img src={imgUrl} alt={cat.name} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" />
                   </div>
                   <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-6 px-4 transition-all duration-500">
                     <h4 className="text-white group-hover:text-black uppercase text-base font-bold mb-2 transition-colors duration-500">
-                      {cat.label}
+                      {cat.name}
                     </h4>
                     <p className="text-white/50 group-hover:text-black/50 text-sm mb-4 transition-colors duration-500">
-                      {cat.desc}
+                      {cat.description}
                     </p>
                     <span
                       className="text-[11px] text-white group-hover:text-black uppercase border-b border-white group-hover:border-black pb-1 transition-colors duration-500"
@@ -173,7 +188,8 @@ export default function Landing() {
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
