@@ -58,6 +58,8 @@ interface JoinHostSettings {
   isActive: boolean;
   charityName?: string;
   charityPercentage?: number;
+  nominationFee?: number;
+  nominationEnabled?: boolean;
 }
 
 interface JoinSubmission {
@@ -72,6 +74,10 @@ interface JoinSubmission {
   transactionId: string | null;
   amountPaid: number;
   createdAt: string;
+  type?: "application" | "nomination";
+  nominatorName?: string | null;
+  nominatorEmail?: string | null;
+  nominatorPhone?: string | null;
 }
 
 interface HostSubmission {
@@ -1787,6 +1793,38 @@ export default function AdminDashboard({ user }: { user: any }) {
                         </div>
                       </div>
                     </div>
+                    <div className="mt-4 rounded-md bg-white/5 border border-white/10 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <UserPlus className="h-4 w-4 text-orange-400" />
+                        <Label className="text-white/80 font-semibold">Nominations</Label>
+                      </div>
+                      <p className="text-xs text-white/30 mb-3">Allow visitors to nominate someone else for a competition.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-white/60">Enable Nominations</Label>
+                          <Switch
+                            checked={joinSettings.nominationEnabled !== false}
+                            onCheckedChange={(val) => updateJoinSettingsMutation.mutate({ nominationEnabled: val })}
+                            data-testid="switch-nomination-enabled"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-white/60">Nomination Fee (cents)</Label>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-white/30" />
+                            <Input
+                              type="number"
+                              key={`nom-fee-${joinSettings.nominationFee}`}
+                              defaultValue={joinSettings.nominationFee || 0}
+                              onBlur={(e) => updateJoinSettingsMutation.mutate({ nominationFee: parseInt(e.target.value) || 0 })}
+                              className="bg-white/5 border-white/10 text-white"
+                              data-testid="input-nomination-fee"
+                            />
+                          </div>
+                          <p className="text-xs text-white/30">${((joinSettings.nominationFee || 0) / 100).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1799,9 +1837,20 @@ export default function AdminDashboard({ user }: { user: any }) {
                       <div key={sub.id} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`join-sub-${sub.id}`}>
                         <div className="flex flex-wrap items-center justify-between gap-4">
                           <div>
-                            <h4 className="font-medium">{sub.fullName}</h4>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-medium">{sub.fullName}</h4>
+                              {sub.type === "nomination" && (
+                                <Badge className="border-0 bg-purple-500/20 text-purple-400 text-[10px]">Nomination</Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-white/30">{sub.email} {sub.category && `| ${sub.category}`}</p>
                             {sub.bio && <p className="text-xs text-white/40 mt-1 line-clamp-2">{sub.bio}</p>}
+                            {sub.type === "nomination" && sub.nominatorName && (
+                              <p className="text-xs text-purple-300/60 mt-1">
+                                Nominated by: {sub.nominatorName} ({sub.nominatorEmail})
+                                {sub.nominatorPhone && ` | ${sub.nominatorPhone}`}
+                              </p>
+                            )}
                             {sub.amountPaid > 0 && (
                               <p className="text-xs text-green-400 mt-1">Paid ${(sub.amountPaid / 100).toFixed(2)} {sub.transactionId && `(${sub.transactionId})`}</p>
                             )}

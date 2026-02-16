@@ -189,6 +189,8 @@ export interface FirestoreJoinSettings {
   isActive: boolean;
   charityName: string;
   charityPercentage: number;
+  nominationFee: number;
+  nominationEnabled: boolean;
   updatedAt: admin.firestore.Timestamp;
 }
 
@@ -210,6 +212,10 @@ export interface FirestoreJoinSubmission {
   transactionId: string | null;
   amountPaid: number;
   createdAt: string;
+  type: "application" | "nomination";
+  nominatorName: string | null;
+  nominatorEmail: string | null;
+  nominatorPhone: string | null;
 }
 
 export interface FirestoreHostSettings {
@@ -877,6 +883,8 @@ const JOIN_SETTINGS_DEFAULTS: Omit<FirestoreJoinSettings, "updatedAt"> = {
   isActive: true,
   charityName: "",
   charityPercentage: 0,
+  nominationFee: 0,
+  nominationEnabled: true,
 };
 
 export const firestoreJoinSettings = {
@@ -887,7 +895,7 @@ export const firestoreJoinSettings = {
       await db().collection(COLLECTIONS.JOIN_SETTINGS).doc("global").set(settings);
       return settings;
     }
-    return doc.data() as FirestoreJoinSettings;
+    return { ...JOIN_SETTINGS_DEFAULTS, ...doc.data() } as FirestoreJoinSettings;
   },
 
   async update(data: Partial<Omit<FirestoreJoinSettings, "updatedAt">>): Promise<FirestoreJoinSettings> {

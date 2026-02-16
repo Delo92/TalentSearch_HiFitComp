@@ -1816,6 +1816,10 @@ export async function registerRoutes(
         mediaUrls: mediaUrls || [],
         transactionId,
         amountPaid,
+        type: "application",
+        nominatorName: null,
+        nominatorEmail: null,
+        nominatorPhone: null,
       });
 
       if (autoApproved) {
@@ -1843,6 +1847,76 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Payment failed: ${error.errorMessage}` });
       }
       res.status(500).json({ message: "Submission failed. Please try again." });
+    }
+  });
+
+  app.post("/api/join/nominate", async (req, res) => {
+    try {
+      const settings = await firestoreJoinSettings.get();
+      if (!settings.isActive) {
+        return res.status(400).json({ message: "Join applications are currently closed" });
+      }
+      if (!settings.nominationEnabled) {
+        return res.status(400).json({ message: "Nominations are not currently accepted" });
+      }
+
+      const { fullName, email, phone, bio, category, competitionId, nominatorName, nominatorEmail, nominatorPhone, dataDescriptor, dataValue } = req.body;
+      if (!fullName || !email) {
+        return res.status(400).json({ message: "Nominee name and email are required" });
+      }
+      if (!nominatorName || !nominatorEmail) {
+        return res.status(400).json({ message: "Your name and email are required" });
+      }
+      if (!competitionId) {
+        return res.status(400).json({ message: "Please select a competition" });
+      }
+
+      let transactionId: string | null = null;
+      let amountPaid = 0;
+      if (settings.nominationFee > 0) {
+        if (!dataDescriptor || !dataValue) {
+          return res.status(400).json({ message: "Payment is required for nominations" });
+        }
+        const chargeResult = await chargePaymentNonce(
+          settings.nominationFee / 100,
+          dataDescriptor,
+          dataValue,
+          `Nomination fee for ${fullName}`,
+          nominatorEmail,
+          nominatorName,
+        );
+        transactionId = chargeResult.transactionId;
+        amountPaid = settings.nominationFee;
+      }
+
+      const submission = await firestoreJoinSubmissions.create({
+        competitionId: competitionId || null,
+        fullName: fullName.trim(),
+        email: email.toLowerCase().trim(),
+        phone: phone || null,
+        address: null,
+        city: null,
+        state: null,
+        zip: null,
+        bio: bio || null,
+        category: category || null,
+        socialLinks: null,
+        mediaUrls: [],
+        transactionId,
+        amountPaid,
+        type: "nomination",
+        nominatorName: nominatorName.trim(),
+        nominatorEmail: nominatorEmail.toLowerCase().trim(),
+        nominatorPhone: nominatorPhone || null,
+      });
+
+      res.status(201).json(submission);
+    } catch (error: any) {
+      console.error("Nomination submission error:", error);
+      if (error.errorMessage) {
+        return res.status(400).json({ message: `Payment failed: ${error.errorMessage}` });
+      }
+      res.status(500).json({ message: "Nomination failed. Please try again." });
     }
   });
 
