@@ -34,6 +34,7 @@ function Router() {
       <Route path="/about" component={AboutPage} />
       <Route path="/host/:hostSlug" component={HostProfilePublic} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/admin" component={Dashboard} />
       <Route path="/:compSlug/:talentSlug" component={ContestantSharePage} />
       <Route component={NotFound} />
     </Switch>
