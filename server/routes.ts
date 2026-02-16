@@ -451,9 +451,21 @@ export async function registerRoutes(
     res.status(201).json(comp);
   });
 
-  app.patch("/api/competitions/:id", firebaseAuth, requireAdmin, async (req, res) => {
+  app.patch("/api/competitions/:id", firebaseAuth, async (req, res) => {
+    const { uid, role } = req.firebaseUser!;
+    if (role !== "admin" && role !== "host") {
+      return res.status(403).json({ message: "Admin or host access required" });
+    }
+
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
+
+    if (role === "host") {
+      const comp = await storage.getCompetition(id);
+      if (!comp || comp.createdBy !== uid) {
+        return res.status(403).json({ message: "Not your competition" });
+      }
+    }
 
     const updated = await storage.updateCompetition(id, req.body);
     if (!updated) return res.status(404).json({ message: "Competition not found" });
@@ -1391,13 +1403,22 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/competitions/:id/detail", firebaseAuth, requireAdmin, async (req, res) => {
+  app.get("/api/competitions/:id/detail", firebaseAuth, async (req, res) => {
     try {
+      const { uid, role } = req.firebaseUser!;
+      if (role !== "admin" && role !== "host") {
+        return res.status(403).json({ message: "Admin or host access required" });
+      }
+
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
 
       const comp = await storage.getCompetition(id);
       if (!comp) return res.status(404).json({ message: "Competition not found" });
+
+      if (role === "host" && comp.createdBy !== uid) {
+        return res.status(403).json({ message: "Not your competition" });
+      }
 
       const allContestantsRaw = await storage.getAllContestants();
       const compContestants = allContestantsRaw.filter(c => c.competitionId === id);
