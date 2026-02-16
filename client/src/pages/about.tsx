@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Calendar, Users, MapPin, Mail, Phone, ExternalLink } from "lucide-react";
+import { ChevronRight, ChevronDown, Calendar, Users, MapPin, Mail, Phone, ExternalLink } from "lucide-react";
 import { SiFacebook, SiInstagram, SiYoutube, SiTiktok } from "react-icons/si";
 import { FaXTwitter } from "react-icons/fa6";
 import SiteNavbar from "@/components/site-navbar";
@@ -22,6 +22,7 @@ export default function AboutPage() {
     queryKey: ["/api/competitions"],
   });
   const [catFilter, setCatFilter] = useState("All");
+  const [showDetails, setShowDetails] = useState(false);
 
   useSEO({
     title: "About HiFitComp",
@@ -39,6 +40,8 @@ export default function AboutPage() {
     });
 
   const rulesText = getText("about_rules_text", "Welcome to HiFitComp! Our platform connects talent with audiences through fair, transparent competitions.\n\n**Rules & Guidelines:**\n\n1. All participants must be 18 years or older.\n2. Each competitor may only enter a competition once.\n3. Voting is limited per IP address daily to ensure fairness.\n4. Content must be original and appropriate for all audiences.\n5. Hosts are responsible for managing their events and enforcing rules.\n6. Vote purchases are non-refundable once processed.\n7. HiFitComp reserves the right to remove content that violates community standards.");
+
+  const detailsText = getText("about_details_text", "");
 
   const socialFacebook = getText("social_facebook", "");
   const socialInstagram = getText("social_instagram", "");
@@ -99,6 +102,37 @@ export default function AboutPage() {
             return <p key={i} className="text-white/70 text-[15px] leading-relaxed mb-2">{line}</p>;
           })}
         </div>
+
+        {detailsText && (
+          <div className="mt-8" data-testid="details-section">
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="inline-flex items-center gap-2 text-[#FF5A09] text-sm uppercase font-bold tracking-widest transition-colors duration-300 hover:text-orange-300"
+              data-testid="button-see-all-details"
+            >
+              {showDetails ? "Hide Details" : "See All Details"}
+              <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${showDetails ? "rotate-180" : ""}`} />
+            </button>
+
+            <div
+              className={`overflow-hidden transition-all duration-500 ease-in-out ${showDetails ? "max-h-[5000px] opacity-100 mt-6" : "max-h-0 opacity-0"}`}
+              data-testid="details-content"
+            >
+              <div className="border-t border-white/10 pt-6">
+                <div className="prose prose-invert max-w-none">
+                  {detailsText.split("\n").map((line, i) => {
+                    if (!line.trim()) return <br key={i} />;
+                    const boldMatch = line.match(/^\*\*(.*)\*\*$/);
+                    if (boldMatch) return <h4 key={i} className="text-white text-lg font-bold mt-6 mb-3 uppercase" style={{ letterSpacing: "3px" }}>{boldMatch[1]}</h4>;
+                    const listMatch = line.match(/^- (.*)$/);
+                    if (listMatch) return <p key={i} className="text-white/70 text-[15px] leading-relaxed mb-1.5 pl-4 before:content-[''] relative"><span className="absolute left-0 text-[#FF5A09]">&bull;</span>{listMatch[1]}</p>;
+                    return <p key={i} className="text-white/70 text-[15px] leading-relaxed mb-2">{line}</p>;
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="bg-[#0a0a0a] py-16">
