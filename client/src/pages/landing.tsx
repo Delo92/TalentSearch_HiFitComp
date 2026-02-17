@@ -24,7 +24,7 @@ function useInView(threshold = 0.15) {
 export default function Landing() {
   useSEO({
     title: "HiFitComp - Talent Competition & Voting Platform",
-    description: "The ultimate talent competition platform. Browse competitions, vote for your favorite artists, models, bodybuilders, and performers. Join as a competitor or host your own event today.",
+    description: "The ultimate talent competition platform. Browse competitions, vote for your favorite artists, models, bodybuilders, and performers. Join as a competitor or nominate someone today.",
     canonical: "https://hifitcomp.com",
   });
   const heroRef = useRef<HTMLDivElement>(null);
@@ -120,17 +120,9 @@ export default function Landing() {
             <Link href="/join">
               <span
                 className="inline-block bg-transparent border border-white text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
-                data-testid="button-hero-become-competitor"
+                data-testid="button-hero-join-nominate"
               >
-                Become a Competitor <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
-              </span>
-            </Link>
-            <Link href="/host">
-              <span
-                className="inline-block bg-transparent border border-white/40 text-white/80 font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
-                data-testid="button-hero-host-event"
-              >
-                Host an Event <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+                Join / Nominate <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
               </span>
             </Link>
           </motion.div>

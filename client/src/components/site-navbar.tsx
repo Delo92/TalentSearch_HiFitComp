@@ -137,13 +137,6 @@ export default function SiteNavbar() {
             Join
           </Link>
           <Link
-            href="/host"
-            className="text-white text-sm font-bold uppercase tracking-wider transition-colors duration-300 hover:text-white/70"
-            data-testid="link-nav-host"
-          >
-            Host
-          </Link>
-          <Link
             href="/about"
             className="text-white text-sm font-bold uppercase tracking-wider transition-colors duration-300 hover:text-white/70"
             data-testid="link-nav-about"
@@ -205,14 +198,6 @@ export default function SiteNavbar() {
             data-testid="link-mobile-join"
           >
             Join
-          </Link>
-          <Link
-            href="/host"
-            className="block py-2 text-white font-bold uppercase tracking-wider text-sm"
-            onClick={() => setMenuOpen(false)}
-            data-testid="link-mobile-host"
-          >
-            Host
           </Link>
           <Link
             href="/about"
