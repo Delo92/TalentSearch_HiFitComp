@@ -585,10 +585,9 @@ export default function AdminDashboard({ user }: { user: any }) {
   });
 
   const compCategories = useMemo(() => {
-    if (!competitions) return [];
-    const cats = Array.from(new Set(competitions.map(c => c.category).filter(Boolean)));
-    return cats.sort();
-  }, [competitions]);
+    if (!firestoreCategories) return [];
+    return firestoreCategories.map((c: any) => c.name).sort();
+  }, [firestoreCategories]);
 
   const filteredComps = useMemo(() => {
     if (!competitions) return [];
@@ -1056,8 +1055,16 @@ export default function AdminDashboard({ user }: { user: any }) {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-white/60">Category</Label>
-                  <Input value={compCategory} onChange={(e) => setCompCategory(e.target.value)} placeholder="e.g., Music, Modeling"
-                    className="bg-white/5 border-white/10 text-white" data-testid="input-comp-category" />
+                  <Select value={compCategory} onValueChange={setCompCategory}>
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-comp-category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-white/10">
+                      {(firestoreCategories || []).map((cat: any) => (
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-white/60">Description</Label>

@@ -4,6 +4,7 @@ import { useSearch } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import SiteNavbar from "@/components/site-navbar";
@@ -97,6 +98,10 @@ export default function JoinPage() {
 
   const { data: competitions } = useQuery<Competition[]>({
     queryKey: ["/api/competitions"],
+  });
+
+  const { data: firestoreCategories } = useQuery<any[]>({
+    queryKey: ["/api/categories"],
   });
 
   const filteredCompetitions = useMemo(() => {
@@ -528,6 +533,26 @@ export default function JoinPage() {
                     required={required}
                     data-testid={`input-${field}`}
                   />
+                </div>
+              );
+            }
+
+            if (field === "category") {
+              return (
+                <div key={field}>
+                  <Label htmlFor={field} className="text-white/60 uppercase text-xs tracking-wider">
+                    {label} {required && <span className="text-[#FF5A09]">*</span>}
+                  </Label>
+                  <Select value={form.category || ""} onValueChange={(val) => updateField("category", val)}>
+                    <SelectTrigger className="bg-white/[0.08] border-white/20 text-white mt-2" data-testid="select-category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-white/10">
+                      {(firestoreCategories || []).map((cat: any) => (
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               );
             }
