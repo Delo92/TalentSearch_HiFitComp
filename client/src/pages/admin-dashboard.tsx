@@ -584,11 +584,6 @@ export default function AdminDashboard({ user }: { user: any }) {
     staleTime: 60000,
   });
 
-  const compCategories = useMemo(() => {
-    if (!firestoreCategories) return [];
-    return firestoreCategories.map((c: any) => c.name).sort();
-  }, [firestoreCategories]);
-
   const filteredComps = useMemo(() => {
     if (!competitions) return [];
     let filtered = competitions;
@@ -611,6 +606,12 @@ export default function AdminDashboard({ user }: { user: any }) {
   const { data: allContestants } = useQuery<ContestantAdmin[]>({ queryKey: ["/api/admin/contestants"] });
   const { data: liveryItems } = useQuery<SiteLivery[]>({ queryKey: ["/api/livery"] });
   const { data: firestoreCategories } = useQuery<any[]>({ queryKey: ["/api/categories"] });
+
+  const compCategories = useMemo(() => {
+    if (!firestoreCategories) return [];
+    return firestoreCategories.map((c: any) => c.name).sort();
+  }, [firestoreCategories]);
+
   const [newCatName, setNewCatName] = useState("");
   const [newCatDesc, setNewCatDesc] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
