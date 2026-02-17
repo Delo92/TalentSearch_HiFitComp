@@ -1812,12 +1812,15 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Join applications are currently closed" });
       }
 
-      const { fullName, email, phone, address, city, state, zip, bio, category, socialLinks, mediaUrls, competitionId, dataDescriptor, dataValue } = req.body;
+      const { fullName, email, phone, address, city, state, zip, bio, category, socialLinks, mediaUrls, competitionId, dataDescriptor, dataValue, chosenNonprofit } = req.body;
       if (!fullName || !email) {
         return res.status(400).json({ message: "Name and email are required" });
       }
       if (!competitionId) {
         return res.status(400).json({ message: "Please select a competition to apply for" });
+      }
+      if (settings.nonprofitRequired && !chosenNonprofit?.trim()) {
+        return res.status(400).json({ message: "Choice of Non-Profit is required" });
       }
 
       let transactionId: string | null = null;
@@ -1855,6 +1858,7 @@ export async function registerRoutes(
         transactionId,
         amountPaid,
         type: "application",
+        chosenNonprofit: chosenNonprofit?.trim() || null,
         nominatorName: null,
         nominatorEmail: null,
         nominatorPhone: null,
@@ -1899,7 +1903,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Nominations are not currently accepted" });
       }
 
-      const { fullName, email, phone, bio, category, competitionId, nominatorName, nominatorEmail, nominatorPhone, dataDescriptor, dataValue } = req.body;
+      const { fullName, email, phone, bio, category, competitionId, nominatorName, nominatorEmail, nominatorPhone, dataDescriptor, dataValue, chosenNonprofit } = req.body;
       if (!fullName || !email) {
         return res.status(400).json({ message: "Nominee name and email are required" });
       }
@@ -1908,6 +1912,9 @@ export async function registerRoutes(
       }
       if (!competitionId) {
         return res.status(400).json({ message: "Please select a competition" });
+      }
+      if (settings.nonprofitRequired && !chosenNonprofit?.trim()) {
+        return res.status(400).json({ message: "Choice of Non-Profit is required" });
       }
 
       let transactionId: string | null = null;
@@ -1944,6 +1951,7 @@ export async function registerRoutes(
         transactionId,
         amountPaid,
         type: "nomination",
+        chosenNonprofit: chosenNonprofit?.trim() || null,
         nominatorName: nominatorName.trim(),
         nominatorEmail: nominatorEmail.toLowerCase().trim(),
         nominatorPhone: nominatorPhone || null,

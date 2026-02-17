@@ -10,7 +10,7 @@ import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
-import { CheckCircle, Send, CreditCard, Search, Trophy, UserPlus, User } from "lucide-react";
+import { CheckCircle, Send, CreditCard, Search, Trophy, UserPlus, User, Heart } from "lucide-react";
 import type { Competition } from "@shared/schema";
 
 interface JoinSettings {
@@ -22,6 +22,8 @@ interface JoinSettings {
   isActive: boolean;
   nominationFee?: number;
   nominationEnabled?: boolean;
+  nonprofitRequired?: boolean;
+  charityName?: string;
 }
 
 interface PaymentConfig {
@@ -179,6 +181,11 @@ export default function JoinPage() {
       }
     }
 
+    if (settings.nonprofitRequired && !form.chosenNonprofit?.trim()) {
+      toast({ title: "Choice of Non-Profit is required", variant: "destructive" });
+      return;
+    }
+
     setProcessing(true);
 
     const submitData = async (dataDescriptor?: string, dataValue?: string) => {
@@ -186,6 +193,7 @@ export default function JoinPage() {
         if (mode === "apply") {
           await apiRequest("POST", "/api/join/submit", {
             ...form,
+            chosenNonprofit: form.chosenNonprofit || null,
             competitionId: selectedCompetitionId,
             mediaUrls: [],
             dataDescriptor,
@@ -200,6 +208,7 @@ export default function JoinPage() {
             phone: form.phone || "",
             bio: form.bio || "",
             category: form.category || "",
+            chosenNonprofit: form.chosenNonprofit || null,
             competitionId: selectedCompetitionId,
             nominatorName: nominatorForm.name,
             nominatorEmail: nominatorForm.email,
@@ -593,6 +602,37 @@ export default function JoinPage() {
             );
           })}
         </div>
+
+        {settings.nonprofitRequired && (
+          <div className="mb-10">
+            <div className="flex items-center gap-2 mb-3">
+              <Heart className="h-4 w-4 text-[#FF5A09]" />
+              <p className="text-[#5f5f5f] text-sm">Support a Cause</p>
+            </div>
+            <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
+              CHOICE OF NON-PROFIT
+            </h3>
+            <p className="text-white/40 text-xs mb-4">
+              Select or enter the non-profit organization you'd like a portion of proceeds to support.
+              {settings.charityName && <span className="text-white/50"> Default: {settings.charityName}</span>}
+            </p>
+            <div>
+              <Label htmlFor="chosenNonprofit" className="text-white/60 uppercase text-xs tracking-wider">
+                Non-Profit Organization <span className="text-[#FF5A09]">*</span>
+              </Label>
+              <Input
+                id="chosenNonprofit"
+                type="text"
+                value={form.chosenNonprofit || ""}
+                onChange={(e) => updateField("chosenNonprofit", e.target.value)}
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
+                placeholder={settings.charityName || "Enter non-profit name"}
+                required
+                data-testid="input-chosen-nonprofit"
+              />
+            </div>
+          </div>
+        )}
 
         {needsPayment && (
           <div className="mb-10">

@@ -192,6 +192,7 @@ export interface FirestoreJoinSettings {
   charityPercentage: number;
   nominationFee: number;
   nominationEnabled: boolean;
+  nonprofitRequired: boolean;
   updatedAt: admin.firestore.Timestamp;
 }
 
@@ -218,6 +219,7 @@ export interface FirestoreJoinSubmission {
   nominatorEmail: string | null;
   nominatorPhone: string | null;
   nominationStatus: "pending" | "joined" | "unsure" | "not_interested" | null;
+  chosenNonprofit: string | null;
 }
 
 export interface FirestoreHostSettings {
@@ -887,6 +889,7 @@ const JOIN_SETTINGS_DEFAULTS: Omit<FirestoreJoinSettings, "updatedAt"> = {
   charityPercentage: 0,
   nominationFee: 0,
   nominationEnabled: true,
+  nonprofitRequired: false,
 };
 
 export const firestoreJoinSettings = {

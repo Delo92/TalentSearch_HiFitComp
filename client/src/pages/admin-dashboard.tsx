@@ -60,6 +60,7 @@ interface JoinHostSettings {
   charityPercentage?: number;
   nominationFee?: number;
   nominationEnabled?: boolean;
+  nonprofitRequired?: boolean;
 }
 
 interface JoinSubmission {
@@ -84,6 +85,7 @@ interface JoinSubmission {
   state?: string | null;
   zip?: string | null;
   socialLinks?: string | null;
+  chosenNonprofit?: string | null;
 }
 
 interface HostSubmission {
@@ -1854,6 +1856,17 @@ export default function AdminDashboard({ user }: { user: any }) {
                         <Label className="text-white/80 font-semibold">Non-Profit / Charity</Label>
                       </div>
                       <p className="text-xs text-white/30 mb-3">Specify a non-profit to receive a portion of voting proceeds.</p>
+                      <div className="flex items-center justify-between mb-4 p-3 rounded bg-white/[0.03] border border-white/5">
+                        <div>
+                          <Label className="text-white/80 text-sm">Require Choice of Non-Profit</Label>
+                          <p className="text-xs text-white/30 mt-0.5">When enabled, applicants and nominees must select or enter a non-profit organization.</p>
+                        </div>
+                        <Switch
+                          checked={joinSettings.nonprofitRequired === true}
+                          onCheckedChange={(val) => updateJoinSettingsMutation.mutate({ nonprofitRequired: val })}
+                          data-testid="switch-nonprofit-required"
+                        />
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label className="text-white/60">Charity Name</Label>
@@ -2034,6 +2047,12 @@ export default function AdminDashboard({ user }: { user: any }) {
                                   <div>
                                     <p className="text-[10px] text-white/30 uppercase tracking-wider">Social Links</p>
                                     <p className="text-sm text-white/70">{sub.socialLinks}</p>
+                                  </div>
+                                )}
+                                {sub.chosenNonprofit && (
+                                  <div>
+                                    <p className="text-[10px] text-white/30 uppercase tracking-wider">Choice of Non-Profit</p>
+                                    <p className="text-sm text-[#FF5A09]">{sub.chosenNonprofit}</p>
                                   </div>
                                 )}
                               </div>
