@@ -5,7 +5,7 @@ import { Link } from "wouter";
 import type { Competition } from "@shared/schema";
 import { slugify } from "@shared/slugify";
 
-type CompetitionExt = Competition & { coverVideo?: string | null };
+type CompetitionExt = Competition & { coverVideo?: string | null; hostedBy?: string | null };
 import { useState } from "react";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
@@ -128,7 +128,8 @@ export default function Competitions() {
 }
 
 function CompetitionCard({ competition }: { competition: CompetitionExt }) {
-  const { getImage } = useLivery();
+  const { getImage, getText } = useLivery();
+  const websiteName = getText("site_name", "HiFitComp");
   return (
     <div
       className="group transition-all duration-500 hover:shadow-[0_5px_80px_0_rgba(0,0,0,0.2)]"
@@ -172,6 +173,11 @@ function CompetitionCard({ competition }: { competition: CompetitionExt }) {
                 {competition.category}
               </span>
             </div>
+            {competition.hostedBy && (
+              <p className="text-white/40 group-hover:text-black/40 text-[13px] mb-3 transition-colors duration-500" data-testid={`text-hosted-by-${competition.id}`}>
+                Hosted by {competition.hostedBy === "admin" ? websiteName : competition.hostedBy}
+              </p>
+            )}
             <span
               className="text-[11px] text-white group-hover:text-black uppercase border-b border-white group-hover:border-black pb-1 transition-colors duration-500"
               style={{ letterSpacing: "10px" }}

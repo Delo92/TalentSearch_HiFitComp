@@ -483,6 +483,9 @@ function ExpandedHostComps({ hostUid, hostName }: { hostUid: string; hostName: s
             <div>
               <h4 className="font-bold text-sm">{comp.title}</h4>
               <span className="text-xs text-white/40">{comp.category}</span>
+              {(comp as any).hostedBy === "admin" && (
+                <span className="text-[11px] text-orange-400/70">Hosted by Admin</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Badge className={`border-0 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : comp.status === "completed" ? "bg-white/10 text-white/60" : "bg-yellow-500/20 text-yellow-400"}`}>
@@ -1313,6 +1316,9 @@ export default function AdminDashboard({ user }: { user: any }) {
                     </div>
                     <div className="relative z-10 p-4">
                       <h3 className="font-bold text-lg text-white drop-shadow-md">{comp.title}</h3>
+                      {(comp as any).hostedBy === "admin" && (
+                        <span className="text-xs text-orange-300/80 drop-shadow-md">Hosted by Admin</span>
+                      )}
                       <div className="flex flex-wrap items-center gap-3 mt-1">
                         <Select
                           value={comp.category || ""}

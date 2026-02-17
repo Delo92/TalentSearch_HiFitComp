@@ -47,6 +47,7 @@ interface CompetitionDetail {
   endDate: string | null;
   contestants: ContestantWithProfile[];
   totalVotes: number;
+  hostedBy?: string | null;
 }
 
 export default function CompetitionDetailPage() {
@@ -64,7 +65,7 @@ export default function CompetitionDetailPage() {
 
   const isInPersonVoting = voteSource === "in_person";
 
-  const { getImage, getMedia } = useLivery();
+  const { getImage, getMedia, getText } = useLivery();
   const { data: competition, isLoading } = useQuery<CompetitionDetail>({
     queryKey: ["/api/competitions", id],
     enabled: !!id,
@@ -177,6 +178,12 @@ export default function CompetitionDetailPage() {
         {competition.description && (
           <p className="text-white/40 mb-6 text-base max-w-3xl leading-relaxed" data-testid="text-description">
             {competition.description}
+          </p>
+        )}
+
+        {competition.hostedBy && (
+          <p className="text-white/50 text-sm mb-6 uppercase tracking-wider" data-testid="text-hosted-by">
+            Hosted by {competition.hostedBy === "admin" ? getText("site_name", "HiFitComp") : competition.hostedBy}
           </p>
         )}
 

@@ -16,6 +16,7 @@ interface CompDetailResponse {
     status: string;
   };
   totalVotes: number;
+  createdByAdmin?: boolean;
   hosts: {
     id: number;
     fullName: string;
@@ -68,7 +69,7 @@ export function CompetitionDetailModal({ compId }: { compId: number }) {
 
   if (!data) return <div className="text-white/40 text-sm py-8 text-center">Failed to load details.</div>;
 
-  const { competition, totalVotes, hosts, contestants } = data;
+  const { competition, totalVotes, createdByAdmin, hosts, contestants } = data;
 
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1" data-testid="comp-detail-content">
@@ -169,7 +170,12 @@ export function CompetitionDetailModal({ compId }: { compId: number }) {
 
       <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="comp-detail-hosts">
         <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Host(s)</h3>
-        {hosts.length > 0 ? (
+        {createdByAdmin ? (
+          <div className="flex items-center gap-2 rounded-md bg-orange-500/10 border border-orange-500/20 p-3" data-testid="comp-hosted-by-admin">
+            <Badge className="border-0 bg-orange-500/20 text-orange-400">Admin</Badge>
+            <p className="text-sm text-white/70">Hosted by Admin</p>
+          </div>
+        ) : hosts.length > 0 ? (
           <div className="space-y-2">
             {hosts.map((host) => (
               <div key={host.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 p-3" data-testid={`comp-host-${host.id}`}>

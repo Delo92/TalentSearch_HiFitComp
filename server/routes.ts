@@ -349,7 +349,18 @@ export async function registerRoutes(
       } else {
         comps = await storage.getCompetitions();
       }
-      res.json(comps);
+      const enriched = await Promise.all(comps.map(async (c: any) => {
+        if (c.createdBy) {
+          const creatorProfile = await storage.getTalentProfileByUserId(c.createdBy);
+          if (creatorProfile?.role === "admin") {
+            return { ...c, hostedBy: "admin" };
+          } else if (creatorProfile?.role === "host") {
+            return { ...c, hostedBy: creatorProfile.displayName || "Host" };
+          }
+        }
+        return { ...c, hostedBy: null };
+      }));
+      res.json(enriched);
     } catch (error: any) {
       console.error("Get competitions error:", error);
       res.status(500).json({ message: "Failed to get competitions" });
@@ -380,8 +391,19 @@ export async function registerRoutes(
       })
     );
 
+    let hostedBy: string | null = null;
+    if (comp.createdBy) {
+      const creatorProfile = await storage.getTalentProfileByUserId(comp.createdBy);
+      if (creatorProfile?.role === "admin") {
+        hostedBy = "admin";
+      } else if (creatorProfile?.role === "host") {
+        hostedBy = creatorProfile.displayName || "Host";
+      }
+    }
+
     res.json({
       ...comp,
+      hostedBy,
       contestants: enrichedContestants,
       totalVotes,
     });
@@ -1428,6 +1450,12 @@ export async function registerRoutes(
       const compContestants = allContestantsRaw.filter(c => c.competitionId === id);
       const totalVotes = await storage.getTotalVotesByCompetition(id);
 
+      let creatorRole: string | null = null;
+      if (comp.createdBy) {
+        const creatorProfile = await storage.getTalentProfileByUserId(comp.createdBy);
+        creatorRole = creatorProfile?.role || null;
+      }
+
       const hostSubs = await firestoreHostSubmissions.getAll();
       const matchingHosts = hostSubs.filter(h =>
         h.eventName?.toLowerCase().includes(comp.title.toLowerCase()) ||
@@ -1458,6 +1486,7 @@ export async function registerRoutes(
       res.json({
         competition: comp,
         totalVotes,
+        createdByAdmin: creatorRole === "admin",
         hosts: matchingHosts.map(h => ({
           id: h.id,
           fullName: h.fullName,
