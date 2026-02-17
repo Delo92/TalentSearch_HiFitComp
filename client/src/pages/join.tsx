@@ -612,10 +612,13 @@ export default function JoinPage() {
             <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
               CHOICE OF NON-PROFIT
             </h3>
-            <p className="text-white/40 text-xs mb-4">
-              Select or enter the non-profit organization you'd like a portion of proceeds to support.
-              {settings.charityName && <span className="text-white/50"> Default: {settings.charityName}</span>}
-            </p>
+            {settings.charityName && (
+              <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-4">
+                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Default Non-Profit</p>
+                <p className="text-[#FF5A09] font-bold text-sm">{settings.charityName}</p>
+                <p className="text-white/40 text-xs mt-1">You may change this below if you'd like to support a different organization.</p>
+              </div>
+            )}
             <div>
               <Label htmlFor="chosenNonprofit" className="text-white/60 uppercase text-xs tracking-wider">
                 Non-Profit Organization <span className="text-[#FF5A09]">*</span>
@@ -623,10 +626,10 @@ export default function JoinPage() {
               <Input
                 id="chosenNonprofit"
                 type="text"
-                value={form.chosenNonprofit || ""}
+                value={form.chosenNonprofit ?? settings.charityName ?? ""}
                 onChange={(e) => updateField("chosenNonprofit", e.target.value)}
                 className="bg-white/[0.08] border-white/20 text-white mt-2"
-                placeholder={settings.charityName || "Enter non-profit name"}
+                placeholder="Enter non-profit name"
                 required
                 data-testid="input-chosen-nonprofit"
               />
