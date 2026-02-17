@@ -280,6 +280,7 @@ export default function TalentDashboard({ user, profile }: Props) {
   const appliedIds = new Set(myContests?.map((c: any) => c.competitionId) || []);
   const appliedContests = myContests?.filter((c: any) => c.applicationStatus === "approved" || c.applicationStatus === "pending") || [];
   const approvedContests = myContests?.filter((c: any) => c.applicationStatus === "approved") || [];
+  const hasActiveEntry = appliedContests.length > 0;
 
   const ensureRefCode = async (): Promise<string | null> => {
     if (myRefCode?.code) return myRefCode.code;
@@ -801,7 +802,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
                 {myContests && myContests.length > 0 && (
                   <div>
-                    <h3 className="font-bold mb-3 text-lg">My Applications</h3>
+                    <h3 className="font-bold mb-3 text-lg">My Competitions</h3>
                     <div className="space-y-2">
                       {myContests.map((contest: any) => (
                         <div key={contest.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-3" data-testid={`card-my-contest-${contest.id}`}>
@@ -844,6 +845,8 @@ export default function TalentDashboard({ user, profile }: Props) {
                           </div>
                           {appliedIds.has(comp.id) ? (
                             <Badge className="bg-orange-500/20 text-orange-400 border-0">Applied</Badge>
+                          ) : hasActiveEntry ? (
+                            <Badge className="bg-white/10 text-white/30 border-0">Already in a competition</Badge>
                           ) : (
                             <Button onClick={() => applyMutation.mutate(comp.id)} disabled={applyMutation.isPending}
                               data-testid={`button-apply-${comp.id}`} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white">

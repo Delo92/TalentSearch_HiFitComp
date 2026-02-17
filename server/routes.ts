@@ -704,6 +704,17 @@ export async function registerRoutes(
     const existing = await storage.getContestant(compId, profile.id);
     if (existing) return res.status(400).json({ message: "Already applied to this competition" });
 
+    const allMyContests = await storage.getContestantsByTalent(profile.id);
+    const activeEntries = allMyContests.filter(c => c.applicationStatus === "approved" || c.applicationStatus === "pending");
+
+    const userDoc = await getFirestore().collection("users").doc(uid).get();
+    const userLevel = userDoc.exists ? (userDoc.data()?.level || 1) : 1;
+    const isAdminOrHost = userLevel >= 4;
+
+    if (activeEntries.length > 0 && !isAdminOrHost) {
+      return res.status(400).json({ message: "You can only be in one competition at a time. Contact an admin to join additional competitions." });
+    }
+
     let autoApprove = false;
     try {
       const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
