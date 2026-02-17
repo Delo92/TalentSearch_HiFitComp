@@ -129,11 +129,16 @@ export default function HeroCoverflowGallery() {
                 data-testid={`gallery-item-${item.competitionId}`}
               >
                 <Link href={`/${slugify(item.category)}/${slugify(item.competitionTitle)}`}>
+                  <div className="coverflow-vote-badge">
+                    <span className="coverflow-vote-dot" />
+                    <span className="coverflow-vote-count">{item.voteCount.toLocaleString()}</span>
+                    <span className="coverflow-vote-label">VOTES</span>
+                  </div>
                   <div className="coverflow-cover">
                     {item.videoEmbedUrl && index === currentIndex ? (
                       <>
                         <iframe
-                          src={item.videoEmbedUrl}
+                          src={`${item.videoEmbedUrl}${item.videoEmbedUrl.includes('?') ? '&' : '?'}autoplay=1&muted=1&loop=1&background=1`}
                           className="w-full h-full"
                           allow="autoplay; fullscreen"
                           frameBorder="0"

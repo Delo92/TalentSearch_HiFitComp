@@ -64,8 +64,8 @@ export default function Landing() {
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
       <SiteNavbar />
 
-      <section ref={heroRef} className="relative min-h-screen flex items-start justify-center overflow-hidden pb-16">
-        <motion.div style={{ y: heroY }} className="absolute inset-0">
+      <section ref={heroRef} className="relative min-h-screen flex items-start justify-center pb-16" style={{ overflow: "visible" }}>
+        <motion.div style={{ y: heroY }} className="absolute inset-0 overflow-hidden">
           {getMedia("hero_background", "/images/template/bg-1.jpg").type === "video" ? (
             <video src={getMedia("hero_background", "/images/template/bg-1.jpg").url} className="w-full h-full object-cover scale-110" autoPlay muted loop playsInline />
           ) : (
@@ -108,7 +108,7 @@ export default function Landing() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.9 }}
-            className="mt-16 sm:mt-20 w-full max-w-5xl mx-auto"
+            className="mt-8 sm:mt-10 w-full max-w-5xl mx-auto"
           >
             <HeroCoverflowGallery />
           </motion.div>
@@ -117,7 +117,7 @@ export default function Landing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1.4 }}
-            className="mt-16 sm:mt-20 flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link href="/competitions">
               <span
