@@ -25,7 +25,6 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={LoginPage} />
       <Route path="/competitions" component={Competitions} />
-      <Route path="/competition/:slug" component={CompetitionDetail} />
       <Route path="/talent/:id" component={TalentProfilePublic} />
       <Route path="/checkout/:competitionId/:contestantId" component={CheckoutPage} />
       <Route path="/my-purchases" component={MyPurchasesPage} />
@@ -35,7 +34,8 @@ function Router() {
       <Route path="/host/:hostSlug" component={HostProfilePublic} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/admin" component={Dashboard} />
-      <Route path="/:compSlug/:talentSlug" component={ContestantSharePage} />
+      <Route path="/:categorySlug/:compSlug/:talentSlug" component={ContestantSharePage} />
+      <Route path="/:categorySlug/:compSlug" component={CompetitionDetail} />
       <Route component={NotFound} />
     </Switch>
   );

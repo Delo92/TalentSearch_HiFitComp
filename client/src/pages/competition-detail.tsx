@@ -13,7 +13,7 @@ import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
-import { slugify, extractIdFromSlug } from "@shared/slugify";
+import { slugify } from "@shared/slugify";
 import { FallbackImage, getBackupUrl } from "@/components/fallback-image";
 
 interface ContestantWithProfile {
@@ -51,10 +51,9 @@ interface CompetitionDetail {
 }
 
 export default function CompetitionDetailPage() {
-  const [, params] = useRoute("/competition/:slug");
-  const slug = params?.slug;
-  const { id: compId } = extractIdFromSlug(slug || "");
-  const id = compId?.toString();
+  const [, params] = useRoute("/:categorySlug/:compSlug");
+  const categorySlug = params?.categorySlug;
+  const compSlug = params?.compSlug;
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -67,15 +66,17 @@ export default function CompetitionDetailPage() {
 
   const { getImage, getMedia, getText } = useLivery();
   const { data: competition, isLoading } = useQuery<CompetitionDetail>({
-    queryKey: ["/api/competitions", id],
-    enabled: !!id,
+    queryKey: ["/api/resolve/competition", categorySlug, compSlug],
+    enabled: !!categorySlug && !!compSlug,
   });
+
+  const id = competition?.id?.toString();
 
   useSEO({
     title: competition ? `${competition.title} - ${competition.category} Competition` : "Competition",
     description: competition?.description || (competition ? `Vote in the ${competition.title} ${competition.category} competition on HiFitComp. Browse contestants, cast your vote, and help decide the winner!` : undefined),
     ogImage: competition?.coverImage || undefined,
-    canonical: competition ? `https://hifitcomp.com/competition/${slugify(competition.title)}-${competition.id}` : undefined,
+    canonical: competition ? `https://hifitcomp.com/${slugify(competition.category)}/${slugify(competition.title)}` : undefined,
   });
 
   const voteMutation = useMutation({
@@ -83,7 +84,7 @@ export default function CompetitionDetailPage() {
       await apiRequest("POST", `/api/competitions/${id}/vote`, { contestantId, source: voteSource });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitions", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/resolve/competition", categorySlug, compSlug] });
       toast({ title: "Vote cast!", description: "Your vote has been recorded." });
     },
     onError: (error: Error) => {
@@ -265,7 +266,7 @@ export default function CompetitionDetailPage() {
                   </div>
                   <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-6 px-4 transition-all duration-500">
                     <Link
-                      href={`/${slugify(competition.title)}/${slugify(contestant.talentProfile.displayName)}`}
+                      href={`/${slugify(competition.category)}/${slugify(competition.title)}/${slugify(contestant.talentProfile.displayName)}`}
                       onClick={(e) => e.stopPropagation()}
                       data-testid={`link-contestant-name-${contestant.id}`}
                     >
@@ -296,7 +297,7 @@ export default function CompetitionDetailPage() {
 
                     <div className="flex items-center justify-center gap-4">
                       <Link
-                        href={`/${slugify(competition.title)}/${slugify(contestant.talentProfile.displayName)}`}
+                        href={`/${slugify(competition.category)}/${slugify(competition.title)}/${slugify(contestant.talentProfile.displayName)}`}
                         className="text-[11px] text-white group-hover:text-black uppercase border-b border-white group-hover:border-black pb-1 transition-colors duration-500"
                         style={{ letterSpacing: "6px" }}
                         data-testid={`link-profile-${contestant.id}`}

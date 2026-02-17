@@ -9,6 +9,7 @@ import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { Search, ShoppingCart, Heart, Receipt } from "lucide-react";
 import { Link } from "wouter";
+import { slugify } from "@shared/slugify";
 
 interface PurchaseDetail {
   id: number;
@@ -19,6 +20,7 @@ interface PurchaseDetail {
   transactionId: string | null;
   purchasedAt: string | null;
   competitionTitle: string;
+  competitionCategory: string;
 }
 
 interface ViewerProfile {
@@ -213,7 +215,7 @@ export default function MyPurchasesPage() {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Link
-                        href={`/competition/${purchase.competitionId}`}
+                        href={`/${slugify(purchase.competitionCategory)}/${slugify(purchase.competitionTitle)}`}
                         className="text-white font-bold uppercase text-sm hover:text-[#FF5A09] transition-colors"
                         data-testid={`link-competition-${purchase.id}`}
                       >

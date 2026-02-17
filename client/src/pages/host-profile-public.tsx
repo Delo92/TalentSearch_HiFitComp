@@ -141,7 +141,7 @@ export default function HostProfilePublic() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {competitions.map((comp) => (
-                <Link key={comp.id} href={`/competition/${slugify(comp.title)}-${comp.id}`}>
+                <Link key={comp.id} href={`/${slugify(comp.category)}/${slugify(comp.title)}`}>
                   <div className="group cursor-pointer transition-all duration-500 hover:shadow-[0_5px_80px_0_rgba(0,0,0,0.2)]" data-testid={`card-comp-${comp.id}`}>
                     <div className="overflow-hidden relative h-44">
                       <img

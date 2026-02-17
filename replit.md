@@ -34,6 +34,7 @@ The platform is built with a modern web stack:
     - **Storage Management**: Admin interface to monitor Google Drive and Vimeo storage usage.
     - **QR Code Voting**: Hosts/admins can download QR codes for competitions that link to in-person voting pages. Votes from QR scans are tracked separately as "in_person" source. Vote breakdown (online vs in-person) displayed in host and admin dashboards with visual progress bars.
     - **Vote Source Tracking**: Votes tracked as "online" or "in_person" with separate counters. Online vote weight (1-100%) configurable per competition for weighted final scoring.
+    - **Hierarchical URL Routing**: URLs follow `/:categorySlug/:compSlug` for competition detail and `/:categorySlug/:compSlug/:talentSlug` for contestant pages. Slugs are derived from category name, competition title, and contestant display name. Resolve endpoints validate both category and competition slugs for disambiguation.
 
 ## External Dependencies
 - **Firebase**: Used for user authentication (Auth) and specific data storage (Firestore).

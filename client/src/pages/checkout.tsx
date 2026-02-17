@@ -218,7 +218,7 @@ export default function CheckoutPage() {
             Transaction ID: {successData.transactionId}
           </p>
           <div className="flex flex-col items-center gap-4">
-            <Link href={`/competition/${competition ? `${slugify(competition.title)}-${competitionId}` : competitionId}`}>
+            <Link href={competition ? `/${slugify(competition.category)}/${slugify(competition.title)}` : "/competitions"}>
               <span
                 className="inline-block bg-[#FF5A09] text-white font-bold text-sm uppercase px-8 leading-[47px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
                 data-testid="button-back-competition"
@@ -285,7 +285,7 @@ export default function CheckoutPage() {
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
           <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">
-            <Link href={`/competition/${slugify(competition.title)}-${competitionId}`} className="hover:text-black transition-colors" data-testid="link-back-comp">
+            <Link href={`/${slugify(competition.category)}/${slugify(competition.title)}`} className="hover:text-black transition-colors" data-testid="link-back-comp">
               {competition.title}
             </Link>
             <span className="mx-2">/</span>
@@ -302,7 +302,7 @@ export default function CheckoutPage() {
       </section>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-        <Link href={`/competition/${slugify(competition.title)}-${competitionId}`} className="inline-flex items-center gap-2 text-white/40 text-sm mb-8 hover:text-white/60 transition-colors" data-testid="link-back">
+        <Link href={`/${slugify(competition.category)}/${slugify(competition.title)}`} className="inline-flex items-center gap-2 text-white/40 text-sm mb-8 hover:text-white/60 transition-colors" data-testid="link-back">
           <ArrowLeft className="h-4 w-4" />
           Back to competition
         </Link>

@@ -57,7 +57,8 @@ interface ResolvedData {
 }
 
 export default function ContestantSharePage() {
-  const [, params] = useRoute("/:compSlug/:talentSlug");
+  const [, params] = useRoute("/:categorySlug/:compSlug/:talentSlug");
+  const categorySlug = params?.categorySlug;
   const compSlug = params?.compSlug;
   const talentSlug = params?.talentSlug;
   const { getImage } = useLivery();
@@ -67,8 +68,8 @@ export default function ContestantSharePage() {
   const [copied, setCopied] = useState(false);
 
   const { data, isLoading, error } = useQuery<ResolvedData>({
-    queryKey: ["/api/resolve", compSlug, talentSlug],
-    enabled: !!compSlug && !!talentSlug,
+    queryKey: ["/api/resolve", categorySlug, compSlug, talentSlug],
+    enabled: !!categorySlug && !!compSlug && !!talentSlug,
   });
 
   useEffect(() => {
@@ -87,7 +88,7 @@ export default function ContestantSharePage() {
     },
     onSuccess: () => {
       toast({ title: "Vote cast!", description: "Your vote has been recorded." });
-      queryClient.invalidateQueries({ queryKey: ["/api/resolve", compSlug, talentSlug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/resolve", categorySlug, compSlug, talentSlug] });
     },
     onError: (err: any) => {
       toast({ title: "Vote failed", description: err.message || "Could not cast vote", variant: "destructive" });
@@ -354,7 +355,7 @@ export default function ContestantSharePage() {
         )}
 
         <div className="flex flex-wrap items-center justify-center gap-4 pb-10">
-          <Link href={`/competition/${slugify(competition.title)}-${competition.id}`}>
+          <Link href={`/${slugify(competition.category)}/${slugify(competition.title)}`}>
             <span
               className="inline-block bg-transparent text-white font-bold text-base capitalize px-8 leading-[47px] min-w-[212px] border border-white transition-all duration-500 hover:bg-white hover:text-black cursor-pointer text-center"
               data-testid="button-back-competition"

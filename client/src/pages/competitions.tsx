@@ -135,7 +135,7 @@ function CompetitionCard({ competition }: { competition: CompetitionExt }) {
       className="group transition-all duration-500 hover:shadow-[0_5px_80px_0_rgba(0,0,0,0.2)]"
       data-testid={`card-competition-${competition.id}`}
     >
-      <Link href={`/competition/${slugify(competition.title)}-${competition.id}`}>
+      <Link href={`/${slugify(competition.category)}/${slugify(competition.title)}`}>
         <div className="cursor-pointer">
           <div className="overflow-hidden relative h-52">
             {competition.coverVideo ? (

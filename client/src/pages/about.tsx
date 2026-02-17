@@ -175,7 +175,7 @@ export default function AboutPage() {
                 return (
                   <Link
                     key={comp.id}
-                    href={`/competition/${slugify(comp.title)}-${comp.id}`}
+                    href={`/${slugify(comp.category)}/${slugify(comp.title)}`}
                     data-testid={`calendar-comp-${comp.id}`}
                   >
                     <div className="flex items-stretch bg-black border border-white/10 hover:border-[#FF5A09]/50 transition-all duration-300 cursor-pointer group">

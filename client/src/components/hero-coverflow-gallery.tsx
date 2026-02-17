@@ -128,7 +128,7 @@ export default function HeroCoverflowGallery() {
                 }}
                 data-testid={`gallery-item-${item.competitionId}`}
               >
-                <Link href={`/competition/${slugify(item.competitionTitle)}-${item.competitionId}`}>
+                <Link href={`/${slugify(item.category)}/${slugify(item.competitionTitle)}`}>
                   <div className="coverflow-cover">
                     {item.videoEmbedUrl && index === currentIndex ? (
                       <>
