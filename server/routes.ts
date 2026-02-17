@@ -1612,13 +1612,14 @@ export async function registerRoutes(
 
   app.post("/api/admin/categories", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      const { name, description, imageUrl, order, isActive } = req.body;
+      const { name, description, imageUrl, videoUrl, order, isActive } = req.body;
       if (!name) return res.status(400).json({ message: "Category name is required" });
 
       const category = await firestoreCategories.create({
         name,
         description: description || "",
         imageUrl: imageUrl || null,
+        videoUrl: videoUrl || null,
         order: order || 0,
         isActive: isActive !== false,
       });
@@ -1638,6 +1639,43 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Update category error:", error);
       res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.put("/api/admin/categories/:id/media", firebaseAuth, requireAdmin, liveryUpload.single("file"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const category = await firestoreCategories.get(id);
+      if (!category) return res.status(404).json({ message: "Category not found" });
+      if (!req.file) return res.status(400).json({ message: "No file provided" });
+
+      const isVideo = isVideoFile(req.file.originalname);
+
+      if (isVideo) {
+        const duration = await getVideoDurationFromBuffer(req.file.buffer);
+        if (duration > 15) {
+          return res.status(400).json({ message: `Video must be 15 seconds or less. Uploaded video is ${Math.round(duration)} seconds.` });
+        }
+      }
+
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const storagePath = `categories/${id}-${Date.now()}${ext}`;
+      const firebaseUrl = await uploadToFirebaseStorage(storagePath, req.file.buffer, req.file.mimetype);
+
+      const updateData: any = {};
+      if (isVideo) {
+        updateData.videoUrl = firebaseUrl;
+        updateData.imageUrl = null;
+      } else {
+        updateData.imageUrl = firebaseUrl;
+        updateData.videoUrl = null;
+      }
+
+      const updated = await firestoreCategories.update(id, updateData);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Category media upload error:", error);
+      res.status(500).json({ message: "Failed to upload category media" });
     }
   });
 

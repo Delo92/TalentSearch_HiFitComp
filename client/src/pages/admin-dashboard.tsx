@@ -838,6 +838,33 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
   });
 
+  const uploadCategoryMediaMutation = useMutation({
+    mutationFn: async ({ categoryId, file }: { categoryId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/admin/categories/${categoryId}/media`, {
+        method: "PUT",
+        body: formData,
+        headers,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Upload failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({ title: "Category media uploaded!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const removeCoverMutation = useMutation({
     mutationFn: async ({ compId, type }: { compId: number; type: "image" | "video" }) => {
       await apiRequest("DELETE", `/api/admin/competitions/${compId}/cover?type=${type}`);
@@ -1609,11 +1636,60 @@ export default function AdminDashboard({ user }: { user: any }) {
                           <Button size="sm" onClick={() => { const el = document.querySelector(`[data-testid="input-category-desc-${cat.id}"]`) as HTMLInputElement; if (el) updateCategoryMutation.mutate({ id: cat.id, description: el.value.trim() }); }} disabled={updateCategoryMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-2" data-testid={`button-save-category-desc-${cat.id}`}>Save</Button>
                         </div>
                         <div>
-                          <label className="text-xs text-white/60 font-medium mb-1 block">Image URL</label>
+                          <label className="text-xs text-white/60 font-medium mb-1 block">Thumbnail (Image or Video up to 15s)</label>
+                          {(cat.imageUrl || cat.videoUrl) && (
+                            <div className="relative rounded-md overflow-hidden mb-2 bg-black/40 border border-white/10" style={{ maxHeight: "120px" }}>
+                              {cat.videoUrl ? (
+                                <video src={cat.videoUrl} className="w-full object-cover" style={{ maxHeight: "120px" }} autoPlay muted loop playsInline data-testid={`preview-category-video-${cat.id}`} />
+                              ) : (
+                                <img src={cat.imageUrl!} alt={cat.name} className="w-full object-cover" style={{ maxHeight: "120px" }} data-testid={`preview-category-img-${cat.id}`} />
+                              )}
+                              <div className="absolute top-1 right-1 flex gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm("Remove this thumbnail?")) {
+                                      updateCategoryMutation.mutate({ id: cat.id, imageUrl: null, videoUrl: null } as any);
+                                    }
+                                  }}
+                                  className="bg-black/60 text-red-400 border-0"
+                                  data-testid={`button-remove-category-media-${cat.id}`}
+                                >
+                                  <XIcon className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mb-1">
+                            <input
+                              type="file"
+                              accept="image/*,video/mp4,video/webm,video/quicktime"
+                              className="hidden"
+                              data-testid={`input-category-file-${cat.id}`}
+                              id={`cat-file-${cat.id}`}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) uploadCategoryMediaMutation.mutate({ categoryId: cat.id, file });
+                                e.target.value = "";
+                              }}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => (document.getElementById(`cat-file-${cat.id}`) as HTMLInputElement)?.click()}
+                              disabled={uploadCategoryMediaMutation.isPending}
+                              className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-7 px-3"
+                              data-testid={`button-upload-category-media-${cat.id}`}
+                            >
+                              <Upload className="h-3 w-3 mr-1" />
+                              {uploadCategoryMediaMutation.isPending ? "Uploading..." : "Upload File"}
+                            </Button>
+                            <span className="text-[10px] text-white/25">or paste URL below</span>
+                          </div>
                           <Input
                             key={`cat-img-${cat.id}-${cat.imageUrl}`}
                             defaultValue={cat.imageUrl || ""}
-                            placeholder="/images/template/a1.jpg"
+                            placeholder="https://... or /images/template/a1.jpg"
                             className="bg-zinc-800 border-white/25 text-white text-xs h-8 mb-1"
                             data-testid={`input-category-img-${cat.id}`}
                             onBlur={(e) => {
@@ -1621,7 +1697,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                               if (val !== (cat.imageUrl || "")) updateCategoryMutation.mutate({ id: cat.id, imageUrl: val || null } as any);
                             }}
                           />
-                          <Button size="sm" onClick={() => { const el = document.querySelector(`[data-testid="input-category-img-${cat.id}"]`) as HTMLInputElement; if (el) updateCategoryMutation.mutate({ id: cat.id, imageUrl: el.value.trim() || null } as any); }} disabled={updateCategoryMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-2" data-testid={`button-save-category-img-${cat.id}`}>Save</Button>
+                          <Button size="sm" onClick={() => { const el = document.querySelector(`[data-testid="input-category-img-${cat.id}"]`) as HTMLInputElement; if (el) updateCategoryMutation.mutate({ id: cat.id, imageUrl: el.value.trim() || null } as any); }} disabled={updateCategoryMutation.isPending} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-6 px-2" data-testid={`button-save-category-img-${cat.id}`}>Save URL</Button>
                         </div>
                       </div>
                     </div>

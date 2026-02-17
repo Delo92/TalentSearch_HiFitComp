@@ -49,6 +49,7 @@ export interface FirestoreCategory {
   name: string;
   description: string;
   imageUrl: string | null;
+  videoUrl: string | null;
   order: number;
   isActive: boolean;
   createdAt: admin.firestore.Timestamp;
