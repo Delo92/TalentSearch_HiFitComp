@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
+import { slugify } from "@shared/slugify";
 
 interface GalleryItem {
   competitionId: number;
@@ -127,7 +128,7 @@ export default function HeroCoverflowGallery() {
                 }}
                 data-testid={`gallery-item-${item.competitionId}`}
               >
-                <Link href={`/competitions/${item.competitionId}`}>
+                <Link href={`/competition/${slugify(item.competitionTitle)}-${item.competitionId}`}>
                   <div className="coverflow-cover">
                     {item.videoEmbedUrl && index === currentIndex ? (
                       <>
