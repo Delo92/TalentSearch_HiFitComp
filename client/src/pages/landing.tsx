@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
+import HeroCoverflowGallery from "@/components/hero-coverflow-gallery";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
 
@@ -63,7 +64,7 @@ export default function Landing() {
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
       <SiteNavbar />
 
-      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <section ref={heroRef} className="relative min-h-screen flex items-start justify-center overflow-hidden pb-16">
         <motion.div style={{ y: heroY }} className="absolute inset-0">
           {getMedia("hero_background", "/images/template/bg-1.jpg").type === "video" ? (
             <video src={getMedia("hero_background", "/images/template/bg-1.jpg").url} className="w-full h-full object-cover scale-110" autoPlay muted loop playsInline />
@@ -73,7 +74,7 @@ export default function Landing() {
           <div className="absolute inset-0 bg-black/35" />
         </motion.div>
 
-        <motion.div style={{ opacity: heroOpacity }} className="relative z-10 text-center px-4 sm:px-8 w-full mt-[-10vh]">
+        <motion.div style={{ opacity: heroOpacity }} className="relative z-10 text-center px-4 sm:px-8 w-full pt-24 sm:pt-28">
           <motion.h6
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -104,10 +105,19 @@ export default function Landing() {
           )}
 
           <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.9 }}
+            className="mt-16 sm:mt-20 w-full max-w-5xl mx-auto"
+          >
+            <HeroCoverflowGallery />
+          </motion.div>
+
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 1 }}
-            className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
+            transition={{ duration: 0.8, delay: 1.4 }}
+            className="mt-16 sm:mt-20 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link href="/competitions">
               <span
@@ -131,8 +141,8 @@ export default function Landing() {
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.3 }}
-              className="mt-8 max-w-3xl mx-auto text-white/70 text-sm sm:text-base md:text-lg leading-relaxed px-2 sm:px-0"
+              transition={{ duration: 0.8, delay: 1.7 }}
+              className="mt-10 max-w-3xl mx-auto text-white/70 text-sm sm:text-base md:text-lg leading-relaxed px-2 sm:px-0"
               style={{ letterSpacing: "1px" }}
               data-testid="text-hero-summary"
             >

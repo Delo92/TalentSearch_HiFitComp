@@ -315,3 +315,184 @@
     inset: -1px;
   }
 }
+
+.coverflow-container {
+  width: 100%;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.coverflow-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.coverflow-item {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  cursor: pointer;
+  user-select: none;
+}
+
+.coverflow-item a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.coverflow-cover {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  background: #222;
+}
+
+.coverflow-cover img,
+.coverflow-cover iframe {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  border: none;
+}
+
+.coverflow-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+  border-radius: 0 0 10px 10px;
+}
+
+.coverflow-label-title {
+  display: block;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1.3;
+}
+
+.coverflow-label-sub {
+  display: block;
+  color: #FF5A09;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.coverflow-reflection {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  transform: scaleY(-1);
+  opacity: 0.15;
+  filter: blur(2px);
+  background: linear-gradient(to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.8) 50%,
+    rgba(0, 0, 0, 1) 100%);
+  pointer-events: none;
+}
+
+.coverflow-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  z-index: 200;
+}
+
+.coverflow-nav:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.coverflow-nav-prev {
+  left: 10px;
+}
+
+.coverflow-nav-next {
+  right: 10px;
+}
+
+.coverflow-dots {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 200;
+}
+
+.coverflow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.coverflow-dot.active {
+  background: #FF5A09;
+  transform: scale(1.3);
+}
+
+@media (max-width: 768px) {
+  .coverflow-container {
+    height: 240px;
+  }
+  .coverflow-item {
+    width: 180px;
+    height: 180px;
+  }
+  .coverflow-nav {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  .coverflow-label-title {
+    font-size: 10px;
+  }
+  .coverflow-label-sub {
+    font-size: 9px;
+  }
+}

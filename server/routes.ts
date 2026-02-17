@@ -367,6 +367,56 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/hero-gallery", async (req, res) => {
+    try {
+      const competitions = await storage.getCompetitions();
+      const activeComps = competitions.filter(c => c.status === "active" || c.status === "voting");
+
+      const galleryItems = await Promise.all(
+        activeComps.map(async (comp) => {
+          const contestants = await storage.getContestantsByCompetition(comp.id);
+          const approved = contestants.filter(c => c.applicationStatus === "approved");
+          const topContestant = approved.length > 0
+            ? approved.sort((a, b) => b.voteCount - a.voteCount)[0]
+            : null;
+
+          let videoEmbedUrl: string | null = null;
+          let displayName: string | null = null;
+          let thumbnail: string | null = comp.coverImage;
+
+          if (topContestant) {
+            displayName = topContestant.talentProfile.stageName || topContestant.talentProfile.displayName;
+            if (topContestant.talentProfile.imageUrls?.length > 0) {
+              thumbnail = topContestant.talentProfile.imageUrls[0];
+            }
+            if (topContestant.talentProfile.videoUrls?.length > 0) {
+              const vUrl = topContestant.talentProfile.videoUrls[0];
+              const vimeoMatch = vUrl.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+              if (vimeoMatch) {
+                videoEmbedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&background=1`;
+              }
+            }
+          }
+
+          return {
+            competitionId: comp.id,
+            competitionTitle: comp.title,
+            category: comp.category,
+            thumbnail,
+            videoEmbedUrl,
+            topContestantName: displayName,
+            voteCount: topContestant?.voteCount || 0,
+          };
+        })
+      );
+
+      res.json(galleryItems);
+    } catch (error: any) {
+      console.error("Hero gallery error:", error);
+      res.status(500).json({ message: "Failed to load hero gallery" });
+    }
+  });
+
   app.get("/api/competitions/:id", async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid competition ID" });
