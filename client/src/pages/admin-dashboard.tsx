@@ -1830,19 +1830,22 @@ export default function AdminDashboard({ user }: { user: any }) {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-white/60">Nomination Fee (cents)</Label>
+                          <Label className="text-white/60">Nomination Fee ($)</Label>
                           <div className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4 text-white/30" />
                             <Input
                               type="number"
+                              step="0.01"
                               key={`nom-fee-${joinSettings.nominationFee}`}
-                              defaultValue={joinSettings.nominationFee || 0}
-                              onBlur={(e) => updateJoinSettingsMutation.mutate({ nominationFee: parseInt(e.target.value) || 0 })}
+                              defaultValue={((joinSettings.nominationFee || 0) / 100).toFixed(2)}
+                              onBlur={(e) => {
+                                const cents = Math.round((parseFloat(e.target.value) || 0) * 100);
+                                updateJoinSettingsMutation.mutate({ nominationFee: cents });
+                              }}
                               className="bg-white/5 border-white/10 text-white"
                               data-testid="input-nomination-fee"
                             />
                           </div>
-                          <p className="text-xs text-white/30">${((joinSettings.nominationFee || 0) / 100).toFixed(2)}</p>
                         </div>
                       </div>
                     </div>
@@ -2934,9 +2937,20 @@ export default function AdminDashboard({ user }: { user: any }) {
                     })()}
                   </div>
 
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => saveSettingsMutation.mutate(settingsForm || {})}
+                      disabled={saveSettingsMutation.isPending || !settingsForm}
+                      className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                      data-testid="button-save-settings-after-voting"
+                    >
+                      {saveSettingsMutation.isPending ? "Saving..." : "Save All Settings"}
+                    </Button>
+                  </div>
+
                   <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
                     <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Join & Host Pricing</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <Label className="text-white/50 text-xs">Join Fee ($)</Label>
                         <Input
@@ -2948,6 +2962,22 @@ export default function AdminDashboard({ user }: { user: any }) {
                           data-testid="input-join-price"
                         />
                         <p className="text-[10px] text-white/25 mt-1">Fee charged when a talent submits a join application (0 = free)</p>
+                      </div>
+                      <div>
+                        <Label className="text-white/50 text-xs">Nomination Fee ($)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          key={`settings-nom-fee-${joinSettings?.nominationFee}`}
+                          defaultValue={((joinSettings?.nominationFee || 0) / 100).toFixed(2)}
+                          onBlur={(e) => {
+                            const cents = Math.round((parseFloat(e.target.value) || 0) * 100);
+                            updateJoinSettingsMutation.mutate({ nominationFee: cents });
+                          }}
+                          className="bg-white/[0.08] border-white/20 text-white"
+                          data-testid="input-nomination-price"
+                        />
+                        <p className="text-[10px] text-white/25 mt-1">Fee charged when someone nominates a contestant (0 = free)</p>
                       </div>
                       <div>
                         <Label className="text-white/50 text-xs">Host Application Fee ($)</Label>
@@ -3009,6 +3039,17 @@ export default function AdminDashboard({ user }: { user: any }) {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => saveSettingsMutation.mutate(settingsForm || {})}
+                      disabled={saveSettingsMutation.isPending || !settingsForm}
+                      className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                      data-testid="button-save-settings-after-packages"
+                    >
+                      {saveSettingsMutation.isPending ? "Saving..." : "Save All Settings"}
+                    </Button>
                   </div>
 
                   <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
@@ -3076,6 +3117,17 @@ export default function AdminDashboard({ user }: { user: any }) {
                         <p className="text-[10px] text-white/25 mt-1">Global maximum — hosts can set lower per-competition limits but not exceed this</p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => saveSettingsMutation.mutate(settingsForm || {})}
+                      disabled={saveSettingsMutation.isPending || !settingsForm}
+                      className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                      data-testid="button-save-settings-bottom"
+                    >
+                      {saveSettingsMutation.isPending ? "Saving..." : "Save All Settings"}
+                    </Button>
                   </div>
                 </div>
               );
