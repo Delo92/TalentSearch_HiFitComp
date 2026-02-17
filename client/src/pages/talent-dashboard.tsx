@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check } from "lucide-react";
+import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check, Share2, Copy, ExternalLink } from "lucide-react";
+import { slugify } from "@shared/slugify";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,7 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [uploadError, setUploadError] = useState<{ type: "image" | "video"; message: string } | null>(null);
   const [editingVideoUri, setEditingVideoUri] = useState<string | null>(null);
   const [editingVideoName, setEditingVideoName] = useState("");
+  const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +53,11 @@ export default function TalentDashboard({ user, profile }: Props) {
 
   const { data: myContests } = useQuery<any[]>({
     queryKey: ["/api/contestants/me"],
+    enabled: !!profile,
+  });
+
+  const { data: myRefCode } = useQuery<{ code: string } | null>({
+    queryKey: ["/api/referral/my-code"],
     enabled: !!profile,
   });
 
@@ -272,6 +279,72 @@ export default function TalentDashboard({ user, profile }: Props) {
   ) || [];
   const appliedIds = new Set(myContests?.map((c: any) => c.competitionId) || []);
   const appliedContests = myContests?.filter((c: any) => c.applicationStatus === "approved" || c.applicationStatus === "pending") || [];
+  const approvedContests = myContests?.filter((c: any) => c.applicationStatus === "approved") || [];
+
+  const ensureRefCode = async (): Promise<string | null> => {
+    if (myRefCode?.code) return myRefCode.code;
+    try {
+      const token = await getAuthToken();
+      if (!token) return null;
+      const res = await fetch("/api/referral/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        queryClient.invalidateQueries({ queryKey: ["/api/referral/my-code"] });
+        return data.code || null;
+      }
+    } catch {}
+    return null;
+  };
+
+  const buildShareUrl = (contest: any, refCode?: string | null) => {
+    const comp = competitions?.find(c => c.id === contest.competitionId);
+    const catSlug = slugify(contest.competitionCategory || comp?.category || "competition");
+    const compSlug = slugify(contest.competitionTitle || "contest");
+    const talentSlug = slugify(displayName || profile?.displayName || "talent");
+    let url = `${window.location.origin}/${catSlug}/${compSlug}/${talentSlug}`;
+    if (refCode) url += `?ref=${refCode}`;
+    return url;
+  };
+
+  const handleCopyShareLink = async (contest: any) => {
+    const refCode = await ensureRefCode();
+    const url = buildShareUrl(contest, refCode);
+    const text = `Vote for ${displayName || profile?.displayName} on HiFitComp!${refCode ? ` Use promo code ${refCode} when you sign up or vote for bonus rewards!` : ""}\n${url}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedShareId(contest.id.toString());
+      toast({ title: "Link copied!", description: "Share link with your referral code has been copied." });
+      setTimeout(() => setCopiedShareId(null), 3000);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopiedShareId(contest.id.toString());
+      toast({ title: "Link copied!" });
+      setTimeout(() => setCopiedShareId(null), 3000);
+    }
+  };
+
+  const handleNativeShare = async (contest: any) => {
+    const refCode = await ensureRefCode();
+    const url = buildShareUrl(contest, refCode);
+    const text = `Vote for ${displayName || profile?.displayName} on HiFitComp!${refCode ? ` Use promo code ${refCode} when you sign up or vote for bonus rewards!` : ""}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Vote for ${displayName || profile?.displayName}`, text, url });
+      } catch {}
+    } else {
+      handleCopyShareLink(contest);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -678,6 +751,54 @@ export default function TalentDashboard({ user, profile }: Props) {
               </div>
             ) : (
               <div className="space-y-6">
+                {approvedContests.length > 0 && (
+                  <div>
+                    <h3 className="font-bold mb-3 text-lg flex items-center gap-2">
+                      <Share2 className="h-5 w-5 text-orange-400" />
+                      Share & Promote
+                    </h3>
+                    <p className="text-sm text-white/40 mb-3">Copy your personal voting link to share on social media, text, or email. Your referral code is automatically included.</p>
+                    <div className="space-y-2">
+                      {approvedContests.map((contest: any) => {
+                        const previewUrl = buildShareUrl(contest, myRefCode?.code);
+                        const isCopied = copiedShareId === contest.id.toString();
+                        return (
+                          <div key={`share-${contest.id}`} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`card-share-${contest.id}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                              <div>
+                                <h4 className="font-medium">{contest.competitionTitle || "Competition"}</h4>
+                                <p className="text-xs text-white/30">{contest.competitionCategory}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  onClick={() => handleCopyShareLink(contest)}
+                                  data-testid={`button-copy-share-${contest.id}`}
+                                  className={`border-0 text-white ${isCopied ? "bg-green-600" : "bg-gradient-to-r from-orange-500 to-amber-500"}`}
+                                >
+                                  {isCopied ? <Check className="h-4 w-4 mr-1.5" /> : <Copy className="h-4 w-4 mr-1.5" />}
+                                  {isCopied ? "Copied!" : "Copy Link"}
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => handleNativeShare(contest)}
+                                  data-testid={`button-share-${contest.id}`}
+                                  className="text-white/60"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="rounded bg-black/50 border border-white/5 px-3 py-2 text-xs text-white/50 break-all font-mono" data-testid={`text-share-url-${contest.id}`}>
+                              {previewUrl}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {myContests && myContests.length > 0 && (
                   <div>
                     <h3 className="font-bold mb-3 text-lg">My Applications</h3>
@@ -688,9 +809,23 @@ export default function TalentDashboard({ user, profile }: Props) {
                             <h4 className="font-medium">{contest.competitionTitle || "Competition"}</h4>
                             <p className="text-xs text-white/30">Applied {new Date(contest.appliedAt).toLocaleDateString()}</p>
                           </div>
-                          <Badge className={`border-0 ${contest.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : contest.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`badge-app-status-${contest.id}`}>
-                            {contest.applicationStatus}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            {contest.applicationStatus === "approved" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleCopyShareLink(contest)}
+                                data-testid={`button-quick-share-${contest.id}`}
+                                className="text-orange-400 text-xs"
+                              >
+                                <Copy className="h-3.5 w-3.5 mr-1" />
+                                Share
+                              </Button>
+                            )}
+                            <Badge className={`border-0 ${contest.applicationStatus === "approved" ? "bg-green-500/20 text-green-400" : contest.applicationStatus === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`} data-testid={`badge-app-status-${contest.id}`}>
+                              {contest.applicationStatus}
+                            </Badge>
+                          </div>
                         </div>
                       ))}
                     </div>

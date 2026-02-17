@@ -808,7 +808,11 @@ export async function registerRoutes(
     const profile = await storage.getTalentProfileByUserId(uid);
     if (!profile) return res.json([]);
     const myContests = await storage.getContestantsByTalent(profile.id);
-    res.json(myContests);
+    const enriched = await Promise.all(myContests.map(async (c) => {
+      const comp = await storage.getCompetition(c.competitionId);
+      return { ...c, competitionCategory: comp?.category || "" };
+    }));
+    res.json(enriched);
   });
 
 
