@@ -42,6 +42,7 @@ export const competitions = pgTable("competitions", {
   votingStartDate: timestamp("voting_start_date"),
   votingEndDate: timestamp("voting_end_date"),
   expectedContestants: integer("expected_contestants"),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
