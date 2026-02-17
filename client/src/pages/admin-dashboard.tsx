@@ -1314,7 +1314,19 @@ export default function AdminDashboard({ user }: { user: any }) {
                     <div className="relative z-10 p-4">
                       <h3 className="font-bold text-lg text-white drop-shadow-md">{comp.title}</h3>
                       <div className="flex flex-wrap items-center gap-3 mt-1">
-                        <span className="text-xs text-white/60">{comp.category}</span>
+                        <Select
+                          value={comp.category || ""}
+                          onValueChange={(val) => updateCompMutation.mutate({ id: comp.id, data: { category: val } })}
+                        >
+                          <SelectTrigger className="h-6 w-auto min-w-[100px] bg-white/10 border-white/20 text-white/80 text-xs px-2 gap-1" data-testid={`select-category-${comp.id}`}>
+                            <SelectValue placeholder="Assign category" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-900 border-white/10">
+                            {(firestoreCategories || []).map((cat: any) => (
+                              <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Badge className={`border-0 ${comp.status === "active" || comp.status === "voting" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60"}`}>
                           {comp.status === "voting" ? "Active" : comp.status}
                         </Badge>
