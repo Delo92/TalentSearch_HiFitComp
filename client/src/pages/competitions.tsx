@@ -22,12 +22,19 @@ export default function Competitions() {
     queryKey: ["/api/competitions"],
   });
   const [filter, setFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const { getImage, getMedia } = useLivery();
 
+  const { data: firestoreCategories } = useQuery<any[]>({
+    queryKey: ["/api/categories"],
+  });
+
   const filtered = competitions?.filter((c) => {
-    if (filter === "all") return c.status !== "draft";
-    if (filter === "active") return c.status === "active" || c.status === "voting";
-    return c.status === filter;
+    if (filter === "all" && c.status === "draft") return false;
+    if (filter === "active" && c.status !== "active" && c.status !== "voting") return false;
+    if (filter === "completed" && c.status !== "completed") return false;
+    if (categoryFilter !== "all" && c.category !== categoryFilter) return false;
+    return true;
   }) || [];
 
   return (
@@ -54,7 +61,7 @@ export default function Competitions() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="flex flex-wrap items-center gap-2 mb-10">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           {["all", "active", "completed"].map((f) => (
             <button
               key={f}
@@ -66,6 +73,27 @@ export default function Competitions() {
             </button>
           ))}
         </div>
+        {firestoreCategories && firestoreCategories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-10">
+            <button
+              onClick={() => setCategoryFilter("all")}
+              className={`inline-block px-3 py-1.5 text-[13px] uppercase tracking-wider border-2 transition-all duration-300 ${categoryFilter === "all" ? "border-[#FF5A09] text-[#FF5A09]" : "border-transparent bg-[#f4f4f4]/10 text-white/50 hover:border-white/30"}`}
+              data-testid="filter-category-all"
+            >
+              All Categories
+            </button>
+            {firestoreCategories.map((cat: any) => (
+              <button
+                key={cat.id}
+                onClick={() => setCategoryFilter(cat.name)}
+                className={`inline-block px-3 py-1.5 text-[13px] uppercase tracking-wider border-2 transition-all duration-300 ${categoryFilter === cat.name ? "border-[#FF5A09] text-[#FF5A09]" : "border-transparent bg-[#f4f4f4]/10 text-white/50 hover:border-white/30"}`}
+                data-testid={`filter-category-${cat.id}`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
