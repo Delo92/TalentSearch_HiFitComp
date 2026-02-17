@@ -29,7 +29,7 @@ export default function HeroCoverflowGallery() {
     if (autoplayRef.current) clearInterval(autoplayRef.current);
     autoplayRef.current = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % (totalItems || 1));
-    }, 4000);
+    }, 15000);
   }, [totalItems]);
 
   useEffect(() => {

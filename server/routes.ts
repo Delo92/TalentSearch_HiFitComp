@@ -389,13 +389,15 @@ export async function registerRoutes(
             if (topContestant.talentProfile.imageUrls?.length > 0) {
               thumbnail = topContestant.talentProfile.imageUrls[0];
             }
-            if (topContestant.talentProfile.videoUrls?.length > 0) {
-              const vUrl = topContestant.talentProfile.videoUrls[0];
-              const vimeoMatch = vUrl.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-              if (vimeoMatch) {
-                videoEmbedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&background=1`;
+            try {
+              const talentName = (topContestant.talentProfile.displayName || topContestant.talentProfile.stageName || "").replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+              const videos = await listTalentVideos(comp.title, talentName);
+              if (videos.length > 0 && videos[0].player_embed_url) {
+                const baseUrl = videos[0].player_embed_url;
+                const separator = baseUrl.includes("?") ? "&" : "?";
+                videoEmbedUrl = baseUrl + separator + "autoplay=1&muted=1&loop=1&background=1";
               }
-            }
+            } catch {}
           }
 
           return {
