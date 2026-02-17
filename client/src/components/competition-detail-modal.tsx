@@ -167,9 +167,9 @@ export function CompetitionDetailModal({ compId }: { compId: number }) {
         />
       </div>
 
-      {hosts.length > 0 && (
-        <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="comp-detail-hosts">
-          <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Host(s)</h3>
+      <div className="rounded-md bg-white/5 border border-white/5 p-4" data-testid="comp-detail-hosts">
+        <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Host(s)</h3>
+        {hosts.length > 0 ? (
           <div className="space-y-2">
             {hosts.map((host) => (
               <div key={host.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white/5 p-3" data-testid={`comp-host-${host.id}`}>
@@ -183,8 +183,10 @@ export function CompetitionDetailModal({ compId }: { compId: number }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-white/30">No host assigned to this competition.</p>
+        )}
+      </div>
 
       <div data-testid="comp-detail-contestants">
         <h3 className="text-xs uppercase tracking-widest text-orange-400 font-bold mb-3">Contestants ({contestants.length})</h3>
