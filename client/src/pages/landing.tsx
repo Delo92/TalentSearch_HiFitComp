@@ -74,7 +74,7 @@ export default function Landing() {
           <div className="absolute inset-0 bg-black/35" />
         </motion.div>
 
-        <motion.div style={{ opacity: heroOpacity }} className="relative z-10 text-center px-4 sm:px-8 w-full pt-24 sm:pt-28">
+        <div className="relative z-10 text-center px-4 sm:px-8 w-full pt-24 sm:pt-28">
           <motion.h6
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -149,7 +149,7 @@ export default function Landing() {
               {getText("hero_summary")}
             </motion.p>
           )}
-        </motion.div>
+        </div>
       </section>
 
       <section className="py-24 md:py-28 bg-black" id="categories">
