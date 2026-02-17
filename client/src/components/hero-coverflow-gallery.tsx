@@ -119,19 +119,28 @@ export default function HeroCoverflowGallery() {
                   opacity,
                   zIndex: 100 - absOffset,
                 }}
-                onClick={() => goToIndex(index)}
+                onClick={(e) => {
+                  if (index !== currentIndex) {
+                    e.preventDefault();
+                    goToIndex(index);
+                  }
+                }}
                 data-testid={`gallery-item-${item.competitionId}`}
               >
                 <Link href={`/competitions/${item.competitionId}`}>
                   <div className="coverflow-cover">
                     {item.videoEmbedUrl && index === currentIndex ? (
-                      <iframe
-                        src={item.videoEmbedUrl}
-                        className="w-full h-full"
-                        allow="autoplay; fullscreen"
-                        frameBorder="0"
-                        title={item.competitionTitle}
-                      />
+                      <>
+                        <iframe
+                          src={item.videoEmbedUrl}
+                          className="w-full h-full"
+                          allow="autoplay; fullscreen"
+                          frameBorder="0"
+                          title={item.competitionTitle}
+                          style={{ pointerEvents: "none" }}
+                        />
+                        <div className="absolute inset-0 z-10" />
+                      </>
                     ) : (
                       <img
                         src={item.thumbnail || "/images/template/bg-1.jpg"}
