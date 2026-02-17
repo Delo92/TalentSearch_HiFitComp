@@ -3096,7 +3096,99 @@ export async function registerRoutes(
     }
   });
 
+  // ── Vote Detail Routes (admin) ──────────────────────────────────
+  app.get("/api/analytics/contestant/:contestantId/competition/:competitionId/votes", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const contestantId = parseInt(req.params.contestantId);
+      const competitionId = parseInt(req.params.competitionId);
+      const votes = await firestoreVotes.getVotesByContestant(contestantId, competitionId);
+      const purchases = await firestoreVotePurchases.getByCompetition(competitionId);
+      const contestantPurchases = purchases.filter(p => p.contestantId === contestantId);
+      const contributors = contestantPurchases.map(p => ({
+        name: p.guestName || null,
+        email: p.guestEmail || null,
+        userId: p.userId || p.viewerId || null,
+        voteCount: p.voteCount,
+        amount: (p.amount || 0) / 100,
+        date: p.purchasedAt,
+      }));
+      const onlineVotes = votes.filter(v => v.source === "online").length;
+      const inPersonVotes = votes.filter(v => v.source === "in_person").length;
+      const referralVotes = votes.filter(v => v.refCode).length;
+      const freeVotes = votes.filter(v => !v.purchaseId).length;
+      const purchasedVotes = votes.filter(v => v.purchaseId).length;
+      res.json({
+        total: votes.length,
+        online: onlineVotes,
+        inPerson: inPersonVotes,
+        referral: referralVotes,
+        free: freeVotes,
+        purchased: purchasedVotes,
+        contributors,
+      });
+    } catch (err: any) {
+      console.error("Contestant vote detail error:", err);
+      res.status(500).json({ message: "Failed to get vote details" });
+    }
+  });
+
+  app.get("/api/analytics/competition/:competitionId/votes", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const competitionId = parseInt(req.params.competitionId);
+      const votes = await firestoreVotes.getVotesByCompetition(competitionId);
+      const purchases = await firestoreVotePurchases.getByCompetition(competitionId);
+      const contributors = purchases.map(p => ({
+        name: p.guestName || null,
+        email: p.guestEmail || null,
+        userId: p.userId || p.viewerId || null,
+        contestantId: p.contestantId,
+        voteCount: p.voteCount,
+        amount: (p.amount || 0) / 100,
+        date: p.purchasedAt,
+      }));
+      const onlineVotes = votes.filter(v => v.source === "online").length;
+      const inPersonVotes = votes.filter(v => v.source === "in_person").length;
+      const referralVotes = votes.filter(v => v.refCode).length;
+      const freeVotes = votes.filter(v => !v.purchaseId).length;
+      const purchasedVotes = votes.filter(v => v.purchaseId).length;
+      const byContestant: Record<number, number> = {};
+      votes.forEach(v => { byContestant[v.contestantId] = (byContestant[v.contestantId] || 0) + 1; });
+      res.json({
+        total: votes.length,
+        online: onlineVotes,
+        inPerson: inPersonVotes,
+        referral: referralVotes,
+        free: freeVotes,
+        purchased: purchasedVotes,
+        byContestant,
+        contributors,
+      });
+    } catch (err: any) {
+      console.error("Competition vote detail error:", err);
+      res.status(500).json({ message: "Failed to get vote details" });
+    }
+  });
+
   // ── Referral Code Routes ──────────────────────────────────────────
+  app.post("/api/referral/create", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { name, email, competitionId, contestantId } = req.body;
+      if (!name) return res.status(400).json({ message: "Name is required" });
+      const customId = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const code = await firestoreReferrals.generateCode(
+        customId,
+        "custom",
+        name,
+        null,
+        { ownerEmail: email || undefined, competitionId: competitionId || undefined, contestantId: contestantId || undefined, skipDuplicateCheck: true }
+      );
+      res.json(code);
+    } catch (err: any) {
+      console.error("Create referral code error:", err);
+      res.status(500).json({ message: "Failed to create referral code" });
+    }
+  });
+
   app.post("/api/referral/generate", firebaseAuth, async (req, res) => {
     try {
       const uid = req.firebaseUser!.uid;
@@ -3193,6 +3285,7 @@ export async function registerRoutes(
           id: c.id,
           name: c.talentProfile?.displayName || "Unknown",
           competitionTitle: c.competitionTitle,
+          competitionId: c.competitionId,
           totalVotes: voteBreakdown.total,
           onlineVotes: voteBreakdown.online,
           inPersonVotes: voteBreakdown.inPerson,
@@ -3209,7 +3302,7 @@ export async function registerRoutes(
         activeCompetitions: competitions.filter(c => c.status === "active" || c.status === "voting").length,
         totalContestants: allContestants.filter(c => c.applicationStatus === "approved").length,
         competitionStats: competitionStats.sort((a, b) => b.totalVotes - a.totalVotes),
-        topContestants: topContestants.slice(0, 20),
+        topContestants,
       });
     } catch (err: any) {
       console.error("Analytics overview error:", err);

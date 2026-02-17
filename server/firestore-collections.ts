@@ -121,9 +121,12 @@ export interface FirestoreVote {
 export interface FirestoreReferralCode {
   code: string;
   ownerId: string;
-  ownerType: "talent" | "host" | "admin";
+  ownerType: "talent" | "host" | "admin" | "custom";
   ownerName: string;
+  ownerEmail?: string | null;
   talentProfileId?: number | null;
+  competitionId?: number | null;
+  contestantId?: number | null;
   createdAt: string;
 }
 
@@ -661,6 +664,23 @@ export const firestoreVotes = {
       total: data.count,
     };
   },
+
+  async getVotesByContestant(contestantId: number, competitionId: number): Promise<FirestoreVote[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.VOTES)
+      .where("contestantId", "==", contestantId)
+      .where("competitionId", "==", competitionId)
+      .get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreVote);
+  },
+
+  async getVotesByCompetition(competitionId: number): Promise<FirestoreVote[]> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.VOTES)
+      .where("competitionId", "==", competitionId)
+      .get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreVote);
+  },
 };
 
 export const firestoreVotePurchases = {
@@ -1150,10 +1170,18 @@ export const firestoreInvitations = {
 };
 
 export const firestoreReferrals = {
-  async generateCode(ownerId: string, ownerType: "talent" | "host" | "admin", ownerName: string, talentProfileId?: number | null): Promise<FirestoreReferralCode> {
-    const existing = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).limit(1).get();
-    if (!existing.empty) {
-      return existing.docs[0].data() as FirestoreReferralCode;
+  async generateCode(
+    ownerId: string,
+    ownerType: "talent" | "host" | "admin" | "custom",
+    ownerName: string,
+    talentProfileId?: number | null,
+    opts?: { ownerEmail?: string; competitionId?: number; contestantId?: number; skipDuplicateCheck?: boolean }
+  ): Promise<FirestoreReferralCode> {
+    if (!opts?.skipDuplicateCheck) {
+      const existing = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).limit(1).get();
+      if (!existing.empty) {
+        return existing.docs[0].data() as FirestoreReferralCode;
+      }
     }
     const code = crypto.randomBytes(4).toString("hex").toUpperCase();
     const referral: FirestoreReferralCode = {
@@ -1161,7 +1189,10 @@ export const firestoreReferrals = {
       ownerId,
       ownerType,
       ownerName,
+      ownerEmail: opts?.ownerEmail || null,
       talentProfileId: talentProfileId || null,
+      competitionId: opts?.competitionId || null,
+      contestantId: opts?.contestantId || null,
       createdAt: new Date().toISOString(),
     };
     await db().collection(COLLECTIONS.REFERRAL_CODES).doc(code).set(referral);

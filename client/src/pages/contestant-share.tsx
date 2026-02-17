@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, MapPin, Tag, ChevronRight, Play, Heart, ShoppingCart, Calendar, Users, Share2, Check, Copy } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, getAuthToken } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import SiteNavbar from "@/components/site-navbar";
@@ -72,6 +72,19 @@ export default function ContestantSharePage() {
     enabled: !!categorySlug && !!compSlug && !!talentSlug,
   });
 
+  const { data: myRefCode } = useQuery<{ code: string } | null>({
+    queryKey: ["/api/referral/my-code"],
+    queryFn: async () => {
+      const token = await getAuthToken();
+      if (!token) return null;
+      const res = await fetch("/api/referral/my-code", { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
   useEffect(() => {
     if (data) {
       document.title = `${data.contestant.talentProfile.displayName} - ${data.competition.title} | HiFitComp`;
@@ -137,14 +150,35 @@ export default function ContestantSharePage() {
   const votePercentage = totalVotes > 0 ? Math.round((contestant.voteCount / totalVotes) * 100) : 0;
 
   const getShareData = () => {
-    const myRef = localStorage.getItem("hfc_ref");
+    const ownCode = myRefCode?.code;
+    const fallbackRef = localStorage.getItem("hfc_ref");
+    const refToUse = ownCode || fallbackRef;
     const baseUrl = `${window.location.origin}/${categorySlug}/${compSlug}/${talentSlug}`;
-    const shareUrl = myRef ? `${baseUrl}?ref=${myRef}` : baseUrl;
-    const shareText = `Hey, I need your vote to win! Vote for ${profile.displayName} in ${competition.title} on HiFitComp!`;
+    const shareUrl = refToUse ? `${baseUrl}?ref=${refToUse}` : baseUrl;
+    let shareText = `Hey, I need your vote to win! Vote for ${profile.displayName} in ${competition.title} on HiFitComp!`;
+    if (refToUse) {
+      shareText += `\n\nUse promo code ${refToUse} when you sign up or vote for bonus rewards!`;
+    }
     return { shareUrl, shareText };
   };
 
+  const ensureRefCode = async () => {
+    if (myRefCode?.code) return;
+    if (!user) return;
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+      await fetch("/api/referral/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/referral/my-code"] });
+    } catch {}
+  };
+
   const handleShare = async () => {
+    await ensureRefCode();
+    await new Promise(r => setTimeout(r, 300));
     const { shareUrl, shareText } = getShareData();
     if (navigator.share) {
       try {
