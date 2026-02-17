@@ -81,7 +81,8 @@ export default function CompetitionDetailPage() {
 
   const voteMutation = useMutation({
     mutationFn: async (contestantId: number) => {
-      await apiRequest("POST", `/api/competitions/${id}/vote`, { contestantId, source: voteSource });
+      const refCode = localStorage.getItem("hfc_ref") || undefined;
+      await apiRequest("POST", `/api/competitions/${id}/vote`, { contestantId, source: voteSource, refCode });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resolve/competition", categorySlug, compSlug] });

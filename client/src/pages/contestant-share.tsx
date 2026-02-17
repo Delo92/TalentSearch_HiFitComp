@@ -82,8 +82,10 @@ export default function ContestantSharePage() {
   const voteMutation = useMutation({
     mutationFn: async () => {
       if (!data) return;
+      const refCode = localStorage.getItem("hfc_ref") || undefined;
       await apiRequest("POST", `/api/competitions/${data.competition.id}/vote`, {
         contestantId: data.contestant.id,
+        refCode,
       });
     },
     onSuccess: () => {
@@ -135,7 +137,9 @@ export default function ContestantSharePage() {
   const votePercentage = totalVotes > 0 ? Math.round((contestant.voteCount / totalVotes) * 100) : 0;
 
   const getShareData = () => {
-    const shareUrl = `${window.location.origin}/${compSlug}/${talentSlug}`;
+    const myRef = localStorage.getItem("hfc_ref");
+    const baseUrl = `${window.location.origin}/${categorySlug}/${compSlug}/${talentSlug}`;
+    const shareUrl = myRef ? `${baseUrl}?ref=${myRef}` : baseUrl;
     const shareText = `Hey, I need your vote to win! Vote for ${profile.displayName} in ${competition.title} on HiFitComp!`;
     return { shareUrl, shareText };
   };

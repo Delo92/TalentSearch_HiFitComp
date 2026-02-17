@@ -22,6 +22,7 @@ import type { Competition, SiteLivery } from "@shared/schema";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useAuth, getAuthToken } from "@/hooks/use-auth";
 import { CompetitionDetailModal } from "@/components/competition-detail-modal";
+import AdminAnalyticsTab from "@/components/admin-analytics-tab";
 
 type CompetitionWithCreator = Competition & { createdBy?: string | null; coverVideo?: string | null };
 
@@ -1225,6 +1226,9 @@ export default function AdminDashboard({ user }: { user: any }) {
               </TabsTrigger>
               <TabsTrigger value="storage" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-storage">
                 <HardDrive className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Storage</span>
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-analytics">
+                <BarChart3 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Analytics</span>
               </TabsTrigger>
               <TabsTrigger value="settings" className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white" data-testid="tab-settings">
                 <Settings className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Settings</span>
@@ -2873,6 +2877,10 @@ export default function AdminDashboard({ user }: { user: any }) {
                 <div className="text-center py-12 text-white/40">No storage data available. Connect your Google Drive and Vimeo accounts to see usage.</div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <AdminAnalyticsTab />
           </TabsContent>
 
           <TabsContent value="settings">

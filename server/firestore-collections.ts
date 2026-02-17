@@ -21,6 +21,8 @@ const COLLECTIONS = {
   HOST_SETTINGS: "hostSettings",
   HOST_SUBMISSIONS: "hostSubmissions",
   INVITATIONS: "invitations",
+  REFERRAL_CODES: "referralCodes",
+  REFERRAL_STATS: "referralStats",
 } as const;
 
 function db() {
@@ -112,7 +114,28 @@ export interface FirestoreVote {
   userId: string | null;
   purchaseId: number | null;
   source: "online" | "in_person";
+  refCode?: string | null;
   votedAt: string;
+}
+
+export interface FirestoreReferralCode {
+  code: string;
+  ownerId: string;
+  ownerType: "talent" | "host" | "admin";
+  ownerName: string;
+  talentProfileId?: number | null;
+  createdAt: string;
+}
+
+export interface FirestoreReferralStats {
+  code: string;
+  ownerId: string;
+  ownerType: "talent" | "host" | "admin";
+  ownerName: string;
+  totalVotesDriven: number;
+  uniqueVoters: number;
+  voterIps: string[];
+  updatedAt: admin.firestore.Timestamp;
 }
 
 export interface FirestoreVoteCount {
@@ -514,6 +537,7 @@ export const firestoreVotes = {
     const vote: FirestoreVote = {
       ...data,
       source: data.source || "online",
+      refCode: data.refCode || null,
       id,
       votedAt: new Date().toISOString(),
     };
@@ -1122,5 +1146,79 @@ export const firestoreInvitations = {
 
   async delete(id: string): Promise<void> {
     await db().collection(COLLECTIONS.INVITATIONS).doc(id).delete();
+  },
+};
+
+export const firestoreReferrals = {
+  async generateCode(ownerId: string, ownerType: "talent" | "host" | "admin", ownerName: string, talentProfileId?: number | null): Promise<FirestoreReferralCode> {
+    const existing = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).limit(1).get();
+    if (!existing.empty) {
+      return existing.docs[0].data() as FirestoreReferralCode;
+    }
+    const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+    const referral: FirestoreReferralCode = {
+      code,
+      ownerId,
+      ownerType,
+      ownerName,
+      talentProfileId: talentProfileId || null,
+      createdAt: new Date().toISOString(),
+    };
+    await db().collection(COLLECTIONS.REFERRAL_CODES).doc(code).set(referral);
+    await db().collection(COLLECTIONS.REFERRAL_STATS).doc(code).set({
+      code,
+      ownerId,
+      ownerType,
+      ownerName,
+      totalVotesDriven: 0,
+      uniqueVoters: 0,
+      voterIps: [],
+      updatedAt: now(),
+    });
+    return referral;
+  },
+
+  async getCodeByOwner(ownerId: string): Promise<FirestoreReferralCode | null> {
+    const snapshot = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).limit(1).get();
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as FirestoreReferralCode;
+  },
+
+  async getCodeByCode(code: string): Promise<FirestoreReferralCode | null> {
+    const doc = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(code).get();
+    if (!doc.exists) return null;
+    return doc.data() as FirestoreReferralCode;
+  },
+
+  async getAllCodes(): Promise<FirestoreReferralCode[]> {
+    const snapshot = await db().collection(COLLECTIONS.REFERRAL_CODES).get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreReferralCode);
+  },
+
+  async getAllStats(): Promise<FirestoreReferralStats[]> {
+    const snapshot = await db().collection(COLLECTIONS.REFERRAL_STATS).get();
+    return snapshot.docs.map(doc => doc.data() as FirestoreReferralStats);
+  },
+
+  async trackReferralVote(refCode: string, voterIp: string, voteCount: number = 1): Promise<void> {
+    const statsRef = db().collection(COLLECTIONS.REFERRAL_STATS).doc(refCode);
+    const statsDoc = await statsRef.get();
+    if (!statsDoc.exists) return;
+    const data = statsDoc.data() as FirestoreReferralStats;
+    const isNewVoter = !data.voterIps.includes(voterIp);
+    const updates: any = {
+      totalVotesDriven: admin.firestore.FieldValue.increment(voteCount),
+      updatedAt: now(),
+    };
+    if (isNewVoter) {
+      updates.uniqueVoters = admin.firestore.FieldValue.increment(1);
+      updates.voterIps = admin.firestore.FieldValue.arrayUnion(voterIp);
+    }
+    await statsRef.update(updates);
+  },
+
+  async deleteCode(code: string): Promise<void> {
+    await db().collection(COLLECTIONS.REFERRAL_CODES).doc(code).delete();
+    await db().collection(COLLECTIONS.REFERRAL_STATS).doc(code).delete();
   },
 };

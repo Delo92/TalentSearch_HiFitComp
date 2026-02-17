@@ -27,6 +27,7 @@ import {
   firestoreHostSettings,
   firestoreHostSubmissions,
   firestoreInvitations,
+  firestoreReferrals,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import {
@@ -636,6 +637,7 @@ export async function registerRoutes(
   const voteBodySchema = z.object({
     contestantId: z.number().int().positive("contestantId is required"),
     source: z.enum(["online", "in_person"]).optional().default("online"),
+    refCode: z.string().optional().nullable(),
   });
 
   app.post("/api/competitions/:id/vote", async (req, res) => {
@@ -667,13 +669,23 @@ export async function registerRoutes(
       return res.status(429).json({ message: `Daily vote limit reached (${comp.maxVotesPerDay} per day)` });
     }
 
-    const { source } = parsed.data;
+    const { source, refCode } = parsed.data;
     const vote = await storage.castVote({
       contestantId,
       competitionId: compId,
       voterIp,
       source,
+      refCode: refCode || null,
     });
+
+    if (refCode) {
+      try {
+        await firestoreReferrals.trackReferralVote(refCode, voterIp, 1);
+      } catch (e) {
+        console.error("Referral tracking error:", e);
+      }
+    }
+
     res.status(201).json(vote);
   });
 
@@ -3081,6 +3093,127 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Sitemap error:", err);
       res.status(500).send("Error generating sitemap");
+    }
+  });
+
+  // ── Referral Code Routes ──────────────────────────────────────────
+  app.post("/api/referral/generate", firebaseAuth, async (req, res) => {
+    try {
+      const uid = req.firebaseUser!.uid;
+      const fsUser = await getFirestoreUser(uid);
+      if (!fsUser) return res.status(404).json({ message: "User not found" });
+
+      let ownerType: "talent" | "host" | "admin" = "talent";
+      if (fsUser.level === "admin") ownerType = "admin";
+      else if (fsUser.level === "host") ownerType = "host";
+
+      const profile = await storage.getTalentProfileByUserId(uid);
+      const ownerName = profile?.displayName || fsUser.email || uid;
+      const code = await firestoreReferrals.generateCode(uid, ownerType, ownerName, profile?.id || null);
+      res.json(code);
+    } catch (err: any) {
+      console.error("Generate referral code error:", err);
+      res.status(500).json({ message: "Failed to generate referral code" });
+    }
+  });
+
+  app.get("/api/referral/my-code", firebaseAuth, async (req, res) => {
+    try {
+      const uid = req.firebaseUser!.uid;
+      const code = await firestoreReferrals.getCodeByOwner(uid);
+      res.json(code || null);
+    } catch (err: any) {
+      console.error("Get referral code error:", err);
+      res.status(500).json({ message: "Failed to get referral code" });
+    }
+  });
+
+  app.get("/api/referral/stats", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const stats = await firestoreReferrals.getAllStats();
+      const codes = await firestoreReferrals.getAllCodes();
+      res.json({ stats, codes });
+    } catch (err: any) {
+      console.error("Get referral stats error:", err);
+      res.status(500).json({ message: "Failed to get referral stats" });
+    }
+  });
+
+  app.delete("/api/referral/:code", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      await firestoreReferrals.deleteCode(req.params.code);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Delete referral code error:", err);
+      res.status(500).json({ message: "Failed to delete referral code" });
+    }
+  });
+
+  // ── Analytics Routes ─────────────────────────────────────────────
+  app.get("/api/analytics/overview", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const competitions = await storage.getCompetitions();
+      const allContestants = await storage.getAllContestants();
+
+      let totalVotes = 0;
+      let totalOnline = 0;
+      let totalInPerson = 0;
+      let totalRevenue = 0;
+
+      const competitionStats = [];
+      for (const comp of competitions) {
+        const breakdown = await storage.getVoteBreakdownByCompetition(comp.id);
+        totalVotes += breakdown.total;
+        totalOnline += breakdown.online;
+        totalInPerson += breakdown.inPerson;
+
+        const purchases = await firestoreVotePurchases.getByCompetition(comp.id);
+        const revenue = purchases.reduce((sum, p) => sum + (p.amount || 0), 0);
+        totalRevenue += revenue;
+
+        const contestants = allContestants.filter(c => c.competitionId === comp.id && c.applicationStatus === "approved");
+
+        competitionStats.push({
+          id: comp.id,
+          title: comp.title,
+          category: comp.category,
+          status: comp.status,
+          totalVotes: breakdown.total,
+          onlineVotes: breakdown.online,
+          inPersonVotes: breakdown.inPerson,
+          contestantCount: contestants.length,
+          revenue: revenue / 100,
+        });
+      }
+
+      const topContestants = [];
+      for (const c of allContestants.filter(ct => ct.applicationStatus === "approved")) {
+        const voteBreakdown = await storage.getContestantVoteBreakdown(c.id, c.competitionId);
+        topContestants.push({
+          id: c.id,
+          name: c.talentProfile?.displayName || "Unknown",
+          competitionTitle: c.competitionTitle,
+          totalVotes: voteBreakdown.total,
+          onlineVotes: voteBreakdown.online,
+          inPersonVotes: voteBreakdown.inPerson,
+        });
+      }
+      topContestants.sort((a, b) => b.totalVotes - a.totalVotes);
+
+      res.json({
+        totalVotes,
+        totalOnline,
+        totalInPerson,
+        totalRevenue: totalRevenue / 100,
+        totalCompetitions: competitions.length,
+        activeCompetitions: competitions.filter(c => c.status === "active" || c.status === "voting").length,
+        totalContestants: allContestants.filter(c => c.applicationStatus === "approved").length,
+        competitionStats: competitionStats.sort((a, b) => b.totalVotes - a.totalVotes),
+        topContestants: topContestants.slice(0, 20),
+      });
+    } catch (err: any) {
+      console.error("Analytics overview error:", err);
+      res.status(500).json({ message: "Failed to get analytics" });
     }
   });
 

@@ -44,7 +44,7 @@ export interface IStorage {
   getContestant(competitionId: number, talentProfileId: number): Promise<FirestoreContestant | null>;
   getAllContestants(): Promise<(FirestoreContestant & { talentProfile: FirestoreTalentProfile; competitionTitle: string })[]>;
 
-  castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null; source?: "online" | "in_person" }): Promise<FirestoreVote>;
+  castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null; source?: "online" | "in_person"; refCode?: string | null }): Promise<FirestoreVote>;
   getVoteCount(contestantId: number): Promise<number>;
   getTotalVotesByCompetition(competitionId: number): Promise<number>;
   getVoteBreakdownByCompetition(competitionId: number): Promise<{ online: number; inPerson: number; total: number }>;
@@ -201,7 +201,7 @@ export class FirestoreStorage implements IStorage {
     return results;
   }
 
-  async castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null; source?: "online" | "in_person" }): Promise<FirestoreVote> {
+  async castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null; source?: "online" | "in_person"; refCode?: string | null }): Promise<FirestoreVote> {
     return firestoreVotes.cast({
       contestantId: vote.contestantId,
       competitionId: vote.competitionId,
@@ -209,6 +209,7 @@ export class FirestoreStorage implements IStorage {
       userId: vote.userId || null,
       purchaseId: vote.purchaseId || null,
       source: vote.source || "online",
+      refCode: vote.refCode || null,
     });
   }
 
