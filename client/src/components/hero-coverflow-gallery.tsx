@@ -15,7 +15,7 @@ interface GalleryItem {
 }
 
 export default function HeroCoverflowGallery() {
-  const { data: items = [] } = useQuery<GalleryItem[]>({
+  const { data: items = [], isLoading } = useQuery<GalleryItem[]>({
     queryKey: ["/api/hero-gallery"],
     staleTime: 60000,
   });
@@ -87,7 +87,50 @@ export default function HeroCoverflowGallery() {
     };
   }, [navigate]);
 
-  if (totalItems === 0) return null;
+  if (isLoading || totalItems === 0) {
+    return (
+      <div className="w-full" data-testid="hero-coverflow-gallery-skeleton">
+        <div className="coverflow-container" style={{ perspective: "1200px" }}>
+          <div className="coverflow-track">
+            {[0, 1, 2, 3, 4].map((i) => {
+              const offset = i - 2;
+              const absOffset = Math.abs(offset);
+              const sign = Math.sign(offset);
+              const translateX = offset * 200;
+              const translateZ = -absOffset * 180;
+              const rotateY = -sign * Math.min(absOffset * 55, 55);
+              const opacity = absOffset > 3 ? 0 : 1 - absOffset * 0.2;
+              const scale = 1 - absOffset * 0.08;
+              return (
+                <div
+                  key={i}
+                  className="coverflow-item"
+                  style={{
+                    transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+                    opacity,
+                    zIndex: 10 - absOffset,
+                  }}
+                >
+                  <div className="coverflow-cover">
+                    <div className="w-full h-full bg-black/40 animate-pulse rounded" />
+                  </div>
+                  <div className="coverflow-info">
+                    <div className="h-4 w-32 bg-white/10 animate-pulse rounded mx-auto mb-2" />
+                    <div className="h-3 w-20 bg-white/10 animate-pulse rounded mx-auto" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex justify-center gap-2 mt-4">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="w-2 h-2 rounded-full bg-white/20 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full" data-testid="hero-coverflow-gallery">
