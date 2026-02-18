@@ -129,7 +129,7 @@ export default function HeroCoverflowGallery() {
                 }}
                 data-testid={`gallery-item-${item.categoryId}`}
               >
-                <Link href={`/${slugify(item.categoryName)}`}>
+                <Link href={`/${slugify(item.categoryName || "")}`}>
                   <div className="coverflow-vote-badge">
                     <span className="coverflow-vote-dot" />
                     <span className="coverflow-vote-count">{item.voteCount.toLocaleString()}</span>

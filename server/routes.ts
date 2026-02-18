@@ -416,13 +416,14 @@ export async function registerRoutes(
               !l.imageKey.endsWith("_desc") &&
               l.imageUrl
             );
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
             for (const imgItem of catImageItems) {
               const titleKey = imgItem.imageKey + "_title";
               const titleItem = liveryItems.find((t: any) => t.imageKey === titleKey);
               if (titleItem) {
-                const titleText = (titleItem.textContent || titleItem.defaultText || "").toLowerCase().trim();
-                const catNameLower = (cat.name || "").toLowerCase().trim();
-                if (titleText === catNameLower || catNameLower.includes(titleText) || titleText.includes(catNameLower)) {
+                const titleText = normalize(titleItem.textContent || titleItem.defaultText || "");
+                const catNameNorm = normalize(cat.name || "");
+                if (titleText === catNameNorm || catNameNorm.includes(titleText) || titleText.includes(catNameNorm)) {
                   thumbnail = imgItem.imageUrl;
                   if (imgItem.mediaType === "video") coverVideoUrl = imgItem.imageUrl;
                   break;
