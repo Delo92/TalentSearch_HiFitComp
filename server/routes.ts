@@ -432,13 +432,10 @@ export async function registerRoutes(
             }
           }
 
-          const liveryThumbnail = thumbnail;
           if (topContestant && topVoteCount > 0 && topCompetition) {
             displayName = topContestant.talentProfile.stageName || topContestant.talentProfile.displayName;
-            if (!liveryThumbnail || liveryThumbnail === cat.imageUrl) {
-              if (topContestant.talentProfile.imageUrls?.length > 0) {
-                thumbnail = topContestant.talentProfile.imageUrls[0];
-              }
+            if (topContestant.talentProfile.imageUrls?.length > 0) {
+              thumbnail = topContestant.talentProfile.imageUrls[0];
             }
             coverVideoUrl = topCompetition.coverVideo || null;
             try {
