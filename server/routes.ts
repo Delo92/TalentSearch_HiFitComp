@@ -2193,27 +2193,47 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Host applications are currently closed" });
       }
 
-      const { fullName, email, phone, organization, address, city, state, zip, eventName, eventDescription, eventCategory, eventDate, socialLinks, mediaUrls, dataDescriptor, dataValue } = req.body;
+      const { fullName, email, phone, organization, address, city, state, zip, eventName, eventDescription, eventCategory, eventDate, socialLinks, mediaUrls, dataDescriptor, dataValue, selectedPackageName, selectedPackagePrice } = req.body;
       if (!fullName || !email || !eventName) {
         return res.status(400).json({ message: "Name, email, and event name are required" });
       }
 
       let transactionId: string | null = null;
       let amountPaid = 0;
-      if (settings.mode === "purchase" && settings.price > 0) {
+      let verifiedPackageName = selectedPackageName || null;
+      let verifiedPackagePrice = 0;
+
+      if (selectedPackageName) {
+        const db = getFirestore();
+        const settingsDoc = await db.collection("platformSettings").doc("global").get();
+        const platformData = settingsDoc.exists ? settingsDoc.data() : null;
+        const packages = platformData?.hostingPackages || [
+          { name: "Starter", price: 49, maxContestants: 5, revenueSharePercent: 20 },
+          { name: "Pro", price: 149, maxContestants: 15, revenueSharePercent: 35 },
+          { name: "Premium", price: 399, maxContestants: 25, revenueSharePercent: 50 },
+        ];
+        const matchedPkg = packages.find((p: any) => p.name === selectedPackageName);
+        if (!matchedPkg) {
+          return res.status(400).json({ message: "Invalid hosting package selected" });
+        }
+        verifiedPackageName = matchedPkg.name;
+        verifiedPackagePrice = matchedPkg.price;
+      }
+
+      if (verifiedPackagePrice > 0) {
         if (!dataDescriptor || !dataValue) {
-          return res.status(400).json({ message: "Payment is required to host" });
+          return res.status(400).json({ message: "Payment is required for the selected hosting package" });
         }
         const chargeResult = await chargePaymentNonce(
-          settings.price / 100,
+          verifiedPackagePrice,
           dataDescriptor,
           dataValue,
-          `Host event application: ${eventName}`,
+          `Host package (${verifiedPackageName}): ${eventName}`,
           email,
           fullName,
         );
         transactionId = chargeResult.transactionId;
-        amountPaid = settings.price;
+        amountPaid = Math.round(verifiedPackagePrice * 100);
       }
 
       const submission = await firestoreHostSubmissions.create({
@@ -2233,6 +2253,8 @@ export async function registerRoutes(
         mediaUrls: mediaUrls || [],
         transactionId,
         amountPaid,
+        selectedPackageName: verifiedPackageName || null,
+        selectedPackagePrice: verifiedPackagePrice || 0,
       });
 
       res.status(201).json(submission);

@@ -3112,19 +3112,8 @@ export default function AdminDashboard({ user }: { user: any }) {
                         />
                         <p className="text-[10px] text-white/25 mt-1">Fee charged when someone nominates a contestant (0 = free)</p>
                       </div>
-                      <div>
-                        <Label className="text-white/50 text-xs">Host Application Fee ($)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={form.hostPrice ?? 0}
-                          onChange={(e) => updateForm("hostPrice", parseFloat(e.target.value) || 0)}
-                          className="bg-white/[0.08] border-white/20 text-white"
-                          data-testid="input-host-price"
-                        />
-                        <p className="text-[10px] text-white/25 mt-1">Fee charged when someone applies to become a host (0 = free)</p>
-                      </div>
                     </div>
+                    <p className="text-[10px] text-white/25 mt-2">Host application fee is determined by the hosting package selected below.</p>
                   </div>
 
                   <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">

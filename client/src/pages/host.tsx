@@ -22,6 +22,18 @@ interface HostSettings {
   isActive: boolean;
 }
 
+interface HostingPackage {
+  name: string;
+  price: number;
+  maxContestants: number;
+  revenueSharePercent: number;
+  description: string;
+}
+
+interface PlatformSettings {
+  hostingPackages: HostingPackage[];
+}
+
 interface PaymentConfig {
   apiLoginId: string;
   clientKey: string;
@@ -71,6 +83,7 @@ export default function HostPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [acceptLoaded, setAcceptLoaded] = useState(false);
+  const [selectedPackageIdx, setSelectedPackageIdx] = useState<number | null>(null);
 
   const { data: settings, isLoading } = useQuery<HostSettings>({
     queryKey: ["/api/host/settings"],
@@ -80,14 +93,22 @@ export default function HostPage() {
     queryKey: ["/api/payment-config"],
   });
 
+  const { data: platformSettings } = useQuery<PlatformSettings>({
+    queryKey: ["/api/platform-settings"],
+  });
+
   const { data: competitions } = useQuery<Competition[]>({
     queryKey: ["/api/competitions"],
   });
 
+  const hostingPackages = platformSettings?.hostingPackages || [];
+  const selectedPackage = selectedPackageIdx !== null ? hostingPackages[selectedPackageIdx] : null;
+  const selectedPrice = selectedPackage?.price || 0;
+
   const referenceCompetition = competitions?.find(c => c.id === referenceCompetitionId) || null;
 
   useEffect(() => {
-    if (paymentConfig && settings?.mode === "purchase" && !acceptLoaded) {
+    if (paymentConfig && hostingPackages.length > 0 && hostingPackages.some(p => p.price > 0) && !acceptLoaded) {
       const scriptUrl = paymentConfig.environment === "production"
         ? "https://js.authorize.net/v1/Accept.js"
         : "https://jstest.authorize.net/v1/Accept.js";
@@ -99,7 +120,7 @@ export default function HostPage() {
       script.onload = () => setAcceptLoaded(true);
       document.head.appendChild(script);
     }
-  }, [paymentConfig, settings, acceptLoaded]);
+  }, [paymentConfig, hostingPackages, acceptLoaded]);
 
   const updateField = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -119,6 +140,12 @@ export default function HostPage() {
 
     setProcessing(true);
 
+    if (selectedPrice > 0 && !selectedPackage) {
+      toast({ title: "Please select a hosting package", variant: "destructive" });
+      setProcessing(false);
+      return;
+    }
+
     const submitData = async (dataDescriptor?: string, dataValue?: string) => {
       try {
         await apiRequest("POST", "/api/host/submit", {
@@ -127,6 +154,8 @@ export default function HostPage() {
           mediaUrls: [],
           dataDescriptor,
           dataValue,
+          selectedPackageName: selectedPackage?.name || null,
+          selectedPackagePrice: selectedPrice,
         });
         setSuccess(true);
         toast({ title: "Application submitted!", description: "We'll review your event proposal and get back to you." });
@@ -137,7 +166,7 @@ export default function HostPage() {
       }
     };
 
-    if (settings.mode === "purchase" && settings.price > 0) {
+    if (selectedPrice > 0) {
       if (!cardNumber || !expMonth || !expYear || !cvv) {
         toast({ title: "Please enter your card details", variant: "destructive" });
         setProcessing(false);
@@ -172,7 +201,7 @@ export default function HostPage() {
     } else {
       await submitData();
     }
-  }, [settings, form, cardNumber, expMonth, expYear, cvv, paymentConfig, toast]);
+  }, [settings, form, cardNumber, expMonth, expYear, cvv, paymentConfig, toast, selectedPrice, selectedPackage]);
 
   if (success) {
     return (
@@ -266,12 +295,38 @@ export default function HostPage() {
           </div>
         )}
 
-        {settings.mode === "purchase" && settings.price > 0 && (
-          <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-8">
-            <p className="text-[#FF5A09] font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
-              Hosting Fee: ${(settings.price / 100).toFixed(2)}
-            </p>
-            <p className="text-white/40 text-xs mt-1">Payment is required to submit your event proposal.</p>
+        {hostingPackages.length > 0 && (
+          <div className="mb-10">
+            <p className="text-[#5f5f5f] text-sm mb-1">Choose Your Plan</p>
+            <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
+              HOSTING PACKAGE
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {hostingPackages.map((pkg, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setSelectedPackageIdx(idx)}
+                  className={`text-left p-5 border transition-all duration-300 ${
+                    selectedPackageIdx === idx
+                      ? "border-[#FF5A09] bg-[#FF5A09]/10"
+                      : "border-white/10 bg-white/[0.03] hover:border-white/30"
+                  }`}
+                  data-testid={`package-option-${idx}`}
+                >
+                  <p className="text-white font-bold uppercase text-sm tracking-wider">{pkg.name}</p>
+                  <p className="text-[#FF5A09] text-2xl font-bold mt-2">${pkg.price}</p>
+                  <p className="text-white/40 text-xs mt-2">{pkg.description}</p>
+                  <div className="mt-3 space-y-1">
+                    <p className="text-white/50 text-xs">Up to {pkg.maxContestants} contestants</p>
+                    <p className="text-white/50 text-xs">{pkg.revenueSharePercent}% revenue share</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {selectedPackageIdx === null && (
+              <p className="text-white/30 text-xs mt-3">Select a package to continue.</p>
+            )}
           </div>
         )}
 
@@ -374,12 +429,18 @@ export default function HostPage() {
           })}
         </div>
 
-        {settings.mode === "purchase" && settings.price > 0 && (
+        {selectedPrice > 0 && selectedPackage && (
           <div className="mb-10">
             <p className="text-[#5f5f5f] text-sm mb-1">Step 3</p>
             <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
               PAYMENT
             </h3>
+            <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-6">
+              <p className="text-[#FF5A09] font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
+                {selectedPackage.name} Package: ${selectedPrice}
+              </p>
+              <p className="text-white/40 text-xs mt-1">Payment for your selected hosting package.</p>
+            </div>
             <div className="space-y-4">
               <div>
                 <Label className="text-white/60 uppercase text-xs tracking-wider">Card Number</Label>
@@ -409,14 +470,14 @@ export default function HostPage() {
 
         <button
           onClick={handleSubmit}
-          disabled={processing}
+          disabled={processing || (hostingPackages.length > 0 && selectedPackageIdx === null)}
           className="w-full bg-[#FF5A09] text-white font-bold text-base uppercase px-8 leading-[52px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           data-testid="button-submit"
         >
-          {settings.mode === "purchase" && settings.price > 0 ? (
+          {selectedPrice > 0 ? (
             <>
               <CreditCard className="h-5 w-5" />
-              {processing ? "PROCESSING..." : `PAY $${(settings.price / 100).toFixed(2)} & SUBMIT`}
+              {processing ? "PROCESSING..." : `PAY $${selectedPrice} & SUBMIT`}
             </>
           ) : (
             <>
@@ -426,7 +487,7 @@ export default function HostPage() {
           )}
         </button>
 
-        {settings.mode === "purchase" && (
+        {selectedPrice > 0 && (
           <p className="text-white/30 text-xs text-center mt-4">
             Payments processed securely via Authorize.Net.
           </p>
