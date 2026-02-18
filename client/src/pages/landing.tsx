@@ -114,7 +114,7 @@ export default function Landing() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="relative text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-white font-normal capitalize inline-block tracking-[8px] sm:tracking-[15px] md:tracking-[30px]"
+            className="relative text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-white font-normal capitalize inline-block tracking-[5px] sm:tracking-[10px] md:tracking-[15px]"
           >
             <span
               className="absolute top-0 left-0 w-full h-full"
