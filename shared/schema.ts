@@ -32,6 +32,7 @@ export const competitions = pgTable("competitions", {
   description: text("description"),
   category: text("category").notNull(),
   coverImage: text("cover_image"),
+  coverVideo: text("cover_video"),
   status: competitionStatusEnum("status").notNull().default("draft"),
   voteCost: integer("vote_cost").notNull().default(0),
   maxVotesPerDay: integer("max_votes_per_day").notNull().default(10),
