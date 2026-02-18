@@ -407,6 +407,7 @@ export async function registerRoutes(
             category: comp.category,
             thumbnail,
             videoEmbedUrl,
+            coverVideoUrl: comp.coverVideo || null,
             topContestantName: displayName,
             voteCount: topContestant?.voteCount || 0,
           };

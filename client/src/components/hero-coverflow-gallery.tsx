@@ -9,6 +9,7 @@ interface GalleryItem {
   category: string;
   thumbnail: string | null;
   videoEmbedUrl: string | null;
+  coverVideoUrl: string | null;
   topContestantName: string | null;
   voteCount: number;
 }
@@ -147,6 +148,15 @@ export default function HeroCoverflowGallery() {
                         />
                         <div className="absolute inset-0 z-10" />
                       </>
+                    ) : item.coverVideoUrl ? (
+                      <video
+                        src={item.coverVideoUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <img
                         src={item.thumbnail || "/images/template/bg-1.jpg"}
