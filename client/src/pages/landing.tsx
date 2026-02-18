@@ -32,7 +32,7 @@ export default function Landing() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-  const { getImage, getMedia, getText } = useLivery();
+  const { items, getImage, getMedia, getText } = useLivery();
   const { data: dynamicCategories } = useQuery<any[]>({ queryKey: ["/api/categories"] });
 
   const defaultImages: Record<string, string> = {
@@ -42,6 +42,31 @@ export default function Landing() {
     "Dance": "/images/template/a4.jpg",
     "Comedy": "/images/template/e1.jpg",
     "Acting": "/images/template/e2.jpg",
+  };
+
+  const getCategoryImage = (cat: any) => {
+    const nameKey = (cat.name || "").toLowerCase().replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+    const liveryKey = `category_${nameKey}`;
+    const liveryImg = getImage(liveryKey, "");
+    if (liveryImg && liveryImg !== "") return liveryImg;
+
+    const liveryItems = items || [];
+    const catImageKeys = liveryItems
+      .filter(i => i.imageKey.startsWith("category_") && i.imageKey.endsWith("_title") && i.itemType === "text")
+      .map(i => ({ baseKey: i.imageKey.replace("_title", ""), title: (i.textContent || i.defaultText || "").toLowerCase().trim() }));
+    const catNameLower = (cat.name || "").toLowerCase().trim();
+    const match = catImageKeys.find(k =>
+      k.title === catNameLower ||
+      catNameLower.includes(k.title) ||
+      k.title.includes(catNameLower)
+    );
+    if (match) {
+      const matchImg = getImage(match.baseKey, "");
+      if (matchImg && matchImg !== "") return matchImg;
+    }
+
+    if (cat.imageUrl) return cat.imageUrl;
+    return defaultImages[cat.name] || "/images/template/a1.jpg";
   };
 
   const fallbackCategories = [
@@ -163,7 +188,7 @@ export default function Landing() {
 
           <div className={`grid grid-cols-1 sm:grid-cols-2 ${(activeCategories.length) <= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-6`}>
             {activeCategories.map((cat: any, i: number) => {
-              const imgUrl = cat.imageUrl || defaultImages[cat.name] || "/images/template/a1.jpg";
+              const imgUrl = getCategoryImage(cat);
               return (
               <Link href="/competitions" key={cat.id}>
                 <div
