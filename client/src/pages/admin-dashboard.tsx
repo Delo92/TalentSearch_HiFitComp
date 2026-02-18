@@ -11,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HardDrive, RefreshCw, FolderOpen, QrCode, MapPin, Download } from "lucide-react";
+import { Trophy, BarChart3, Users, Plus, Check, X as XIcon, LogOut, Vote, Flame, Image, Upload, RotateCcw, UserPlus, Megaphone, Settings, DollarSign, Eye, Search, ExternalLink, Music, Video, Calendar, Award, UserCheck, Mail, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HardDrive, RefreshCw, FolderOpen, QrCode, MapPin, Download, Trash2 } from "lucide-react";
 import { InviteDialog, CreateUserDialog } from "@/components/invite-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Link } from "wouter";
@@ -884,6 +884,21 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
   });
 
+  const deleteCompetitionMutation = useMutation({
+    mutationFn: async (compId: number) => {
+      await apiRequest("DELETE", `/api/competitions/${compId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hero-gallery"] });
+      toast({ title: "Competition deleted" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Delete failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
   const resetLiveryMutation = useMutation({
     mutationFn: async (imageKey: string) => {
       await apiRequest("DELETE", `/api/admin/livery/${imageKey}`);
@@ -1317,6 +1332,19 @@ export default function AdminDashboard({ user }: { user: any }) {
                           <XIcon className="h-4 w-4" />
                         </Button>
                       )}
+                      <Button
+                        size="icon"
+                        onClick={() => {
+                          if (window.confirm(`Delete "${comp.title}"? This will remove the competition and all its data permanently.`)) {
+                            deleteCompetitionMutation.mutate(comp.id);
+                          }
+                        }}
+                        disabled={deleteCompetitionMutation.isPending}
+                        className="bg-black/60 border-0 text-red-500"
+                        data-testid={`button-delete-comp-${comp.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                     <div className="relative z-10 p-4">
                       <h3 className="font-bold text-lg text-white drop-shadow-md">{comp.title}</h3>
