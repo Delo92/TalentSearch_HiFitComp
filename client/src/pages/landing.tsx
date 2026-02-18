@@ -44,29 +44,30 @@ export default function Landing() {
     "Acting": "/images/template/e2.jpg",
   };
 
-  const getCategoryImage = (cat: any) => {
+  const getCategoryMedia = (cat: any): { url: string; type: "image" | "video" } => {
     const nameKey = (cat.name || "").toLowerCase().replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
     const liveryKey = `category_${nameKey}`;
-    const liveryImg = getImage(liveryKey, "");
-    if (liveryImg && liveryImg !== "") return liveryImg;
+    const liveryMedia = getMedia(liveryKey, "");
+    if (liveryMedia.url && liveryMedia.url !== "") return liveryMedia;
 
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
     const liveryItems = items || [];
     const catImageKeys = liveryItems
       .filter(i => i.imageKey.startsWith("category_") && i.imageKey.endsWith("_title") && i.itemType === "text")
-      .map(i => ({ baseKey: i.imageKey.replace("_title", ""), title: (i.textContent || i.defaultText || "").toLowerCase().trim() }));
-    const catNameLower = (cat.name || "").toLowerCase().trim();
+      .map(i => ({ baseKey: i.imageKey.replace("_title", ""), title: normalize(i.textContent || i.defaultText || "") }));
+    const catNameNorm = normalize(cat.name || "");
     const match = catImageKeys.find(k =>
-      k.title === catNameLower ||
-      catNameLower.includes(k.title) ||
-      k.title.includes(catNameLower)
+      k.title === catNameNorm ||
+      catNameNorm.includes(k.title) ||
+      k.title.includes(catNameNorm)
     );
     if (match) {
-      const matchImg = getImage(match.baseKey, "");
-      if (matchImg && matchImg !== "") return matchImg;
+      const matchMedia = getMedia(match.baseKey, "");
+      if (matchMedia.url && matchMedia.url !== "") return matchMedia;
     }
 
-    if (cat.imageUrl) return cat.imageUrl;
-    return defaultImages[cat.name] || "/images/template/a1.jpg";
+    if (cat.imageUrl) return { url: cat.imageUrl, type: "image" };
+    return { url: defaultImages[cat.name] || "/images/template/a1.jpg", type: "image" };
   };
 
   const fallbackCategories = [
@@ -190,7 +191,7 @@ export default function Landing() {
 
           <div className={`grid grid-cols-1 sm:grid-cols-2 ${(activeCategories.length) <= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-6`}>
             {activeCategories.map((cat: any, i: number) => {
-              const imgUrl = getCategoryImage(cat);
+              const media = getCategoryMedia(cat);
               return (
               <Link href="/competitions" key={cat.id}>
                 <div
@@ -199,7 +200,11 @@ export default function Landing() {
                   data-testid={`card-category-${cat.name.toLowerCase()}`}
                 >
                   <div className="overflow-hidden">
-                    <img src={imgUrl} alt={cat.name} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" />
+                    {media.type === "video" ? (
+                      <video src={media.url} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" autoPlay muted loop playsInline />
+                    ) : (
+                      <img src={media.url} alt={cat.name} className="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-110" />
+                    )}
                   </div>
                   <div className="bg-black group-hover:bg-[#f5f9fa] text-center py-6 px-4 transition-all duration-500">
                     <h4 className="text-white group-hover:text-black uppercase text-base font-bold mb-2 transition-colors duration-500">
