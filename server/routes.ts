@@ -105,8 +105,8 @@ function isVideoFile(filename: string): boolean {
 }
 
 async function getVideoDurationFromBuffer(buffer: Buffer): Promise<number> {
-  const { execSync } = require("child_process");
-  const os = require("os");
+  const { execSync } = await import("child_process");
+  const os = await import("os");
   const tmpPath = path.join(os.tmpdir(), `vid-check-${Date.now()}.mp4`);
   try {
     fs.writeFileSync(tmpPath, buffer);
