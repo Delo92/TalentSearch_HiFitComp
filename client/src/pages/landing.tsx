@@ -100,14 +100,16 @@ export default function Landing() {
         </motion.div>
 
         <div className="relative z-10 text-center px-4 sm:px-8 w-full pt-24 sm:pt-28">
+          {getText("hero_title_top", "") && (
           <motion.h6
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="text-white text-sm sm:text-lg uppercase mb-5 block tracking-[8px] sm:tracking-[20px]"
           >
-            {getText("hero_title_top", "The Ultimate")}
+            {getText("hero_title_top", "")}
           </motion.h6>
+          )}
 
           {getText("hero_title_main", "Talent Platform") && (
           <motion.h2

@@ -44,7 +44,8 @@ export function useLivery() {
     if (!items) return fallback || "";
     const item = items.find((i) => i.imageKey === imageKey);
     if (!item) return fallback || "";
-    return item.textContent || item.defaultText || fallback || "";
+    if (item.textContent !== null && item.textContent !== undefined) return item.textContent;
+    return item.defaultText || fallback || "";
   };
 
   return { items, isLoading, getImage, getMediaType, getMedia, getText };
