@@ -4,14 +4,14 @@ import { Link } from "wouter";
 import { slugify } from "@shared/slugify";
 
 interface GalleryItem {
-  competitionId: number;
-  competitionTitle: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
   thumbnail: string | null;
   videoEmbedUrl: string | null;
   coverVideoUrl: string | null;
   topContestantName: string | null;
   voteCount: number;
+  competitionCount: number;
 }
 
 export default function HeroCoverflowGallery() {
@@ -114,7 +114,7 @@ export default function HeroCoverflowGallery() {
 
             return (
               <div
-                key={item.competitionId}
+                key={item.categoryId}
                 className="coverflow-item"
                 style={{
                   transform: `translateX(${finalTranslateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
@@ -127,9 +127,9 @@ export default function HeroCoverflowGallery() {
                     goToIndex(index);
                   }
                 }}
-                data-testid={`gallery-item-${item.competitionId}`}
+                data-testid={`gallery-item-${item.categoryId}`}
               >
-                <Link href={`/${slugify(item.category)}/${slugify(item.competitionTitle)}`}>
+                <Link href={`/${slugify(item.categoryName)}`}>
                   <div className="coverflow-vote-badge">
                     <span className="coverflow-vote-dot" />
                     <span className="coverflow-vote-count">{item.voteCount.toLocaleString()}</span>
@@ -143,7 +143,7 @@ export default function HeroCoverflowGallery() {
                           className="w-full h-full"
                           allow="autoplay; fullscreen"
                           frameBorder="0"
-                          title={item.competitionTitle}
+                          title={item.categoryName}
                           style={{ pointerEvents: "none" }}
                         />
                         <div className="absolute inset-0 z-10" />
@@ -160,13 +160,13 @@ export default function HeroCoverflowGallery() {
                     ) : (
                       <img
                         src={item.thumbnail || "/images/template/bg-1.jpg"}
-                        alt={item.competitionTitle}
+                        alt={item.categoryName}
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
                     )}
                     <div className="coverflow-label">
-                      <span className="coverflow-label-title">{item.competitionTitle}</span>
+                      <span className="coverflow-label-title">{item.categoryName}</span>
                       {item.topContestantName && (
                         <span className="coverflow-label-sub">{item.topContestantName}</span>
                       )}

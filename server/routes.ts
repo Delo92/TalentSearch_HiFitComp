@@ -370,29 +370,76 @@ export async function registerRoutes(
 
   app.get("/api/hero-gallery", async (req, res) => {
     try {
+      const categories = await firestoreCategories.getAll();
+      const activeCategories = categories.filter((c: any) => c.isActive !== false);
       const competitions = await storage.getCompetitions();
-      const activeComps = competitions.filter(c => c.status === "active" || c.status === "voting");
+      const liveryItems = await storage.getAllLivery();
 
       const galleryItems = await Promise.all(
-        activeComps.map(async (comp) => {
-          const contestants = await storage.getContestantsByCompetition(comp.id);
-          const approved = contestants.filter(c => c.applicationStatus === "approved");
-          const topContestant = approved.length > 0
-            ? approved.sort((a, b) => b.voteCount - a.voteCount)[0]
-            : null;
+        activeCategories.map(async (cat: any) => {
+          const catComps = competitions.filter(c =>
+            (c.status === "active" || c.status === "voting") &&
+            c.category === cat.name
+          );
+
+          let topContestant: any = null;
+          let topVoteCount = 0;
+          let topCompetition: any = null;
+
+          for (const comp of catComps) {
+            const contestants = await storage.getContestantsByCompetition(comp.id);
+            for (const contestant of contestants) {
+              if (contestant.voteCount > topVoteCount) {
+                topVoteCount = contestant.voteCount;
+                topContestant = contestant;
+                topCompetition = comp;
+              }
+            }
+          }
 
           let videoEmbedUrl: string | null = null;
           let displayName: string | null = null;
-          let thumbnail: string | null = comp.coverImage;
+          let coverVideoUrl: string | null = null;
 
-          if (topContestant) {
+          const nameKey = (cat.name || "").toLowerCase().replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+          const liveryKey = `category_${nameKey}`;
+          const liveryItem = liveryItems.find((l: any) => l.imageKey === liveryKey);
+          let thumbnail: string | null = liveryItem?.imageUrl || cat.imageUrl || null;
+          if (liveryItem?.mediaType === "video" && liveryItem?.imageUrl) {
+            coverVideoUrl = liveryItem.imageUrl;
+          }
+
+          if (!thumbnail || thumbnail === cat.imageUrl) {
+            const catImageItems = liveryItems.filter((l: any) =>
+              l.imageKey.startsWith("category_") &&
+              !l.imageKey.endsWith("_title") &&
+              !l.imageKey.endsWith("_desc") &&
+              l.imageUrl
+            );
+            for (const imgItem of catImageItems) {
+              const titleKey = imgItem.imageKey + "_title";
+              const titleItem = liveryItems.find((t: any) => t.imageKey === titleKey);
+              if (titleItem) {
+                const titleText = (titleItem.textContent || titleItem.defaultText || "").toLowerCase().trim();
+                const catNameLower = (cat.name || "").toLowerCase().trim();
+                if (titleText === catNameLower || catNameLower.includes(titleText) || titleText.includes(catNameLower)) {
+                  thumbnail = imgItem.imageUrl;
+                  if (imgItem.mediaType === "video") coverVideoUrl = imgItem.imageUrl;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (topContestant && topVoteCount > 0 && topCompetition) {
             displayName = topContestant.talentProfile.stageName || topContestant.talentProfile.displayName;
             if (topContestant.talentProfile.imageUrls?.length > 0) {
               thumbnail = topContestant.talentProfile.imageUrls[0];
             }
+            coverVideoUrl = topCompetition.coverVideo || null;
             try {
               const talentName = (topContestant.talentProfile.displayName || topContestant.talentProfile.stageName || "").replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
-              const videos = await listTalentVideos(comp.title, talentName);
+              const videos = await listTalentVideos(topCompetition.title, talentName);
               if (videos.length > 0 && videos[0].player_embed_url) {
                 const baseUrl = videos[0].player_embed_url;
                 const separator = baseUrl.includes("?") ? "&" : "?";
@@ -402,14 +449,14 @@ export async function registerRoutes(
           }
 
           return {
-            competitionId: comp.id,
-            competitionTitle: comp.title,
-            category: comp.category,
+            categoryId: cat.id,
+            categoryName: cat.name,
             thumbnail,
             videoEmbedUrl,
-            coverVideoUrl: comp.coverVideo || null,
+            coverVideoUrl,
             topContestantName: displayName,
-            voteCount: topContestant?.voteCount || 0,
+            voteCount: topVoteCount,
+            competitionCount: catComps.length,
           };
         })
       );
