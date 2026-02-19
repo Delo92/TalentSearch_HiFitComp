@@ -713,11 +713,9 @@ export async function registerRoutes(
 
     const voterIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
 
-    const categoryComps = await storage.getCompetitionsByCategory(comp.category);
-    const categoryCompIds = categoryComps.map(c => c.id);
-    const freeVotesTodayInCategory = await firestoreVotes.getFreeVotesTodayByIpForCategory(categoryCompIds, voterIp);
-    if (freeVotesTodayInCategory >= 1) {
-      return res.status(429).json({ message: `You've already used your free vote in the ${comp.category} category today. Purchase additional votes to keep supporting your favorite!` });
+    const freeVotesToday = await firestoreVotes.getVotesTodayByIp(compId, voterIp);
+    if (freeVotesToday >= 1) {
+      return res.status(429).json({ message: `You've already used your free vote for this competition today. Purchase additional votes to keep supporting your favorite!` });
     }
 
     const { source, refCode } = parsed.data;
