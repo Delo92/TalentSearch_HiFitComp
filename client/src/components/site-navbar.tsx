@@ -178,7 +178,7 @@ export default function SiteNavbar() {
               className="text-white font-bold text-base cursor-pointer transition-colors duration-500 hover:text-white/70"
               data-testid="link-nav-login"
             >
-              Login / Register
+              Login
             </Link>
           )}
         </div>
@@ -251,7 +251,7 @@ export default function SiteNavbar() {
               onClick={() => setMenuOpen(false)}
               data-testid="link-mobile-login"
             >
-              Login / Register
+              Login
             </Link>
           )}
         </div>
