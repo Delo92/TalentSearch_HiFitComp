@@ -23,6 +23,8 @@ export const talentProfiles = pgTable("talent_profiles", {
   imageUrls: text("image_urls").array().default(sql`'{}'::text[]`),
   videoUrls: text("video_urls").array().default(sql`'{}'::text[]`),
   socialLinks: text("social_links"),
+  profileColor: text("profile_color"),
+  profileBgImage: text("profile_bg_image"),
   role: userRoleEnum("role").notNull().default("talent"),
 });
 
