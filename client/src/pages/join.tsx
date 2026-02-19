@@ -309,7 +309,7 @@ export default function JoinPage() {
         {getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").type === "video" ? (
           <video src={getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
         ) : (
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")}')` }} />
+          <div className="absolute inset-0 bg-cover bg-top" style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")}')` }} />
         )}
         <div className="absolute inset-0 bg-black/65" />
         <div className="relative z-10 pt-[60px] md:pt-[72px] pb-0">
