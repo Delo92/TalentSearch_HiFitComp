@@ -190,9 +190,6 @@ export default function LoginPage() {
                   <SelectItem value="2" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-talent">
                     Talent / Competitor
                   </SelectItem>
-                  <SelectItem value="3" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-host">
-                    Host
-                  </SelectItem>
                   <SelectItem value="4" className="text-white focus:bg-white/10 focus:text-white" data-testid="select-item-admin">
                     Admin
                   </SelectItem>
@@ -202,7 +199,6 @@ export default function LoginPage() {
                 <p className="text-white/30 text-xs mt-1.5">
                   {selectedLevel === 1 && "Browse and vote on your favorite contestants"}
                   {selectedLevel === 2 && "Create a talent profile and apply to competitions"}
-                  {selectedLevel === 3 && "Organize and manage your own competitions"}
                 </p>
               )}
             </div>
