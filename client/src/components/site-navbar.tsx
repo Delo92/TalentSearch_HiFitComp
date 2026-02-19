@@ -147,6 +147,13 @@ export default function SiteNavbar() {
 
         <div className="hidden md:flex items-center gap-6">
           <Link
+            href="/competitions"
+            className="inline-flex items-center gap-1 bg-[#FF5A09] text-white font-bold text-xs uppercase tracking-wider px-4 py-2 transition-all duration-300 hover:bg-[#e04f08]"
+            data-testid="link-nav-vote"
+          >
+            Vote
+          </Link>
+          <Link
             href="/my-purchases"
             className="text-white transition-colors duration-500 hover:text-[#FF5A09]"
             data-testid="link-nav-cart"
@@ -206,6 +213,14 @@ export default function SiteNavbar() {
             data-testid="link-mobile-about"
           >
             About
+          </Link>
+          <Link
+            href="/competitions"
+            className="block py-2 text-[#FF5A09] font-bold uppercase tracking-wider text-sm"
+            onClick={() => setMenuOpen(false)}
+            data-testid="link-mobile-vote"
+          >
+            Vote
           </Link>
           <Link
             href="/my-purchases"
