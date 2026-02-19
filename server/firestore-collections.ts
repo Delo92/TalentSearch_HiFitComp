@@ -88,6 +88,8 @@ export interface FirestoreTalentProfile {
   userId: string;
   displayName: string;
   stageName: string | null;
+  email?: string | null;
+  showEmail?: boolean;
   bio: string | null;
   category: string | null;
   location: string | null;
@@ -95,6 +97,8 @@ export interface FirestoreTalentProfile {
   imageBackupUrls?: string[];
   videoUrls: string[];
   socialLinks: string | null;
+  profileColor?: string | null;
+  profileBgImage?: string | null;
   role: string;
 }
 

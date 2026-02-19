@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check, Share2, Copy, ExternalLink } from "lucide-react";
+import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check, Share2, Copy, ExternalLink, Palette } from "lucide-react";
 import { slugify } from "@shared/slugify";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
@@ -35,6 +35,8 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [bio, setBio] = useState(profile?.bio || "");
   const [category, setCategory] = useState(profile?.category || "");
   const [location, setLocation] = useState(profile?.location || "");
+  const [profileColor, setProfileColor] = useState(profile?.profileColor || "#FF5A09");
+  const [profileBgImage, setProfileBgImage] = useState(profile?.profileBgImage || "");
   const [selectedCompId, setSelectedCompId] = useState<string>("");
   const [imageUploading, setImageUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
@@ -89,7 +91,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
   const saveProfileMutation = useMutation({
     mutationFn: async () => {
-      const data = { displayName, email, showEmail, bio, category, location };
+      const data = { displayName, email, showEmail, bio, category, location, profileColor, profileBgImage: profileBgImage || null };
       if (profile) {
         await apiRequest("PATCH", "/api/talent-profiles/me", data);
       } else {
@@ -444,6 +446,74 @@ export default function TalentDashboard({ user, profile }: Props) {
                 <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself and your talent..."
                   className="min-h-[120px] resize-none bg-white/5 border-white/10 text-white placeholder:text-white/20" data-testid="input-bio" />
+              </div>
+
+              <div className="space-y-3 rounded-md bg-white/5 border border-white/5 p-4">
+                <Label className="flex items-center gap-2 text-white/80 text-sm font-semibold">
+                  <Palette className="h-4 w-4 text-orange-400" /> Profile Page Customization
+                </Label>
+                <p className="text-xs text-white/40">Customize the look of your public contestant page.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profileColor" className="text-white/60 text-xs">Accent Color</Label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        id="profileColor"
+                        value={profileColor}
+                        onChange={(e) => setProfileColor(e.target.value)}
+                        className="w-10 h-10 rounded-md cursor-pointer border border-white/10 bg-transparent"
+                        data-testid="input-profile-color"
+                      />
+                      <Input
+                        value={profileColor}
+                        onChange={(e) => setProfileColor(e.target.value)}
+                        placeholder="#FF5A09"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono text-sm flex-1"
+                        data-testid="input-profile-color-text"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {["#FF5A09", "#E91E63", "#9C27B0", "#2196F3", "#00BCD4", "#4CAF50", "#FFEB3B", "#FF9800"].map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setProfileColor(c)}
+                          className="w-6 h-6 rounded-full border-2 transition-all"
+                          style={{ backgroundColor: c, borderColor: profileColor === c ? "#fff" : "transparent" }}
+                          data-testid={`button-color-${c.replace('#', '')}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profileBgImage" className="text-white/60 text-xs">Background Image URL (optional)</Label>
+                    <Input
+                      id="profileBgImage"
+                      value={profileBgImage}
+                      onChange={(e) => setProfileBgImage(e.target.value)}
+                      placeholder="https://..."
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 text-sm"
+                      data-testid="input-profile-bg-image"
+                    />
+                    <p className="text-[10px] text-white/30">Paste a URL to an image to use as a background pattern on your public page.</p>
+                  </div>
+                </div>
+                {(profileColor !== "#FF5A09" || profileBgImage) && (
+                  <div className="rounded-md overflow-hidden border border-white/10 h-24 relative mt-2" data-testid="profile-preview">
+                    {profileBgImage && (
+                      <img src={profileBgImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-black/40" />
+                    <div className="relative h-full flex items-center px-4 gap-3">
+                      <div className="w-12 h-12 rounded-full" style={{ backgroundColor: profileColor, opacity: 0.9 }} />
+                      <div>
+                        <p className="text-sm font-bold" style={{ color: profileColor }}>{displayName || "Your Name"}</p>
+                        <p className="text-[10px] text-white/50 uppercase" style={{ letterSpacing: "2px" }}>Preview</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Button onClick={() => saveProfileMutation.mutate()} disabled={saveProfileMutation.isPending || !displayName.trim()}

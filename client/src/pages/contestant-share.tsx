@@ -51,6 +51,10 @@ interface ResolvedData {
       imageUrls: string[] | null;
       imageBackupUrls?: string[] | null;
       location: string | null;
+      profileColor?: string | null;
+      profileBgImage?: string | null;
+      email?: string | null;
+      showEmail?: boolean;
     };
   };
   totalVotes: number;
@@ -143,6 +147,8 @@ export default function ContestantSharePage() {
 
   const { competition, contestant, totalVotes } = data;
   const profile = contestant.talentProfile;
+  const accentColor = profile.profileColor || "#FF5A09";
+  const bgImage = profile.profileBgImage || null;
   const fallbackDefault = getImage("talent_profile_fallback", "/images/template/a1.jpg");
   const mainImage = contestant.videoThumbnail || profile.imageUrls?.[0] || fallbackDefault;
   const mainImageFallback = getBackupUrl(profile.imageUrls, profile.imageBackupUrls, 0) || fallbackDefault;
@@ -222,7 +228,13 @@ export default function ContestantSharePage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white relative">
+      {bgImage && (
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <img src={bgImage} alt="" className="w-full h-full object-cover opacity-[0.04]" />
+        </div>
+      )}
+      <div className="relative z-10">
       <SiteNavbar />
 
       <section
@@ -235,8 +247,11 @@ export default function ContestantSharePage() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-40px)] max-w-[600px]">
-          <p className="text-[#5f5f5f] text-xs uppercase mb-1" style={{ letterSpacing: "4px" }} data-testid="text-competition-context">
+        <div
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-40px)] max-w-[600px]"
+          style={{ backgroundColor: "white" }}
+        >
+          <p className="text-xs uppercase mb-1" style={{ letterSpacing: "4px", color: accentColor }} data-testid="text-competition-context">
             {competition.title}
           </p>
           <h2
@@ -269,7 +284,7 @@ export default function ContestantSharePage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-6 bg-white/5 px-8 py-4">
             <div data-testid="text-vote-count">
-              <span className="text-3xl font-bold text-[#FF5A09]">{contestant.voteCount}</span>
+              <span className="text-3xl font-bold" style={{ color: accentColor }}>{contestant.voteCount}</span>
               <p className="text-white/40 text-xs uppercase mt-1" style={{ letterSpacing: "3px" }}>Votes</p>
             </div>
             <div className="w-px h-10 bg-white/10" />
@@ -294,8 +309,8 @@ export default function ContestantSharePage() {
             </button>
             <Link
               href={`/checkout/${competition.id}/${contestant.id}`}
-              className="inline-flex items-center bg-[#FF5A09] text-white font-bold text-sm uppercase px-8 leading-[47px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer"
-              style={{ letterSpacing: "2px" }}
+              className="inline-flex items-center text-white font-bold text-sm uppercase px-8 leading-[47px] border transition-all duration-500 cursor-pointer"
+              style={{ letterSpacing: "2px", backgroundColor: accentColor, borderColor: accentColor }}
               data-testid="button-buy-votes"
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
@@ -379,7 +394,7 @@ export default function ContestantSharePage() {
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors duration-500 flex items-center justify-center">
-                        <div className="w-14 h-14 bg-[#FF5A09] flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                        <div className="w-14 h-14 flex items-center justify-center transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: accentColor }}>
                           <Play className="h-6 w-6 text-white fill-white ml-0.5" />
                         </div>
                       </div>
@@ -413,6 +428,7 @@ export default function ContestantSharePage() {
       </div>
 
       <SiteFooter />
+    </div>
     </div>
   );
 }
