@@ -14,7 +14,18 @@ interface GalleryItem {
   competitionCount: number;
 }
 
-export default function HeroCoverflowGallery() {
+function CardWrapper({ useLink, href, children }: { useLink: boolean; href: string; children: React.ReactNode }) {
+  if (useLink) {
+    return <Link href={href}>{children}</Link>;
+  }
+  return <div className="cursor-pointer">{children}</div>;
+}
+
+interface HeroCoverflowGalleryProps {
+  onCardClick?: (categoryName: string) => void;
+}
+
+export default function HeroCoverflowGallery({ onCardClick }: HeroCoverflowGalleryProps = {}) {
   const { data: items = [], isLoading } = useQuery<GalleryItem[]>({
     queryKey: ["/api/hero-gallery"],
     staleTime: 60000,
@@ -168,11 +179,14 @@ export default function HeroCoverflowGallery() {
                   if (index !== currentIndex) {
                     e.preventDefault();
                     goToIndex(index);
+                  } else if (onCardClick) {
+                    e.preventDefault();
+                    onCardClick(item.categoryName);
                   }
                 }}
                 data-testid={`gallery-item-${item.categoryId}`}
               >
-                <Link href={`/${slugify(item.categoryName || "")}`}>
+                <CardWrapper useLink={!onCardClick} href={`/${slugify(item.categoryName || "")}`}>
                   <div className="coverflow-vote-badge">
                     <span className="coverflow-vote-dot" />
                     <span className="coverflow-vote-count">{item.voteCount.toLocaleString()}</span>
@@ -216,7 +230,7 @@ export default function HeroCoverflowGallery() {
                     </div>
                   </div>
                   <div className="coverflow-reflection" />
-                </Link>
+                </CardWrapper>
               </div>
             );
           })}

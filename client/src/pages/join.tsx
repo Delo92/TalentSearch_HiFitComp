@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
 import { CheckCircle, CreditCard, Search, Trophy, UserPlus, Heart } from "lucide-react";
+import HeroCoverflowGallery from "@/components/hero-coverflow-gallery";
 import type { Competition } from "@shared/schema";
 
 interface JoinSettings {
@@ -68,6 +69,7 @@ export default function JoinPage() {
   const searchString = useSearch();
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<number | null>(null);
   const [compSearch, setCompSearch] = useState("");
+  const competitionSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(searchString);
@@ -107,6 +109,23 @@ export default function JoinPage() {
   const selectedCompetition = useMemo(() => {
     return competitions?.find(c => c.id === selectedCompetitionId) || null;
   }, [competitions, selectedCompetitionId]);
+
+  const handleGalleryCardClick = useCallback((categoryName: string) => {
+    if (!competitions) return;
+    const matchingComps = competitions.filter(c =>
+      (c.status === "active" || c.status === "voting") &&
+      c.category === categoryName
+    );
+    if (matchingComps.length === 1) {
+      setSelectedCompetitionId(matchingComps[0].id);
+    } else if (matchingComps.length > 1) {
+      setSelectedCompetitionId(null);
+      setCompSearch(categoryName);
+    }
+    setTimeout(() => {
+      competitionSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  }, [competitions]);
 
   const needsPayment = (settings?.nominationFee || 0) > 0;
   const paymentAmount = settings?.nominationFee || 0;
@@ -281,6 +300,12 @@ export default function JoinPage() {
     <div className="min-h-screen bg-black text-white">
       <SiteNavbar />
 
+      <section className="bg-black py-8 md:py-12">
+        <div className="max-w-5xl mx-auto">
+          <HeroCoverflowGallery onCardClick={handleGalleryCardClick} />
+        </div>
+      </section>
+
       <section className="relative h-[270px] md:h-[300px] overflow-hidden">
         {getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").type === "video" ? (
           <video src={getMedia("breadcrumb_bg", "/images/template/breadcumb.jpg").url} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop playsInline />
@@ -314,7 +339,7 @@ export default function JoinPage() {
           </div>
         )}
 
-        <div className="mb-10">
+        <div className="mb-10" ref={competitionSectionRef}>
           <p className="text-[#5f5f5f] text-sm mb-1">Select Competition</p>
           <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
             CHOOSE YOUR EVENT
