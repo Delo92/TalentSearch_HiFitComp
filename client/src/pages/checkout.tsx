@@ -69,6 +69,7 @@ export default function CheckoutPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<string>("");
+  const [individualVoteCount, setIndividualVoteCount] = useState<number>(1);
   const [createAccount, setCreateAccount] = useState(true);
   const [cardNumber, setCardNumber] = useState("");
   const [expMonth, setExpMonth] = useState("");
@@ -96,6 +97,7 @@ export default function CheckoutPage() {
     isActive: true,
     description: pkg.description,
   }));
+  const perVotePrice = platformSettings?.pricePerVote || 1;
   const pkgLoading = !platformSettings;
 
   const { data: paymentConfig } = useQuery<PaymentConfig>({
@@ -124,6 +126,8 @@ export default function CheckoutPage() {
 
   const contestant = competition?.contestants?.find((c) => c.id === contestantId);
   const selectedPkg = packages?.find((p) => p.id === selectedPackage);
+  const isIndividual = selectedPackage === "individual";
+  const individualTotal = individualVoteCount * perVotePrice * 100;
 
   const handleCheckout = useCallback(async () => {
     if (!name.trim() || !email.trim()) {
@@ -131,7 +135,11 @@ export default function CheckoutPage() {
       return;
     }
     if (!selectedPackage) {
-      toast({ title: "Please select a vote package", variant: "destructive" });
+      toast({ title: "Please select a vote option", variant: "destructive" });
+      return;
+    }
+    if (isIndividual && (individualVoteCount < 1 || individualVoteCount > 10000)) {
+      toast({ title: "Please enter a valid number of votes (1-10,000)", variant: "destructive" });
       return;
     }
     if (!cardNumber || !expMonth || !expYear || !cvv) {
@@ -174,17 +182,21 @@ export default function CheckoutPage() {
 
       try {
         const pkgIndex = selectedPackage?.startsWith("pkg_") ? parseInt(selectedPackage.replace("pkg_", "")) : undefined;
-        const result = await apiRequest("POST", "/api/guest/checkout", {
+        const body: any = {
           name: name.trim(),
           email: email.trim(),
           competitionId,
           contestantId,
           packageId: selectedPackage,
-          packageIndex: pkgIndex,
+          packageIndex: isIndividual ? undefined : pkgIndex,
           createAccount,
           dataDescriptor: tokenResponse.opaqueData.dataDescriptor,
           dataValue: tokenResponse.opaqueData.dataValue,
-        });
+        };
+        if (isIndividual) {
+          body.individualVoteCount = individualVoteCount;
+        }
+        const result = await apiRequest("POST", "/api/guest/checkout", body);
 
         const data = await result.json();
         setSuccess(true);
@@ -329,6 +341,60 @@ export default function CheckoutPage() {
           <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
             SELECT PACKAGE
           </h3>
+
+          <button
+            onClick={() => setSelectedPackage("individual")}
+            className={`w-full p-5 border text-left transition-all duration-300 cursor-pointer mb-4 ${
+              isIndividual
+                ? "border-[#FF5A09] bg-[#FF5A09]/10"
+                : "border-white/10 hover:border-white/30"
+            }`}
+            data-testid="button-individual-votes"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <Heart className={`h-5 w-5 ${isIndividual ? "text-[#FF5A09]" : "text-white/40"}`} />
+              <span className="text-white font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
+                Buy Individual Votes
+              </span>
+              <span className="text-white/40 text-xs ml-auto">${perVotePrice.toFixed(2)} each</span>
+            </div>
+            {isIndividual && (
+              <div className="flex items-center gap-4 mt-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setIndividualVoteCount(Math.max(1, individualVoteCount - 1)); }}
+                    className="w-8 h-8 border border-white/20 text-white flex items-center justify-center hover:border-[#FF5A09] transition-colors"
+                    data-testid="button-decrease-votes"
+                  >
+                    -
+                  </button>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={individualVoteCount}
+                    onChange={(e) => setIndividualVoteCount(Math.max(1, Math.min(10000, parseInt(e.target.value) || 1)))}
+                    className="w-20 bg-white/[0.08] border-white/20 text-white text-center"
+                    data-testid="input-individual-vote-count"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setIndividualVoteCount(Math.min(10000, individualVoteCount + 1)); }}
+                    className="w-8 h-8 border border-white/20 text-white flex items-center justify-center hover:border-[#FF5A09] transition-colors"
+                    data-testid="button-increase-votes"
+                  >
+                    +
+                  </button>
+                </div>
+                <span className="text-white font-bold text-lg ml-auto">
+                  ${(individualVoteCount * perVotePrice).toFixed(2)}
+                </span>
+              </div>
+            )}
+          </button>
+
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-3" style={{ letterSpacing: "2px" }}>Or choose a package</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {packages?.map((pkg) => (
@@ -493,8 +559,11 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {selectedPkg && (() => {
-          const subtotal = selectedPkg.price / 100;
+        {(selectedPkg || isIndividual) && (() => {
+          const subtotal = isIndividual ? (individualVoteCount * perVotePrice) : (selectedPkg!.price / 100);
+          const voteLabel = isIndividual
+            ? `${individualVoteCount.toLocaleString()} vote${individualVoteCount !== 1 ? "s" : ""}`
+            : `${selectedPkg!.name} (${selectedPkg!.voteCount.toLocaleString()}${selectedPkg!.bonusVotes > 0 ? ` + ${selectedPkg!.bonusVotes.toLocaleString()} bonus` : ""} votes)`;
           const taxRate = platformSettings?.salesTaxPercent || 0;
           const taxAmount = subtotal * (taxRate / 100);
           const total = subtotal + taxAmount;
@@ -504,7 +573,7 @@ export default function CheckoutPage() {
                 <span className="text-white/60 text-sm uppercase tracking-wider">Order Summary</span>
               </div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-white">{selectedPkg.name} ({selectedPkg.voteCount.toLocaleString()}{selectedPkg.bonusVotes > 0 ? ` + ${selectedPkg.bonusVotes.toLocaleString()} bonus` : ""} votes)</span>
+                <span className="text-white">{voteLabel}</span>
                 <span className="text-white">${subtotal.toFixed(2)}</span>
               </div>
               {taxRate > 0 && (
@@ -532,7 +601,7 @@ export default function CheckoutPage() {
           data-testid="button-checkout"
         >
           <CreditCard className="h-5 w-5" />
-          {processing ? "PROCESSING..." : selectedPkg ? `PAY $${((selectedPkg.price / 100) * (1 + (platformSettings?.salesTaxPercent || 0) / 100)).toFixed(2)}` : "SELECT A PACKAGE"}
+          {processing ? "PROCESSING..." : (selectedPkg || isIndividual) ? `PAY $${(((isIndividual ? individualVoteCount * perVotePrice : selectedPkg!.price / 100) * (1 + (platformSettings?.salesTaxPercent || 0) / 100))).toFixed(2)}` : "SELECT A VOTE OPTION"}
         </button>
 
         <p className="text-white/30 text-xs text-center mt-4">

@@ -713,9 +713,11 @@ export async function registerRoutes(
 
     const voterIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
 
-    const votesToday = await storage.getVotesTodayByIp(compId, voterIp);
-    if (votesToday >= comp.maxVotesPerDay) {
-      return res.status(429).json({ message: `Daily vote limit reached (${comp.maxVotesPerDay} per day)` });
+    const categoryComps = await storage.getCompetitionsByCategory(comp.category);
+    const categoryCompIds = categoryComps.map(c => c.id);
+    const freeVotesTodayInCategory = await firestoreVotes.getFreeVotesTodayByIpForCategory(categoryCompIds, voterIp);
+    if (freeVotesTodayInCategory >= 1) {
+      return res.status(429).json({ message: `You've already used your free vote in the ${comp.category} category today. Purchase additional votes to keep supporting your favorite!` });
     }
 
     const { source, refCode } = parsed.data;
@@ -2305,6 +2307,7 @@ export async function registerRoutes(
     contestantId: z.number().int().positive(),
     packageId: z.string().min(1, "Package is required"),
     packageIndex: z.number().int().min(0).optional(),
+    individualVoteCount: z.number().int().min(1).max(10000).optional(),
     createAccount: z.boolean().default(false),
     dataDescriptor: z.string().min(1, "Payment token is required"),
     dataValue: z.string().min(1, "Payment token is required"),
@@ -2317,7 +2320,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid data" });
       }
 
-      const { name, email, competitionId, contestantId, packageId, packageIndex, createAccount, dataDescriptor, dataValue } = parsed.data;
+      const { name, email, competitionId, contestantId, packageId, packageIndex, individualVoteCount, createAccount, dataDescriptor, dataValue } = parsed.data;
 
       const comp = await storage.getCompetition(competitionId);
       if (!comp) return res.status(404).json({ message: "Competition not found" });
@@ -2327,7 +2330,13 @@ export async function registerRoutes(
 
       let pkg: { voteCount: number; bonusVotes: number; price: number; name: string } | null = null;
 
-      if (packageIndex !== undefined) {
+      if (packageId === "individual" && individualVoteCount) {
+        const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+        const settings = settingsDoc.exists ? settingsDoc.data() : null;
+        const pricePerVote = settings?.pricePerVote || 1;
+        const totalPrice = individualVoteCount * pricePerVote * 100;
+        pkg = { voteCount: individualVoteCount, bonusVotes: 0, price: totalPrice, name: `${individualVoteCount} Individual Vote${individualVoteCount !== 1 ? "s" : ""}` };
+      } else if (packageIndex !== undefined) {
         const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
         const settings = settingsDoc.exists ? settingsDoc.data() : null;
         const votePackages = settings?.votePackages || [

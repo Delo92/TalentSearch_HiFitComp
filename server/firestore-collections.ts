@@ -610,6 +610,29 @@ export const firestoreVotes = {
     return snapshot.docs.length;
   },
 
+  async getFreeVotesTodayByIpForCategory(competitionIds: number[], voterIp: string): Promise<number> {
+    if (competitionIds.length === 0) return 0;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStr = todayStart.toISOString();
+
+    let total = 0;
+    const batches = [];
+    for (let i = 0; i < competitionIds.length; i += 10) {
+      batches.push(competitionIds.slice(i, i + 10));
+    }
+    for (const batch of batches) {
+      const snapshot = await db()
+        .collection(COLLECTIONS.VOTES)
+        .where("competitionId", "in", batch)
+        .where("voterIp", "==", voterIp)
+        .where("votedAt", ">=", todayStr)
+        .get();
+      total += snapshot.docs.filter(d => !d.data().purchaseId).length;
+    }
+    return total;
+  },
+
   async syncVoteCount(contestantId: number, competitionId: number, totalCount: number): Promise<void> {
     const docId = `${competitionId}_${contestantId}`;
     await db().collection(COLLECTIONS.VOTE_COUNTS).doc(docId).set({
