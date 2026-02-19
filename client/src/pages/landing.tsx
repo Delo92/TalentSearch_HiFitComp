@@ -290,10 +290,10 @@ export default function Landing() {
                 >
                   {s.step}
                 </div>
-                <h4 className="text-white uppercase text-base font-bold mb-4" style={{ letterSpacing: "3px" }}>
+                <h4 className="text-white/40 uppercase text-base font-bold mb-4" style={{ letterSpacing: "3px" }}>
                   {s.title}
                 </h4>
-                <p className="text-white/40 leading-relaxed text-sm">{s.desc}</p>
+                <p className="text-white leading-relaxed text-sm">{s.desc}</p>
               </div>
             ))}
           </div>
