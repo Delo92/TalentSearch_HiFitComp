@@ -1557,6 +1557,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                 { label: "About Page", keys: ["about_rules_text", "about_details_text"], pairs: null },
                 { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"], pairs: null },
                 { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"], pairs: null },
+                { label: "How It Works", keys: ["hiw_section_title", "hiw_step1_title", "hiw_step1_desc", "hiw_step2_title", "hiw_step2_desc", "hiw_step3_title", "hiw_step3_desc"], pairs: null },
               ];
               const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary");
               const renderField = (item: any) => {
