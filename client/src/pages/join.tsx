@@ -11,7 +11,7 @@ import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
-import { CheckCircle, Send, CreditCard, Search, Trophy, UserPlus, User, Heart } from "lucide-react";
+import { CheckCircle, CreditCard, Search, Trophy, UserPlus, Heart } from "lucide-react";
 import type { Competition } from "@shared/schema";
 
 interface JoinSettings {
@@ -31,17 +31,6 @@ interface PaymentConfig {
   apiLoginId: string;
   clientKey: string;
   environment: string;
-}
-
-declare global {
-  interface Window {
-    Accept?: {
-      dispatchData: (
-        secureData: any,
-        callback: (response: any) => void,
-      ) => void;
-    };
-  }
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -66,7 +55,7 @@ export default function JoinPage() {
   const { toast } = useToast();
   const { getImage, getMedia } = useLivery();
 
-  const [mode, setMode] = useState<"apply" | "nominate">("apply");
+  const [mode] = useState<"nominate">("nominate");
   const [form, setForm] = useState<Record<string, string>>({});
   const [nominatorForm, setNominatorForm] = useState<Record<string, string>>({});
   const [cardNumber, setCardNumber] = useState("");
@@ -119,13 +108,8 @@ export default function JoinPage() {
     return competitions?.find(c => c.id === selectedCompetitionId) || null;
   }, [competitions, selectedCompetitionId]);
 
-  const needsPayment = mode === "apply"
-    ? (settings?.mode === "purchase" && (settings?.price || 0) > 0)
-    : ((settings?.nominationFee || 0) > 0);
-
-  const paymentAmount = mode === "apply"
-    ? (settings?.price || 0)
-    : (settings?.nominationFee || 0);
+  const needsPayment = (settings?.nominationFee || 0) > 0;
+  const paymentAmount = settings?.nominationFee || 0;
 
   useEffect(() => {
     if (paymentConfig && needsPayment && !acceptLoaded) {
@@ -160,34 +144,20 @@ export default function JoinPage() {
       return;
     }
 
-    if (mode === "apply") {
-      for (const field of settings.requiredFields) {
-        if (!form[field]?.trim()) {
-          toast({ title: `${FIELD_LABELS[field] || field} is required`, variant: "destructive" });
-          return;
-        }
-      }
-    } else {
-      if (!form.fullName?.trim()) {
-        toast({ title: "Nominee's name is required", variant: "destructive" });
-        return;
-      }
-      if (!form.email?.trim()) {
-        toast({ title: "Nominee's email is required", variant: "destructive" });
-        return;
-      }
-      if (!nominatorForm.name?.trim()) {
-        toast({ title: "Your name is required", variant: "destructive" });
-        return;
-      }
-      if (!nominatorForm.email?.trim()) {
-        toast({ title: "Your email is required", variant: "destructive" });
-        return;
-      }
+    if (!form.fullName?.trim()) {
+      toast({ title: "Nominee's name is required", variant: "destructive" });
+      return;
     }
-
-    if (settings.nonprofitRequired && !form.chosenNonprofit?.trim()) {
-      toast({ title: "Choice of Non-Profit is required", variant: "destructive" });
+    if (!form.email?.trim()) {
+      toast({ title: "Nominee's email is required", variant: "destructive" });
+      return;
+    }
+    if (!nominatorForm.name?.trim()) {
+      toast({ title: "Your name is required", variant: "destructive" });
+      return;
+    }
+    if (!nominatorForm.email?.trim()) {
+      toast({ title: "Your email is required", variant: "destructive" });
       return;
     }
 
@@ -195,35 +165,22 @@ export default function JoinPage() {
 
     const submitData = async (dataDescriptor?: string, dataValue?: string) => {
       try {
-        if (mode === "apply") {
-          await apiRequest("POST", "/api/join/submit", {
-            ...form,
-            chosenNonprofit: form.chosenNonprofit || null,
-            competitionId: selectedCompetitionId,
-            mediaUrls: [],
-            dataDescriptor,
-            dataValue,
-          });
-          setSuccess(true);
-          toast({ title: "Application submitted!", description: "We'll review your submission and get back to you." });
-        } else {
-          await apiRequest("POST", "/api/join/nominate", {
-            fullName: form.fullName,
-            email: form.email,
-            phone: form.phone || "",
-            bio: form.bio || "",
-            category: form.category || "",
-            chosenNonprofit: form.chosenNonprofit || null,
-            competitionId: selectedCompetitionId,
-            nominatorName: nominatorForm.name,
-            nominatorEmail: nominatorForm.email,
-            nominatorPhone: nominatorForm.phone || "",
-            dataDescriptor,
-            dataValue,
-          });
-          setSuccess(true);
-          toast({ title: "Nomination submitted!", description: "Thank you for your nomination!" });
-        }
+        await apiRequest("POST", "/api/join/nominate", {
+          fullName: form.fullName,
+          email: form.email,
+          phone: form.phone || "",
+          bio: form.bio || "",
+          category: form.category || "",
+          chosenNonprofit: form.chosenNonprofit || null,
+          competitionId: selectedCompetitionId,
+          nominatorName: nominatorForm.name,
+          nominatorEmail: nominatorForm.email,
+          nominatorPhone: nominatorForm.phone || "",
+          dataDescriptor,
+          dataValue,
+        });
+        setSuccess(true);
+        toast({ title: "Nomination submitted!", description: "Thank you for your nomination!" });
       } catch (error: any) {
         toast({ title: "Submission Failed", description: error.message?.replace(/^\d+:\s*/, "") || "Something went wrong", variant: "destructive" });
       } finally {
@@ -275,13 +232,10 @@ export default function JoinPage() {
         <div className="max-w-lg mx-auto px-4 py-32 text-center">
           <CheckCircle className="h-16 w-16 text-green-400 mx-auto mb-6" />
           <h2 className="text-2xl uppercase font-normal mb-4" style={{ letterSpacing: "10px" }} data-testid="text-success">
-            {mode === "apply" ? "APPLICATION SUBMITTED" : "NOMINATION SUBMITTED"}
+            NOMINATION SUBMITTED
           </h2>
           <p className="text-white/60 mb-8">
-            {mode === "apply"
-              ? `Thank you for your interest! Our team will review your application and contact you at ${form.email}.`
-              : `Thank you for nominating ${form.fullName}! Our team will review the nomination and reach out to them.`
-            }
+            Thank you for nominating {form.fullName}! Our team will review the nomination and reach out to them.
           </p>
           <a href="/competitions">
             <span className="inline-block bg-[#FF5A09] text-white font-bold text-sm uppercase px-8 leading-[47px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer" data-testid="button-browse">
@@ -321,9 +275,7 @@ export default function JoinPage() {
     );
   }
 
-  const allFields = ["fullName", "email", "phone", "address", "city", "state", "zip", "bio", "category", "socialLinks"];
-  const nominationFields = ["fullName", "email", "phone", "bio", "category"];
-  const activeFields = mode === "apply" ? allFields : nominationFields;
+  const activeFields = ["fullName", "email", "phone", "bio", "category"];
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -353,45 +305,7 @@ export default function JoinPage() {
           {settings.pageDescription}
         </p>
 
-        {settings.nominationEnabled !== false && (
-          <div className="flex mb-10 border border-white/10" data-testid="mode-toggle">
-            <button
-              onClick={() => { setMode("apply"); setForm({}); setNominatorForm({}); setCardNumber(""); setExpMonth(""); setExpYear(""); setCvv(""); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm uppercase font-bold tracking-wider transition-all duration-300 ${
-                mode === "apply"
-                  ? "bg-[#FF5A09] text-white"
-                  : "bg-white/[0.04] text-white/40 hover:text-white/60"
-              }`}
-              data-testid="button-mode-apply"
-            >
-              <User className="h-4 w-4" />
-              Apply
-            </button>
-            <button
-              onClick={() => { setMode("nominate"); setForm({}); setNominatorForm({}); setCardNumber(""); setExpMonth(""); setExpYear(""); setCvv(""); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm uppercase font-bold tracking-wider transition-all duration-300 ${
-                mode === "nominate"
-                  ? "bg-[#FF5A09] text-white"
-                  : "bg-white/[0.04] text-white/40 hover:text-white/60"
-              }`}
-              data-testid="button-mode-nominate"
-            >
-              <UserPlus className="h-4 w-4" />
-              Nominate
-            </button>
-          </div>
-        )}
-
-        {mode === "apply" && settings.mode === "purchase" && settings.price > 0 && (
-          <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-8">
-            <p className="text-[#FF5A09] font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
-              Entry Fee: ${(settings.price / 100).toFixed(2)}
-            </p>
-            <p className="text-white/40 text-xs mt-1">Payment is required to submit your application.</p>
-          </div>
-        )}
-
-        {mode === "nominate" && (settings.nominationFee || 0) > 0 && (
+        {(settings.nominationFee || 0) > 0 && (
           <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-8">
             <p className="text-[#FF5A09] font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
               Nomination Fee: ${((settings.nominationFee || 0) / 100).toFixed(2)}
@@ -454,8 +368,7 @@ export default function JoinPage() {
           )}
         </div>
 
-        {mode === "nominate" && (
-          <div className="space-y-5 mb-10">
+        <div className="space-y-5 mb-10">
             <p className="text-[#5f5f5f] text-sm mb-1">Your Information</p>
             <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
               NOMINATOR DETAILS
@@ -499,23 +412,22 @@ export default function JoinPage() {
               />
             </div>
           </div>
-        )}
 
         <div className="space-y-5 mb-10">
           <p className="text-[#5f5f5f] text-sm mb-1">
-            {mode === "apply" ? "Your Information" : "Nominee Information"}
+            Nominee Information
           </p>
           <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
-            {mode === "apply" ? "APPLICATION FORM" : "WHO ARE YOU NOMINATING?"}
+            WHO ARE YOU NOMINATING?
           </h3>
 
           {activeFields.map((field) => {
-            const required = mode === "apply" ? isRequired(field) : (field === "fullName" || field === "email");
-            const label = mode === "nominate" && field === "fullName" ? "Nominee's Full Name"
-              : mode === "nominate" && field === "email" ? "Nominee's Email"
-              : mode === "nominate" && field === "phone" ? "Nominee's Phone"
-              : mode === "nominate" && field === "bio" ? "About the Nominee"
-              : mode === "nominate" && field === "category" ? "Talent Category"
+            const required = field === "fullName" || field === "email";
+            const label = field === "fullName" ? "Nominee's Full Name"
+              : field === "email" ? "Nominee's Email"
+              : field === "phone" ? "Nominee's Phone"
+              : field === "bio" ? "About the Nominee"
+              : field === "category" ? "Talent Category"
               : FIELD_LABELS[field] || field;
 
             if (field === "bio") {
@@ -529,7 +441,7 @@ export default function JoinPage() {
                     value={form[field] || ""}
                     onChange={(e) => updateField(field, e.target.value)}
                     className="bg-white/[0.08] border-white/20 text-white mt-2 resize-none min-h-[100px]"
-                    placeholder={mode === "nominate" ? "Tell us about this person and why you're nominating them" : `Enter your ${(FIELD_LABELS[field] || field).toLowerCase()}`}
+                    placeholder="Tell us about this person and why you're nominating them"
                     required={required}
                     data-testid={`input-${field}`}
                   />
@@ -616,10 +528,10 @@ export default function JoinPage() {
                   value={form[field] || ""}
                   onChange={(e) => updateField(field, e.target.value)}
                   className="bg-white/[0.08] border-white/20 text-white mt-2"
-                  placeholder={mode === "nominate" && field === "fullName" ? "Enter nominee's full name"
-                    : mode === "nominate" && field === "email" ? "Enter nominee's email"
-                    : mode === "nominate" && field === "phone" ? "Enter nominee's phone number"
-                    : `Enter your ${(FIELD_LABELS[field] || field).toLowerCase()}`}
+                  placeholder={field === "fullName" ? "Enter nominee's full name"
+                    : field === "email" ? "Enter nominee's email"
+                    : field === "phone" ? "Enter nominee's phone number"
+                    : `Enter ${label.toLowerCase()}`}
                   required={required}
                   data-testid={`input-${field}`}
                 />
@@ -628,39 +540,37 @@ export default function JoinPage() {
           })}
         </div>
 
-        {settings.nonprofitRequired && (
-          <div className="mb-10">
-            <div className="flex items-center gap-2 mb-3">
-              <Heart className="h-4 w-4 text-[#FF5A09]" />
-              <p className="text-[#5f5f5f] text-sm">Support a Cause</p>
-            </div>
-            <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
-              CHOICE OF NON-PROFIT
-            </h3>
-            {settings.charityName && (
-              <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-4">
-                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Default Non-Profit</p>
-                <p className="text-[#FF5A09] font-bold text-sm">{settings.charityName}</p>
-                <p className="text-white/40 text-xs mt-1">You may change this below if you'd like to support a different organization.</p>
-              </div>
-            )}
-            <div>
-              <Label htmlFor="chosenNonprofit" className="text-white/60 uppercase text-xs tracking-wider">
-                Non-Profit Organization <span className="text-[#FF5A09]">*</span>
-              </Label>
-              <Input
-                id="chosenNonprofit"
-                type="text"
-                value={form.chosenNonprofit ?? settings.charityName ?? ""}
-                onChange={(e) => updateField("chosenNonprofit", e.target.value)}
-                className="bg-white/[0.08] border-white/20 text-white mt-2"
-                placeholder="Enter non-profit name"
-                required
-                data-testid="input-chosen-nonprofit"
-              />
-            </div>
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-3">
+            <Heart className="h-4 w-4 text-[#FF5A09]" />
+            <p className="text-[#5f5f5f] text-sm">Support a Cause</p>
           </div>
-        )}
+          <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
+            CHOICE OF NON-PROFIT
+          </h3>
+          <p className="text-white/40 text-xs mb-4">We encourage all nominees to support a non-profit organization. This is optional, but every little bit helps make a difference in our community.</p>
+          {settings.charityName && (
+            <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-4">
+              <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Suggested Non-Profit</p>
+              <p className="text-[#FF5A09] font-bold text-sm">{settings.charityName}</p>
+              <p className="text-white/40 text-xs mt-1">Feel free to suggest a different organization below, or leave blank.</p>
+            </div>
+          )}
+          <div>
+            <Label htmlFor="chosenNonprofit" className="text-white/60 uppercase text-xs tracking-wider">
+              Non-Profit Organization <span className="text-white/25 normal-case">(optional)</span>
+            </Label>
+            <Input
+              id="chosenNonprofit"
+              type="text"
+              value={form.chosenNonprofit ?? settings.charityName ?? ""}
+              onChange={(e) => updateField("chosenNonprofit", e.target.value)}
+              className="bg-white/[0.08] border-white/20 text-white mt-2"
+              placeholder="Suggest a non-profit organization"
+              data-testid="input-chosen-nonprofit"
+            />
+          </div>
+        </div>
 
         {needsPayment && (
           <div className="mb-10">
@@ -704,15 +614,12 @@ export default function JoinPage() {
           {needsPayment ? (
             <>
               <CreditCard className="h-5 w-5" />
-              {processing ? "PROCESSING..." : mode === "apply"
-                ? `PAY $${(paymentAmount / 100).toFixed(2)} & APPLY`
-                : `PAY $${(paymentAmount / 100).toFixed(2)} & NOMINATE`
-              }
+              {processing ? "PROCESSING..." : `PAY $${(paymentAmount / 100).toFixed(2)} & NOMINATE`}
             </>
           ) : (
             <>
-              {mode === "apply" ? <Send className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
-              {processing ? "SUBMITTING..." : mode === "apply" ? "SUBMIT APPLICATION" : "SUBMIT NOMINATION"}
+              <UserPlus className="h-5 w-5" />
+              {processing ? "SUBMITTING..." : "SUBMIT NOMINATION"}
             </>
           )}
         </button>
