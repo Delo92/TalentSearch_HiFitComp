@@ -307,7 +307,7 @@ export default function JoinPage() {
           <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")}')` }} />
         )}
         <div className="absolute inset-0 bg-black/65" />
-        <div className="relative z-10 pt-8 md:pt-12 pb-0">
+        <div className="relative z-10 pt-[60px] md:pt-[72px] pb-0">
           <div className="max-w-5xl mx-auto">
             <HeroCoverflowGallery onCardClick={handleGalleryCardClick} />
           </div>
