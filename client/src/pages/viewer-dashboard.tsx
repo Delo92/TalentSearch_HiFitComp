@@ -113,8 +113,8 @@ export default function ViewerDashboard() {
       </section>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-          <p className="text-white/40 text-sm">{viewer.email}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8 border-b border-white/10 pb-5">
+          <p className="text-white/50 text-sm">{viewer.email}</p>
           <div className="flex items-center gap-3">
             <button
               onClick={handleRefresh}
@@ -147,26 +147,26 @@ export default function ViewerDashboard() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 mb-10">
-              <div className="border border-white/10 p-5 text-center">
+              <div className="border border-white/15 bg-white/[0.04] p-5 text-center">
                 <Heart className="h-6 w-6 text-[#FF5A09] mx-auto mb-2" />
                 <span className="text-3xl font-bold text-white" data-testid="text-total-votes">
                   {viewer.totalVotesPurchased}
                 </span>
-                <p className="text-white/40 text-xs uppercase tracking-wider mt-1">Votes Purchased</p>
+                <p className="text-white/50 text-xs uppercase tracking-wider mt-1">Votes Purchased</p>
               </div>
-              <div className="border border-white/10 p-5 text-center">
+              <div className="border border-white/15 bg-white/[0.04] p-5 text-center">
                 <Receipt className="h-6 w-6 text-[#FF5A09] mx-auto mb-2" />
                 <span className="text-3xl font-bold text-white" data-testid="text-total-spent">
                   ${(viewer.totalSpent / 100).toFixed(2)}
                 </span>
-                <p className="text-white/40 text-xs uppercase tracking-wider mt-1">Total Spent</p>
+                <p className="text-white/50 text-xs uppercase tracking-wider mt-1">Total Spent</p>
               </div>
             </div>
 
             {uniqueCompetitions.length > 0 && (
-              <div className="mb-10">
-                <div className="text-center mb-6">
-                  <p className="text-[#5f5f5f] text-sm mb-1">Your activity</p>
+              <div className="mb-10 border border-white/15 bg-white/[0.03] p-5">
+                <div className="text-center mb-5">
+                  <p className="text-white/50 text-sm mb-1">Your activity</p>
                   <h3 className="text-lg uppercase text-white font-normal" style={{ letterSpacing: "8px" }}>
                     Competitions
                   </h3>
@@ -182,17 +182,17 @@ export default function ViewerDashboard() {
                         href={`/${slugify(comp.competitionCategory)}/${slugify(comp.competitionTitle)}`}
                         data-testid={`card-competition-${comp.competitionId}`}
                       >
-                        <div className="border border-white/10 p-4 transition-colors hover:border-white/25 cursor-pointer">
-                          <div className="flex items-center justify-between mb-2">
+                        <div className="border border-white/15 bg-white/[0.04] p-4 transition-colors hover:border-[#FF5A09]/40 hover:bg-white/[0.06] cursor-pointer">
+                          <div className="flex items-center justify-between gap-2 mb-2">
                             <div className="flex items-center gap-2">
                               <Trophy className="h-4 w-4 text-[#FF5A09]" />
                               <span className="text-white font-bold uppercase text-sm">
                                 {comp.competitionTitle}
                               </span>
                             </div>
-                            <ChevronRight className="h-4 w-4 text-white/30" />
+                            <ChevronRight className="h-4 w-4 text-white/40" />
                           </div>
-                          <div className="flex items-center gap-4 text-white/40 text-xs">
+                          <div className="flex items-center gap-4 text-white/50 text-xs">
                             <span className="flex items-center gap-1">
                               <Heart className="h-3 w-3 text-[#FF5A09]" />
                               {totalVotes} votes
@@ -208,9 +208,9 @@ export default function ViewerDashboard() {
               </div>
             )}
 
-            <div className="mb-10">
-              <div className="text-center mb-6">
-                <p className="text-[#5f5f5f] text-sm mb-1">Purchase history</p>
+            <div className="mb-10 border border-white/15 bg-white/[0.03] p-5">
+              <div className="text-center mb-5">
+                <p className="text-white/50 text-sm mb-1">Purchase history</p>
                 <h3 className="text-lg uppercase text-white font-normal" style={{ letterSpacing: "8px" }}>
                   Transactions ({purchases.length})
                 </h3>
@@ -221,7 +221,7 @@ export default function ViewerDashboard() {
                   {purchases.map((purchase) => (
                     <div
                       key={purchase.id}
-                      className="border border-white/10 p-4 transition-colors hover:border-white/20"
+                      className="border border-white/15 bg-white/[0.04] p-4 transition-colors hover:border-white/25"
                       data-testid={`card-purchase-${purchase.id}`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -234,7 +234,7 @@ export default function ViewerDashboard() {
                         </Link>
                         <span className="text-white font-bold">${(purchase.amount / 100).toFixed(2)}</span>
                       </div>
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-white/40 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-white/50 text-xs">
                         <span className="flex items-center gap-1">
                           <Heart className="inline h-3 w-3 text-[#FF5A09]" />
                           {purchase.voteCount} votes
@@ -246,7 +246,7 @@ export default function ViewerDashboard() {
                         </span>
                       </div>
                       {purchase.transactionId && (
-                        <p className="text-white/20 text-xs mt-1">
+                        <p className="text-white/30 text-xs mt-1">
                           Txn: {purchase.transactionId}
                         </p>
                       )}
@@ -255,8 +255,8 @@ export default function ViewerDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-10">
-                  <ShoppingCart className="h-12 w-12 text-white/10 mx-auto mb-4" />
-                  <p className="text-white/40 text-sm mb-4">No purchases yet.</p>
+                  <ShoppingCart className="h-12 w-12 text-white/15 mx-auto mb-4" />
+                  <p className="text-white/50 text-sm mb-4">No purchases yet.</p>
                   <Link
                     href="/competitions"
                     className="inline-flex items-center gap-2 bg-[#FF5A09] text-white font-bold text-sm uppercase px-6 leading-[43px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09]"
