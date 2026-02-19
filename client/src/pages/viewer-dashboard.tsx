@@ -119,7 +119,7 @@ export default function ViewerDashboard() {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="inline-flex items-center gap-1.5 text-white/40 text-xs uppercase tracking-wider hover:text-white/60 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-white/70 text-xs uppercase tracking-wider border border-white/20 px-3 py-1.5 hover:border-white/40 hover:text-white transition-colors disabled:opacity-50"
               data-testid="button-refresh"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
@@ -127,7 +127,7 @@ export default function ViewerDashboard() {
             </button>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 text-white/40 text-xs uppercase tracking-wider hover:text-white/60 transition-colors"
+              className="inline-flex items-center gap-1.5 text-[#FF5A09] text-xs uppercase tracking-wider border border-[#FF5A09]/40 px-3 py-1.5 hover:bg-[#FF5A09] hover:text-white transition-colors"
               data-testid="button-viewer-logout"
             >
               <LogOut className="h-3.5 w-3.5" />
