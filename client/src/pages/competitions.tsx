@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Users, Search, ChevronRight } from "lucide-react";
+import { Calendar, Users, Search } from "lucide-react";
 import { Link } from "wouter";
 import type { Competition } from "@shared/schema";
 import { slugify } from "@shared/slugify";
@@ -179,8 +179,8 @@ function CompetitionCard({ competition }: { competition: CompetitionExt }) {
               </p>
             )}
             <span
-              className="text-[11px] text-white group-hover:text-black uppercase border-b border-white group-hover:border-black pb-1 transition-colors duration-500"
-              style={{ letterSpacing: "10px" }}
+              className="inline-block bg-white/20 group-hover:bg-black/80 text-white text-[11px] font-bold uppercase px-5 py-2 tracking-widest transition-all duration-500 backdrop-blur-sm"
+              style={{ letterSpacing: "4px" }}
             >
               See Event
             </span>
@@ -194,15 +194,7 @@ function CompetitionCard({ competition }: { competition: CompetitionExt }) {
           style={{ letterSpacing: "2px" }}
           data-testid={`button-join-${competition.id}`}
         >
-          Join Competition
-        </Link>
-        <Link
-          href={`/host?competition=${competition.id}`}
-          className="inline-block bg-transparent text-white group-hover:text-black font-bold text-xs uppercase px-5 leading-[36px] border border-white/30 group-hover:border-black/30 transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
-          style={{ letterSpacing: "2px" }}
-          data-testid={`button-host-${competition.id}`}
-        >
-          Host My Own Event
+          Start Nominating
         </Link>
       </div>
     </div>
