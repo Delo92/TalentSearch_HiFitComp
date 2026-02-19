@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check, Share2, Copy, ExternalLink, Palette } from "lucide-react";
+import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check, Share2, Copy, ExternalLink, Palette, ImagePlus } from "lucide-react";
+import ColorWheelPicker from "@/components/color-wheel-picker";
 import { slugify } from "@shared/slugify";
 import { InviteDialog } from "@/components/invite-dialog";
 import { Link } from "wouter";
@@ -37,6 +38,8 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [location, setLocation] = useState(profile?.location || "");
   const [profileColor, setProfileColor] = useState(profile?.profileColor || "#FF5A09");
   const [profileBgImage, setProfileBgImage] = useState(profile?.profileBgImage || "");
+  const [bgImageUploading, setBgImageUploading] = useState(false);
+  const bgImageInputRef = useRef<HTMLInputElement>(null);
   const [selectedCompId, setSelectedCompId] = useState<string>("");
   const [imageUploading, setImageUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
@@ -106,6 +109,40 @@ export default function TalentDashboard({ user, profile }: Props) {
       toast({ title: "Error", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
     },
   });
+
+  const handleBgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/\.(jpe?g)$/i.test(file.name)) {
+      toast({ title: "Invalid file type", description: "Only JPEG images (.jpg, .jpeg) are allowed.", variant: "destructive" });
+      if (bgImageInputRef.current) bgImageInputRef.current.value = "";
+      return;
+    }
+    setBgImageUploading(true);
+    try {
+      const token = getAuthToken();
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("/api/talent-profiles/me/bg-image", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Upload failed");
+      }
+      const { url } = await res.json();
+      setProfileBgImage(url);
+      queryClient.invalidateQueries({ queryKey: ["/api/talent-profiles/me"] });
+      toast({ title: "Background uploaded!", description: "Your profile background image has been saved." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message || "Could not upload background image.", variant: "destructive" });
+    } finally {
+      setBgImageUploading(false);
+      if (bgImageInputRef.current) bgImageInputRef.current.value = "";
+    }
+  };
 
   const applyMutation = useMutation({
     mutationFn: async (competitionId: number) => {
@@ -351,7 +388,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <nav className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/5">
+      <nav className="sticky top-0 z-50 bg-black/95 backdrop-blur-xl border-b border-white/15">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 h-16 lg:h-20">
           <Link href="/" className="flex items-center gap-2" data-testid="link-home">
             <div className="w-8 h-8 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
@@ -385,7 +422,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
         <Tabs defaultValue="profile">
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
-            <TabsList className="inline-flex w-max sm:w-auto bg-white/5 border border-white/5">
+            <TabsList className="inline-flex w-max sm:w-auto bg-white/[0.08] border border-white/15">
               <TabsTrigger value="profile" data-testid="tab-profile" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white">
                 <User className="h-4 w-4 mr-1.5" /> <span className="hidden sm:inline">Profile</span>
               </TabsTrigger>
@@ -399,22 +436,22 @@ export default function TalentDashboard({ user, profile }: Props) {
           </div>
 
           <TabsContent value="profile">
-            <div className="rounded-md bg-white/5 border border-white/5 p-6 space-y-5">
+            <div className="rounded-md bg-white/[0.04] border border-white/15 p-6 space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="displayName" className="text-white/60">Display Name</Label>
                   <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Your stage name" data-testid="input-display-name"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                    className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/25" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-white/60">Email</Label>
                   <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                     placeholder="your@email.com" data-testid="input-email"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                    className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/25" />
                 </div>
               </div>
-              <div className="flex items-center justify-between rounded-md bg-white/5 border border-white/5 px-4 py-3">
+              <div className="flex items-center justify-between rounded-md bg-white/[0.06] border border-white/12 px-4 py-3">
                 <div>
                   <Label htmlFor="showEmail" className="text-white/80 text-sm font-medium cursor-pointer">Show email on my profile</Label>
                   <p className="text-xs text-white/40 mt-0.5">Voters will see your email for booking inquiries</p>
@@ -432,88 +469,107 @@ export default function TalentDashboard({ user, profile }: Props) {
                   <Label htmlFor="category" className="text-white/60">Category</Label>
                   <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)}
                     placeholder="e.g., Music, Modeling, Bodybuilding" data-testid="input-category"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                    className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="location" className="text-white/60">Location</Label>
                 <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)}
                   placeholder="City, State" data-testid="input-location"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20" />
+                  className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="bio" className="text-white/60">Bio</Label>
                 <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself and your talent..."
-                  className="min-h-[120px] resize-none bg-white/5 border-white/10 text-white placeholder:text-white/20" data-testid="input-bio" />
+                  className="min-h-[120px] resize-none bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" data-testid="input-bio" />
               </div>
 
-              <div className="space-y-3 rounded-md bg-white/5 border border-white/5 p-4">
-                <Label className="flex items-center gap-2 text-white/80 text-sm font-semibold">
-                  <Palette className="h-4 w-4 text-orange-400" /> Profile Page Customization
-                </Label>
-                <p className="text-xs text-white/40">Customize the look of your public contestant page.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="profileColor" className="text-white/60 text-xs">Accent Color</Label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        id="profileColor"
-                        value={profileColor}
-                        onChange={(e) => setProfileColor(e.target.value)}
-                        className="w-10 h-10 rounded-md cursor-pointer border border-white/10 bg-transparent"
-                        data-testid="input-profile-color"
-                      />
-                      <Input
-                        value={profileColor}
-                        onChange={(e) => setProfileColor(e.target.value)}
-                        placeholder="#FF5A09"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono text-sm flex-1"
-                        data-testid="input-profile-color-text"
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {["#FF5A09", "#E91E63", "#9C27B0", "#2196F3", "#00BCD4", "#4CAF50", "#FFEB3B", "#FF9800"].map(c => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setProfileColor(c)}
-                          className="w-6 h-6 rounded-full border-2 transition-all"
-                          style={{ backgroundColor: c, borderColor: profileColor === c ? "#fff" : "transparent" }}
-                          data-testid={`button-color-${c.replace('#', '')}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profileBgImage" className="text-white/60 text-xs">Background Image URL (optional)</Label>
-                    <Input
-                      id="profileBgImage"
-                      value={profileBgImage}
-                      onChange={(e) => setProfileBgImage(e.target.value)}
-                      placeholder="https://..."
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/20 text-sm"
-                      data-testid="input-profile-bg-image"
-                    />
-                    <p className="text-[10px] text-white/30">Paste a URL to an image to use as a background pattern on your public page.</p>
+              <div className="space-y-4 rounded-md bg-white/[0.03] border border-white/10 p-5">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                  <Palette className="h-5 w-5 text-orange-400" />
+                  <div>
+                    <Label className="text-white text-sm font-semibold">Profile Page Customization</Label>
+                    <p className="text-xs text-white/40 mt-0.5">Customize the look of your public contestant page.</p>
                   </div>
                 </div>
-                {(profileColor !== "#FF5A09" || profileBgImage) && (
-                  <div className="rounded-md overflow-hidden border border-white/10 h-24 relative mt-2" data-testid="profile-preview">
-                    {profileBgImage && (
-                      <img src={profileBgImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-black/40" />
-                    <div className="relative h-full flex items-center px-4 gap-3">
-                      <div className="w-12 h-12 rounded-full" style={{ backgroundColor: profileColor, opacity: 0.9 }} />
-                      <div>
-                        <p className="text-sm font-bold" style={{ color: profileColor }}>{displayName || "Your Name"}</p>
-                        <p className="text-[10px] text-white/50 uppercase" style={{ letterSpacing: "2px" }}>Preview</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-white/70 text-xs font-medium uppercase" style={{ letterSpacing: "1px" }}>Accent Color</Label>
+                    <ColorWheelPicker value={profileColor} onChange={setProfileColor} />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-white/70 text-xs font-medium uppercase" style={{ letterSpacing: "1px" }}>Background Image</Label>
+                    <p className="text-[11px] text-white/40">Upload a JPEG image to use as your profile page background.</p>
+                    <input
+                      ref={bgImageInputRef}
+                      type="file"
+                      accept=".jpg,.jpeg"
+                      className="hidden"
+                      onChange={handleBgImageUpload}
+                      data-testid="input-bg-image-file"
+                    />
+                    {profileBgImage ? (
+                      <div className="space-y-2">
+                        <div className="relative rounded-md overflow-hidden border border-white/10 h-28">
+                          <img src={profileBgImage} alt="Background" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/30" />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="text-white/60 text-xs flex-1 border border-white/10"
+                            onClick={() => bgImageInputRef.current?.click()}
+                            disabled={bgImageUploading}
+                            data-testid="button-change-bg"
+                          >
+                            {bgImageUploading ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <ImagePlus className="h-3 w-3 mr-1.5" />}
+                            Change
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="text-red-400/70 text-xs border border-white/10"
+                            onClick={() => setProfileBgImage("")}
+                            data-testid="button-remove-bg"
+                          >
+                            <X className="h-3 w-3 mr-1" /> Remove
+                          </Button>
+                        </div>
                       </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => bgImageInputRef.current?.click()}
+                        disabled={bgImageUploading}
+                        className="w-full h-28 rounded-md border-2 border-dashed border-white/15 flex flex-col items-center justify-center gap-2 transition-colors hover:border-white/30 hover:bg-white/[0.02] cursor-pointer disabled:opacity-50"
+                        data-testid="button-upload-bg"
+                      >
+                        {bgImageUploading ? (
+                          <Loader2 className="h-6 w-6 text-white/30 animate-spin" />
+                        ) : (
+                          <Upload className="h-6 w-6 text-white/30" />
+                        )}
+                        <span className="text-xs text-white/40">{bgImageUploading ? "Uploading..." : "Click to upload JPEG"}</span>
+                        <span className="text-[10px] text-white/20">.jpg or .jpeg only</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-md overflow-hidden border border-white/10 h-24 relative mt-1" data-testid="profile-preview">
+                  {profileBgImage && (
+                    <img src={profileBgImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-black/40" />
+                  <div className="relative h-full flex items-center px-4 gap-3">
+                    <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: profileColor, opacity: 0.9 }} />
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: profileColor }}>{displayName || "Your Name"}</p>
+                      <p className="text-[10px] text-white/50 uppercase" style={{ letterSpacing: "2px" }}>Live Preview</p>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
               <Button onClick={() => saveProfileMutation.mutate()} disabled={saveProfileMutation.isPending || !displayName.trim()}
@@ -526,23 +582,23 @@ export default function TalentDashboard({ user, profile }: Props) {
 
           <TabsContent value="media">
             {!profile ? (
-              <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+              <div className="rounded-md bg-white/[0.06] border border-white/12 p-6 text-center">
                 <User className="h-10 w-10 text-white/20 mx-auto mb-3" />
                 <h3 className="font-semibold mb-1">Create Your Profile First</h3>
                 <p className="text-sm text-white/40">You need a talent profile before uploading media.</p>
               </div>
             ) : appliedContests.length === 0 ? (
-              <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+              <div className="rounded-md bg-white/[0.06] border border-white/12 p-6 text-center">
                 <Trophy className="h-10 w-10 text-white/20 mx-auto mb-3" />
                 <h3 className="font-semibold mb-1">No Competitions Yet</h3>
                 <p className="text-sm text-white/40">Apply to a competition in the Competitions tab first, then come back here to upload your photos and videos.</p>
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="rounded-md bg-white/5 border border-white/5 p-4">
+                <div className="rounded-md bg-white/[0.06] border border-white/12 p-4">
                   <Label className="text-white/60 mb-2 block">Select Competition</Label>
                   <Select value={selectedCompId} onValueChange={setSelectedCompId}>
-                    <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-competition">
+                    <SelectTrigger className="bg-white/[0.07] border-white/15 text-white" data-testid="select-competition">
                       <SelectValue placeholder="Choose a competition to manage media..." />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10">
@@ -557,7 +613,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
                 {selectedCompId && (
                   <>
-                    <div className="rounded-md bg-white/5 border border-white/5 p-6 space-y-4">
+                    <div className="rounded-md bg-white/[0.06] border border-white/12 p-6 space-y-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <Label className="flex items-center gap-2 text-white/80 text-base font-semibold">
                           <ImageIcon className="h-5 w-5 text-orange-400" /> Photos
@@ -647,7 +703,7 @@ export default function TalentDashboard({ user, profile }: Props) {
                       )}
                     </div>
 
-                    <div className="rounded-md bg-white/5 border border-white/5 p-6 space-y-4">
+                    <div className="rounded-md bg-white/[0.06] border border-white/12 p-6 space-y-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <Label className="flex items-center gap-2 text-white/80 text-base font-semibold">
                           <Video className="h-5 w-5 text-orange-400" /> Videos
@@ -815,7 +871,7 @@ export default function TalentDashboard({ user, profile }: Props) {
 
           <TabsContent value="competitions">
             {!profile ? (
-              <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+              <div className="rounded-md bg-white/[0.06] border border-white/12 p-6 text-center">
                 <User className="h-10 w-10 text-white/20 mx-auto mb-3" />
                 <h3 className="font-semibold mb-1">Create Your Profile First</h3>
                 <p className="text-sm text-white/40">You need a talent profile before applying to competitions.</p>
@@ -834,7 +890,7 @@ export default function TalentDashboard({ user, profile }: Props) {
                         const previewUrl = buildShareUrl(contest, myRefCode?.code);
                         const isCopied = copiedShareId === contest.id.toString();
                         return (
-                          <div key={`share-${contest.id}`} className="rounded-md bg-white/5 border border-white/5 p-4" data-testid={`card-share-${contest.id}`}>
+                          <div key={`share-${contest.id}`} className="rounded-md bg-white/[0.06] border border-white/12 p-4" data-testid={`card-share-${contest.id}`}>
                             <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                               <div>
                                 <h4 className="font-medium">{contest.competitionTitle || "Competition"}</h4>
@@ -875,7 +931,7 @@ export default function TalentDashboard({ user, profile }: Props) {
                     <h3 className="font-bold mb-3 text-lg">My Competitions</h3>
                     <div className="space-y-2">
                       {myContests.map((contest: any) => (
-                        <div key={contest.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-3" data-testid={`card-my-contest-${contest.id}`}>
+                        <div key={contest.id} className="rounded-md bg-white/[0.06] border border-white/12 p-4 flex flex-wrap items-center justify-between gap-3" data-testid={`card-my-contest-${contest.id}`}>
                           <div>
                             <h4 className="font-medium">{contest.competitionTitle || "Competition"}</h4>
                             <p className="text-xs text-white/30">Applied {new Date(contest.appliedAt).toLocaleDateString()}</p>
@@ -908,7 +964,7 @@ export default function TalentDashboard({ user, profile }: Props) {
                   {activeCompetitions.length > 0 ? (
                     <div className="space-y-2">
                       {activeCompetitions.map((comp) => (
-                        <div key={comp.id} className="rounded-md bg-white/5 border border-white/5 p-4 flex flex-wrap items-center justify-between gap-3" data-testid={`card-available-comp-${comp.id}`}>
+                        <div key={comp.id} className="rounded-md bg-white/[0.06] border border-white/12 p-4 flex flex-wrap items-center justify-between gap-3" data-testid={`card-available-comp-${comp.id}`}>
                           <div>
                             <h4 className="font-medium">{comp.title}</h4>
                             <p className="text-xs text-white/30">{comp.category}</p>
@@ -927,7 +983,7 @@ export default function TalentDashboard({ user, profile }: Props) {
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
+                    <div className="rounded-md bg-white/[0.06] border border-white/12 p-6 text-center">
                       <Trophy className="h-8 w-8 text-white/10 mx-auto mb-2" />
                       <p className="text-sm text-white/30">No active competitions right now.</p>
                     </div>

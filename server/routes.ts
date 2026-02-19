@@ -848,6 +848,38 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  const profileBgUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = /\.(jpg|jpeg)$/i;
+      if (allowed.test(path.extname(file.originalname))) {
+        cb(null, true);
+      } else {
+        cb(new Error("Only JPEG images are allowed (.jpg or .jpeg)"));
+      }
+    },
+  });
+
+  app.post("/api/talent-profiles/me/bg-image", firebaseAuth, profileBgUpload.single("image"), async (req, res) => {
+    try {
+      const uid = req.firebaseUser!.uid;
+      const profile = await storage.getTalentProfileByUserId(uid);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      if (!req.file) return res.status(400).json({ message: "No file uploaded. Only JPEG images are accepted." });
+
+      const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
+      const storagePath = `profile-backgrounds/${uid}/${uniqueName}`;
+      const firebaseUrl = await uploadToFirebaseStorage(storagePath, req.file.buffer, req.file.mimetype);
+
+      await storage.updateTalentProfile(uid, { profileBgImage: firebaseUrl });
+      res.json({ url: firebaseUrl });
+    } catch (error: any) {
+      console.error("Profile background upload error:", error);
+      res.status(500).json({ message: error.message || "Upload failed" });
+    }
+  });
+
   app.get("/api/talent-profiles/:id", async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid profile ID" });
