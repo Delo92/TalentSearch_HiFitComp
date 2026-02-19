@@ -387,8 +387,7 @@
 
 .coverflow-cover {
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  aspect-ratio: 4 / 3;
   border-radius: 10px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
   position: relative;
