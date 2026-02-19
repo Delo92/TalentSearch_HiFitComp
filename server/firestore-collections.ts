@@ -811,14 +811,26 @@ export const firestoreViewerProfiles = {
     const snapshot = await db()
       .collection(COLLECTIONS.VIEWER_PROFILES)
       .where("email", "==", normalizedEmail)
-      .limit(1)
+      .limit(5)
       .get();
     if (snapshot.empty) return null;
-    const profile = snapshot.docs[0].data() as FirestoreViewerProfile;
-    if (profile.displayName.toLowerCase().trim() !== name.toLowerCase().trim()) {
-      return null;
+
+    const inputWords = name.toLowerCase().trim().split(/\s+/).filter(Boolean);
+
+    for (const doc of snapshot.docs) {
+      const profile = doc.data() as FirestoreViewerProfile;
+      const storedWords = profile.displayName.toLowerCase().trim().split(/\s+/).filter(Boolean);
+
+      if (storedWords.join(" ") === inputWords.join(" ")) return profile;
+
+      const inputFirst = inputWords[0];
+      const inputLast = inputWords[inputWords.length - 1];
+      const storedFirst = storedWords[0];
+      const storedLast = storedWords[storedWords.length - 1];
+      if (inputFirst === storedFirst && inputLast === storedLast) return profile;
     }
-    return profile;
+
+    return null;
   },
 };
 
