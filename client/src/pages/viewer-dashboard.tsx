@@ -80,7 +80,7 @@ export default function ViewerDashboard() {
 
   const handleLogout = () => {
     logoutViewer();
-    setLocation("/");
+    window.location.href = "/";
   };
 
   if (!viewer) return null;
