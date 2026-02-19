@@ -13,6 +13,8 @@ import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
 import { Mail } from "lucide-react";
+import { useViewerSession } from "@/hooks/use-viewer-session";
+import { apiRequest } from "@/lib/queryClient";
 
 type Mode = "login" | "register" | "reset";
 
@@ -37,6 +39,7 @@ export default function LoginPage() {
     canonical: "https://hifitcomp.com/login",
   });
   const { login, register, resetPassword, isAuthenticated, error } = useAuth();
+  const { loginViewer, isViewerLoggedIn } = useViewerSession();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
@@ -51,8 +54,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [viewerName, setViewerName] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
   const [loading, setLoading] = useState(false);
+
+  const isViewerMode = selectedLevel === 1;
 
   const { data: inviteInfo } = useQuery<InviteInfo>({
     queryKey: ["/api/invitations/token", inviteToken],
@@ -72,7 +78,13 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, setLocation]);
 
-  if (isAuthenticated) {
+  useEffect(() => {
+    if (isViewerLoggedIn) {
+      setLocation("/viewer");
+    }
+  }, [isViewerLoggedIn, setLocation]);
+
+  if (isAuthenticated || isViewerLoggedIn) {
     return null;
   }
 
@@ -81,6 +93,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      if (mode === "login" && isViewerMode) {
+        if (!viewerName.trim()) {
+          toast({ title: "Please enter your full name", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        const res = await apiRequest("POST", "/api/guest/lookup", {
+          name: viewerName.trim(),
+          email: email.trim(),
+        });
+        const data = await res.json();
+        loginViewer(data.viewer);
+        toast({ title: "Welcome back!", description: `Signed in as ${data.viewer.displayName}` });
+        setLocation("/viewer");
+        return;
+      }
+
       if (mode === "login") {
         await login(email, password);
         toast({ title: "Welcome back!", description: "You have been logged in." });
@@ -106,7 +135,8 @@ export default function LoginPage() {
         setMode("login");
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      const msg = err.message?.replace(/^\d+:\s*/, "") || "Something went wrong";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -220,7 +250,28 @@ export default function LoginPage() {
             />
           </div>
 
-          {mode !== "reset" && (
+          {mode !== "reset" && mode === "login" && isViewerMode && (
+            <div>
+              <Label htmlFor="viewerName" className="text-white/60 uppercase text-xs tracking-wider">
+                Full Name
+              </Label>
+              <Input
+                id="viewerName"
+                type="text"
+                value={viewerName}
+                onChange={(e) => setViewerName(e.target.value)}
+                className="bg-white/[0.08] border-white/20 text-white mt-2"
+                placeholder="Name you used at checkout"
+                required
+                data-testid="input-viewer-name"
+              />
+              <p className="text-white/30 text-xs mt-1.5">
+                Enter the name and email you used when purchasing votes
+              </p>
+            </div>
+          )}
+
+          {mode !== "reset" && !(mode === "login" && isViewerMode) && (
             <div>
               <Label htmlFor="password" className="text-white/60 uppercase text-xs tracking-wider">
                 Password
@@ -267,7 +318,7 @@ export default function LoginPage() {
             style={{ borderRadius: 0 }}
             data-testid="button-auth-submit"
           >
-            {loading ? "Please wait..." : mode === "login" ? "LOGIN" : mode === "register" ? "CREATE ACCOUNT" : "SEND RESET EMAIL"}
+            {loading ? "Please wait..." : mode === "login" && isViewerMode ? "SIGN IN" : mode === "login" ? "LOGIN" : mode === "register" ? "CREATE ACCOUNT" : "SEND RESET EMAIL"}
           </Button>
         </form>
 
@@ -292,13 +343,9 @@ export default function LoginPage() {
 
               <div className="pt-6 border-t border-white/10 mt-6">
                 <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Voter?</p>
-                <Link
-                  href="/my-purchases"
-                  className="text-[#FF5A09]/80 text-sm hover:text-[#FF5A09] transition-colors"
-                  data-testid="link-guest-purchases"
-                >
-                  Look up your purchase history
-                </Link>
+                <p className="text-white/40 text-sm">
+                  Select "Viewer" above and sign in with the name and email you used at checkout
+                </p>
               </div>
             </>
           )}

@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useViewerSession } from "@/hooks/use-viewer-session";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useLivery } from "@/hooks/use-livery";
 import { ShoppingCart, Radio } from "lucide-react";
@@ -73,7 +74,10 @@ function LiveVoteCounter() {
 
 export default function SiteNavbar() {
   const { user, isAuthenticated } = useAuth();
+  const { isViewerLoggedIn } = useViewerSession();
   const { getImage, getMedia } = useLivery();
+  const isLoggedIn = isAuthenticated || isViewerLoggedIn;
+  const dashboardHref = isViewerLoggedIn ? "/viewer" : "/dashboard";
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -160,13 +164,13 @@ export default function SiteNavbar() {
           >
             <ShoppingCart className="h-5 w-5" />
           </Link>
-          {isAuthenticated ? (
+          {isLoggedIn ? (
             <Link
-              href="/dashboard"
+              href={dashboardHref}
               className="text-white font-bold text-base cursor-pointer transition-colors duration-500 hover:text-white/70"
               data-testid="link-nav-dashboard"
             >
-              Dashboard
+              {isViewerLoggedIn ? "My Account" : "Dashboard"}
             </Link>
           ) : (
             <Link
@@ -231,14 +235,14 @@ export default function SiteNavbar() {
             <ShoppingCart className="h-4 w-4" />
             My Purchases
           </Link>
-          {isAuthenticated ? (
+          {isLoggedIn ? (
             <Link
-              href="/dashboard"
+              href={dashboardHref}
               className="block py-2 text-white font-bold text-sm"
               onClick={() => setMenuOpen(false)}
               data-testid="link-mobile-dashboard"
             >
-              Dashboard
+              {isViewerLoggedIn ? "My Account" : "Dashboard"}
             </Link>
           ) : (
             <Link

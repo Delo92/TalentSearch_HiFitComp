@@ -342,8 +342,11 @@ export default function CheckoutPage() {
             SELECT PACKAGE
           </h3>
 
-          <button
+          <div
             onClick={() => setSelectedPackage("individual")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setSelectedPackage("individual"); }}
             className={`w-full p-5 border text-left transition-all duration-300 cursor-pointer mb-4 ${
               isIndividual
                 ? "border-[#FF5A09] bg-[#FF5A09]/10"
@@ -392,7 +395,7 @@ export default function CheckoutPage() {
                 </span>
               </div>
             )}
-          </button>
+          </div>
 
           <p className="text-white/30 text-xs uppercase tracking-wider mb-3" style={{ letterSpacing: "2px" }}>Or choose a package</p>
 
