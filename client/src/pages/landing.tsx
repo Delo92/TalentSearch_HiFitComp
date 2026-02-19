@@ -160,7 +160,7 @@ export default function Landing() {
                 className="inline-block bg-transparent border border-white text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
                 data-testid="button-hero-join-nominate"
               >
-                Join / Nominate <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+                Nominate <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
               </span>
             </Link>
           </motion.div>
