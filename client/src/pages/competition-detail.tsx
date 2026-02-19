@@ -205,7 +205,7 @@ export default function CompetitionDetailPage() {
             {(competition.endDate || (competition as any).endDateTbd) && (
               <span className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-white/30" />
-                {(competition as any).endDateTbd ? <span className="text-orange-400">Ends TBD</span> : `Ends ${new Date(competition.endDate).toLocaleDateString()}`}
+                {(competition as any).endDateTbd ? <span className="text-orange-400">Ends TBD</span> : `Ends ${new Date(competition.endDate!).toLocaleDateString()}`}
               </span>
             )}
             <span className="flex items-center gap-1.5">

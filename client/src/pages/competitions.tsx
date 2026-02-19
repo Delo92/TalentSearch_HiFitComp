@@ -182,7 +182,7 @@ function CompetitionCard({ competition }: { competition: CompetitionExt }) {
               className="inline-block bg-white/20 group-hover:bg-black/80 text-white text-[11px] font-bold uppercase px-5 py-2 tracking-widest transition-all duration-500 backdrop-blur-sm"
               style={{ letterSpacing: "4px" }}
             >
-              See Event
+              See Competition
             </span>
           </div>
         </div>
