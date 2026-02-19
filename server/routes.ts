@@ -449,6 +449,13 @@ export async function registerRoutes(
             } catch {}
           }
 
+          let competitionSlug: string | null = null;
+          let contestantSlug: string | null = null;
+          if (topCompetition && topContestant) {
+            competitionSlug = slugify(topCompetition.title);
+            contestantSlug = slugify(topContestant.talentProfile.displayName || topContestant.talentProfile.stageName || "");
+          }
+
           return {
             categoryId: cat.id,
             categoryName: cat.name,
@@ -458,6 +465,8 @@ export async function registerRoutes(
             topContestantName: displayName,
             voteCount: topVoteCount,
             competitionCount: catComps.length,
+            competitionSlug,
+            contestantSlug,
           };
         })
       );

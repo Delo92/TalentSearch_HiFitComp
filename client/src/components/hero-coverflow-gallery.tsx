@@ -12,6 +12,8 @@ interface GalleryItem {
   topContestantName: string | null;
   voteCount: number;
   competitionCount: number;
+  competitionSlug: string | null;
+  contestantSlug: string | null;
 }
 
 function CardWrapper({ useLink, href, children }: { useLink: boolean; href: string; children: React.ReactNode }) {
@@ -186,7 +188,13 @@ export default function HeroCoverflowGallery({ onCardClick }: HeroCoverflowGalle
                 }}
                 data-testid={`gallery-item-${item.categoryId}`}
               >
-                <CardWrapper useLink={!onCardClick} href={`/${slugify(item.categoryName || "")}`}>
+                <CardWrapper useLink={!onCardClick} href={
+                  item.competitionSlug && item.contestantSlug
+                    ? `/${slugify(item.categoryName || "")}/${item.competitionSlug}/${item.contestantSlug}`
+                    : item.competitionSlug
+                    ? `/${slugify(item.categoryName || "")}/${item.competitionSlug}`
+                    : `/competitions?category=${encodeURIComponent(item.categoryName || "")}`
+                }>
                   <div className="coverflow-vote-badge">
                     <span className="coverflow-vote-dot" />
                     <span className="coverflow-vote-count">{item.voteCount.toLocaleString()}</span>
