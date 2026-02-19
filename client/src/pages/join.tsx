@@ -68,6 +68,7 @@ export default function JoinPage() {
   const [acceptLoaded, setAcceptLoaded] = useState(false);
   const searchString = useSearch();
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [compSearch, setCompSearch] = useState("");
   const competitionSectionRef = useRef<HTMLDivElement>(null);
 
@@ -97,35 +98,39 @@ export default function JoinPage() {
 
   const filteredCompetitions = useMemo(() => {
     if (!competitions) return [];
-    const openComps = competitions.filter(c => c.status === "active" || c.status === "voting" || c.status === "draft");
+    let openComps = competitions.filter(c => c.status === "active" || c.status === "voting" || c.status === "draft");
+    if (selectedCategory) {
+      openComps = openComps.filter(c => c.category === selectedCategory);
+    }
     if (!compSearch.trim()) return openComps;
     const q = compSearch.toLowerCase();
     return openComps.filter(c =>
-      c.title.toLowerCase().includes(q) ||
-      c.category.toLowerCase().includes(q)
+      c.title.toLowerCase().includes(q)
     );
-  }, [competitions, compSearch]);
+  }, [competitions, compSearch, selectedCategory]);
+
+  const categoryCompCounts = useMemo(() => {
+    if (!competitions || !firestoreCategories) return {};
+    const openComps = competitions.filter(c => c.status === "active" || c.status === "voting" || c.status === "draft");
+    const counts: Record<string, number> = {};
+    for (const cat of firestoreCategories) {
+      counts[cat.name] = openComps.filter(c => c.category === cat.name).length;
+    }
+    return counts;
+  }, [competitions, firestoreCategories]);
 
   const selectedCompetition = useMemo(() => {
     return competitions?.find(c => c.id === selectedCompetitionId) || null;
   }, [competitions, selectedCompetitionId]);
 
   const handleGalleryCardClick = useCallback((categoryName: string) => {
-    if (!competitions) return;
-    const matchingComps = competitions.filter(c =>
-      (c.status === "active" || c.status === "voting") &&
-      c.category === categoryName
-    );
-    if (matchingComps.length === 1) {
-      setSelectedCompetitionId(matchingComps[0].id);
-    } else if (matchingComps.length > 1) {
-      setSelectedCompetitionId(null);
-      setCompSearch(categoryName);
-    }
+    setSelectedCategory(categoryName);
+    setSelectedCompetitionId(null);
+    setCompSearch("");
     setTimeout(() => {
       competitionSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 100);
-  }, [competitions]);
+  }, []);
 
   const needsPayment = (settings?.nominationFee || 0) > 0;
   const paymentAmount = settings?.nominationFee || 0;
@@ -345,16 +350,7 @@ export default function JoinPage() {
           <h3 className="text-lg uppercase text-white font-normal mb-6" style={{ letterSpacing: "6px" }}>
             CHOOSE YOUR EVENT
           </h3>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-            <Input
-              value={compSearch}
-              onChange={(e) => setCompSearch(e.target.value)}
-              placeholder="Search competitions by name or category..."
-              className="bg-white/[0.08] border-white/20 text-white pl-10"
-              data-testid="input-comp-search"
-            />
-          </div>
+
           {selectedCompetition ? (
             <div className="border border-[#FF5A09]/40 bg-[#FF5A09]/5 p-4 flex flex-wrap items-center justify-between gap-3" data-testid="selected-competition">
               <div className="flex items-center gap-3">
@@ -365,7 +361,7 @@ export default function JoinPage() {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedCompetitionId(null)}
+                onClick={() => { setSelectedCompetitionId(null); setSelectedCategory(selectedCompetition.category); }}
                 className="text-xs text-white/40 uppercase tracking-wider border border-white/10 px-3 py-1.5 transition-colors hover:text-white/60"
                 data-testid="button-change-competition"
               >
@@ -373,24 +369,68 @@ export default function JoinPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[240px] overflow-y-auto">
-              {filteredCompetitions.length > 0 ? filteredCompetitions.map((comp) => (
-                <button
-                  key={comp.id}
-                  onClick={() => setSelectedCompetitionId(comp.id)}
-                  className="w-full text-left bg-white/[0.08] border border-white/15 p-4 transition-colors hover:border-[#FF5A09]/30 hover:bg-[#FF5A09]/5 flex items-center gap-3"
-                  data-testid={`comp-option-${comp.id}`}
-                >
-                  <Trophy className="h-4 w-4 text-white/30 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-white text-sm">{comp.title}</p>
-                    <p className="text-xs text-white/30">{comp.category} | {comp.status}</p>
+            <>
+              <p className="text-white/40 text-xs mb-3 uppercase tracking-wider">Step 1: Pick a Category</p>
+              <div className="flex flex-wrap gap-2 mb-5">
+                {(firestoreCategories || []).filter((c: any) => c.isActive !== false).map((cat: any) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => { setSelectedCategory(cat.name); setCompSearch(""); }}
+                    className={`px-4 py-2 text-xs uppercase tracking-wider border transition-colors ${
+                      selectedCategory === cat.name
+                        ? "bg-[#FF5A09] border-[#FF5A09] text-white"
+                        : "bg-white/[0.05] border-white/15 text-white/60 hover:border-[#FF5A09]/40 hover:text-white"
+                    }`}
+                    data-testid={`category-tab-${cat.id}`}
+                  >
+                    {cat.name}
+                    <span className="ml-1.5 text-[10px] opacity-60">({categoryCompCounts[cat.name] || 0})</span>
+                  </button>
+                ))}
+              </div>
+
+              {selectedCategory && (
+                <>
+                  <p className="text-white/40 text-xs mb-3 uppercase tracking-wider">Step 2: Choose Competition</p>
+                  {filteredCompetitions.length > 6 && (
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                      <Input
+                        value={compSearch}
+                        onChange={(e) => setCompSearch(e.target.value)}
+                        placeholder={`Search in ${selectedCategory}...`}
+                        className="bg-white/[0.08] border-white/20 text-white pl-10"
+                        data-testid="input-comp-search"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                    {filteredCompetitions.length > 0 ? filteredCompetitions.map((comp) => (
+                      <button
+                        key={comp.id}
+                        onClick={() => setSelectedCompetitionId(comp.id)}
+                        className="w-full text-left bg-white/[0.08] border border-white/15 p-4 transition-colors hover:border-[#FF5A09]/30 hover:bg-[#FF5A09]/5 flex items-center gap-3"
+                        data-testid={`comp-option-${comp.id}`}
+                      >
+                        <Trophy className="h-4 w-4 text-[#FF5A09]/50 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-white text-sm">{comp.title}</p>
+                          <p className="text-xs text-white/30">{comp.status}</p>
+                        </div>
+                      </button>
+                    )) : (
+                      <p className="text-white/30 text-sm py-4 text-center">No competitions in this category yet.</p>
+                    )}
                   </div>
-                </button>
-              )) : (
-                <p className="text-white/30 text-sm py-4 text-center">No competitions found.</p>
+                </>
               )}
-            </div>
+
+              {!selectedCategory && (
+                <p className="text-white/20 text-sm py-4 text-center border border-dashed border-white/10 mt-2">
+                  Select a category above to see available competitions
+                </p>
+              )}
+            </>
           )}
         </div>
 
