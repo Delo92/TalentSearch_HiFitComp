@@ -269,15 +269,15 @@ export default function Landing() {
           <div ref={steps.ref} className={`text-center mb-24 transition-all duration-1000 ${steps.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
             <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>
             <h2 className="text-lg uppercase text-white font-normal tracking-[5px] sm:tracking-[10px]">
-              How It Works
+              {getText("hiw_section_title", "How It Works")}
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {[
-              { step: "01", title: "Create Your Profile", desc: "Sign up, set up your talent profile with photos, videos, and bio. Make it stand out." },
-              { step: "02", title: "Apply to Compete", desc: "Browse active competitions and apply to the ones that match your talent and goals." },
-              { step: "03", title: "Win Public Votes", desc: "Once approved, share your profile. The contestant with the most votes wins the crown." },
+              { step: "01", title: getText("hiw_step1_title", "Create Your Profile"), desc: getText("hiw_step1_desc", "Sign up, set up your talent profile with photos, videos, and bio. Make it stand out.") },
+              { step: "02", title: getText("hiw_step2_title", "Apply to Compete"), desc: getText("hiw_step2_desc", "Browse active competitions and apply to the ones that match your talent and goals.") },
+              { step: "03", title: getText("hiw_step3_title", "Win Public Votes"), desc: getText("hiw_step3_desc", "Once approved, share your profile. The contestant with the most votes wins the crown.") },
             ].map((s, i) => (
               <div
                 key={s.step}
