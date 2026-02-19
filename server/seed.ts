@@ -138,6 +138,7 @@ export async function seedDatabase() {
 
 const LIVERY_DEFAULTS = [
   { imageKey: "logo", label: "Site Logo", defaultUrl: "/images/template/logo.png" },
+  { imageKey: "site_favicon", label: "Site Favicon (Browser Tab Icon)", defaultUrl: "/images/template/favicon.jpeg" },
   { imageKey: "hero_background", label: "Hero Background (Landing)", defaultUrl: "/images/template/bg-1.jpg" },
   { imageKey: "feature_background", label: "Feature Section Background (Landing)", defaultUrl: "/images/template/bg-2.jpg" },
   { imageKey: "cta_background", label: "Call to Action Background (Landing)", defaultUrl: "/images/template/breadcumb.jpg" },
