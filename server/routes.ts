@@ -3306,20 +3306,63 @@ export async function registerRoutes(
   // ── Referral Code Routes ──────────────────────────────────────────
   app.post("/api/referral/create", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      const { name, email, competitionId, contestantId } = req.body;
+      const { name, email, customCode, competitionId, contestantId } = req.body;
       if (!name) return res.status(400).json({ message: "Name is required" });
       const customId = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const code = await firestoreReferrals.generateCode(
-        customId,
-        "custom",
-        name,
-        null,
-        { ownerEmail: email || undefined, competitionId: competitionId || undefined, contestantId: contestantId || undefined, skipDuplicateCheck: true }
-      );
-      res.json(code);
+
+      let result;
+      if (customCode && customCode.trim()) {
+        const codeStr = customCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "");
+        if (codeStr.length < 3 || codeStr.length > 20) {
+          return res.status(400).json({ message: "Custom code must be 3-20 characters (letters, numbers, dashes, underscores)" });
+        }
+        const existing = await firestoreReferrals.getCodeByCode(codeStr);
+        if (existing) {
+          return res.status(400).json({ message: "This code is already taken" });
+        }
+        result = await firestoreReferrals.generateCode(
+          customId,
+          "custom",
+          name,
+          null,
+          { ownerEmail: email || undefined, competitionId: competitionId || undefined, contestantId: contestantId || undefined, skipDuplicateCheck: true, customCode: codeStr }
+        );
+      } else {
+        result = await firestoreReferrals.generateCode(
+          customId,
+          "custom",
+          name,
+          null,
+          { ownerEmail: email || undefined, competitionId: competitionId || undefined, contestantId: contestantId || undefined, skipDuplicateCheck: true }
+        );
+      }
+      res.json(result);
     } catch (err: any) {
       console.error("Create referral code error:", err);
-      res.status(500).json({ message: "Failed to create referral code" });
+      res.status(500).json({ message: err.message || "Failed to create referral code" });
+    }
+  });
+
+  app.put("/api/referral/:code", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { newCode, ownerName, ownerEmail, ownerType } = req.body;
+      if (newCode) {
+        const cleaned = newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "");
+        if (cleaned.length < 3 || cleaned.length > 20) {
+          return res.status(400).json({ message: "Code must be 3-20 characters (letters, numbers, dashes, underscores)" });
+        }
+      }
+      const sanitizedCode = newCode ? newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "") : undefined;
+      const updated = await firestoreReferrals.updateCode(req.params.code, {
+        newCode: sanitizedCode || undefined,
+        ownerName: ownerName || undefined,
+        ownerEmail: ownerEmail !== undefined ? ownerEmail : undefined,
+        ownerType: ownerType || undefined,
+      });
+      res.json(updated);
+    } catch (err: any) {
+      console.error("Update referral code error:", err);
+      res.status(500).json({ message: err.message || "Failed to update referral code" });
     }
   });
 

@@ -14,7 +14,7 @@ import {
 import {
   BarChart3, Trophy, Users, Vote, TrendingUp, Copy, Check, Share2,
   Trash2, Search, Globe, MapPin, DollarSign, RefreshCw, Link2,
-  ChevronLeft, ChevronRight, Eye, Plus, UserPlus, Mail
+  ChevronLeft, ChevronRight, Eye, Plus, UserPlus, Mail, Pencil
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useToast } from "@/hooks/use-toast";
@@ -110,6 +110,12 @@ export default function AdminAnalyticsTab() {
   const [showCreateRef, setShowCreateRef] = useState(false);
   const [newRefName, setNewRefName] = useState("");
   const [newRefEmail, setNewRefEmail] = useState("");
+  const [newRefCustomCode, setNewRefCustomCode] = useState("");
+  const [editingRef, setEditingRef] = useState<{ code: string; ownerName: string; ownerEmail: string; ownerType: string } | null>(null);
+  const [editRefCode, setEditRefCode] = useState("");
+  const [editRefName, setEditRefName] = useState("");
+  const [editRefEmail, setEditRefEmail] = useState("");
+  const [editRefType, setEditRefType] = useState("");
 
   const { data: analytics, isLoading: analyticsLoading } = useQuery<AnalyticsOverview>({
     queryKey: ["/api/analytics/overview"],
@@ -176,7 +182,7 @@ export default function AdminAnalyticsTab() {
   });
 
   const createRefMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string }) => {
+    mutationFn: async (data: { name: string; email: string; customCode?: string }) => {
       await apiRequest("POST", "/api/referral/create", data);
     },
     onSuccess: () => {
@@ -185,9 +191,25 @@ export default function AdminAnalyticsTab() {
       setShowCreateRef(false);
       setNewRefName("");
       setNewRefEmail("");
+      setNewRefCustomCode("");
     },
-    onError: () => {
-      toast({ title: "Failed to create referral code", variant: "destructive" });
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to create referral code", variant: "destructive" });
+    },
+  });
+
+  const updateRefMutation = useMutation({
+    mutationFn: async (data: { oldCode: string; newCode?: string; ownerName?: string; ownerEmail?: string; ownerType?: string }) => {
+      const { oldCode, ...body } = data;
+      await apiRequest("PUT", `/api/referral/${oldCode}`, body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/referral/stats"] });
+      toast({ title: "Referral code updated!" });
+      setEditingRef(null);
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to update referral code", variant: "destructive" });
     },
   });
 
@@ -526,6 +548,21 @@ export default function AdminAnalyticsTab() {
                               size="icon"
                               variant="ghost"
                               className="text-white/40"
+                              onClick={() => {
+                                setEditingRef({ code: r.code, ownerName: r.ownerName, ownerEmail: r.ownerEmail || "", ownerType: r.ownerType });
+                                setEditRefCode(r.code);
+                                setEditRefName(r.ownerName);
+                                setEditRefEmail(r.ownerEmail || "");
+                                setEditRefType(r.ownerType);
+                              }}
+                              data-testid={`button-edit-ref-${r.code}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-white/40"
                               onClick={() => handleCopyLink(r.code)}
                               data-testid={`button-copy-ref-${r.code}`}
                             >
@@ -783,15 +820,106 @@ export default function AdminAnalyticsTab() {
                 />
               </div>
             </div>
+            <div>
+              <Label className="text-white/60 text-xs">Custom Code (optional)</Label>
+              <Input
+                placeholder="e.g. ALOHA2025 (leave blank for auto-generated)"
+                value={newRefCustomCode}
+                onChange={(e) => setNewRefCustomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+                maxLength={20}
+                className="bg-white/5 border-white/10 text-white mt-1 font-mono uppercase"
+                data-testid="input-create-ref-custom-code"
+              />
+              <p className="text-white/30 text-[10px] mt-1">3-20 characters: letters, numbers, dashes, underscores</p>
+            </div>
             <Button
               className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white"
-              onClick={() => createRefMutation.mutate({ name: newRefName, email: newRefEmail })}
-              disabled={!newRefName.trim() || createRefMutation.isPending}
+              onClick={() => createRefMutation.mutate({ name: newRefName, email: newRefEmail, customCode: newRefCustomCode || undefined })}
+              disabled={!newRefName.trim() || createRefMutation.isPending || (newRefCustomCode.length > 0 && newRefCustomCode.length < 3)}
               data-testid="button-submit-create-referral"
             >
               {createRefMutation.isPending ? "Creating..." : "Create Referral Code"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Referral Code Modal ──────────────── */}
+      <Dialog open={!!editingRef} onOpenChange={(open) => { if (!open) setEditingRef(null); }}>
+        <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-orange-400 uppercase tracking-wider text-sm flex items-center gap-2">
+              <Pencil className="h-4 w-4" /> Edit Referral Code
+            </DialogTitle>
+          </DialogHeader>
+          {editingRef && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-white/60 text-xs">Code</Label>
+                <Input
+                  value={editRefCode}
+                  onChange={(e) => setEditRefCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+                  maxLength={20}
+                  className="bg-white/5 border-white/10 text-white mt-1 font-mono uppercase"
+                  data-testid="input-edit-ref-code"
+                />
+                <p className="text-white/30 text-[10px] mt-1">3-20 characters: letters, numbers, dashes, underscores</p>
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Name</Label>
+                <Input
+                  value={editRefName}
+                  onChange={(e) => setEditRefName(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white mt-1"
+                  data-testid="input-edit-ref-name"
+                />
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Email</Label>
+                <div className="relative mt-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                  <Input
+                    placeholder="email@example.com"
+                    type="email"
+                    value={editRefEmail}
+                    onChange={(e) => setEditRefEmail(e.target.value)}
+                    className="pl-10 bg-white/5 border-white/10 text-white"
+                    data-testid="input-edit-ref-email"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-white/60 text-xs">Type</Label>
+                <select
+                  value={editRefType}
+                  onChange={(e) => setEditRefType(e.target.value)}
+                  className="w-full mt-1 rounded-md bg-white/5 border border-white/10 text-white px-3 py-2 text-sm"
+                  data-testid="select-edit-ref-type"
+                >
+                  <option value="talent" className="bg-zinc-900">Talent</option>
+                  <option value="host" className="bg-zinc-900">Host</option>
+                  <option value="admin" className="bg-zinc-900">Admin</option>
+                  <option value="custom" className="bg-zinc-900">Custom</option>
+                </select>
+              </div>
+              <Button
+                className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+                onClick={() => {
+                  updateRefMutation.mutate({
+                    oldCode: editingRef.code,
+                    newCode: editRefCode !== editingRef.code ? editRefCode : undefined,
+                    ownerName: editRefName,
+                    ownerEmail: editRefEmail,
+                    ownerType: editRefType,
+                  });
+                }}
+                disabled={!editRefName.trim() || editRefCode.length < 3 || updateRefMutation.isPending}
+                data-testid="button-submit-edit-referral"
+              >
+                {updateRefMutation.isPending ? "Updating..." : "Save Changes"}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Tabs>

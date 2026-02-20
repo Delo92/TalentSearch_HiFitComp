@@ -1214,7 +1214,7 @@ export const firestoreReferrals = {
     ownerType: "talent" | "host" | "admin" | "custom",
     ownerName: string,
     talentProfileId?: number | null,
-    opts?: { ownerEmail?: string; competitionId?: number; contestantId?: number; skipDuplicateCheck?: boolean }
+    opts?: { ownerEmail?: string; competitionId?: number; contestantId?: number; skipDuplicateCheck?: boolean; customCode?: string }
   ): Promise<FirestoreReferralCode> {
     if (!opts?.skipDuplicateCheck) {
       const existing = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).limit(1).get();
@@ -1222,7 +1222,7 @@ export const firestoreReferrals = {
         return existing.docs[0].data() as FirestoreReferralCode;
       }
     }
-    const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+    const code = opts?.customCode || crypto.randomBytes(4).toString("hex").toUpperCase();
     const referral: FirestoreReferralCode = {
       code,
       ownerId,
@@ -1285,6 +1285,58 @@ export const firestoreReferrals = {
       updates.voterIps = admin.firestore.FieldValue.arrayUnion(voterIp);
     }
     await statsRef.update(updates);
+  },
+
+  async updateCode(
+    oldCode: string,
+    updates: { newCode?: string; ownerName?: string; ownerEmail?: string | null; ownerType?: "talent" | "host" | "admin" | "custom" }
+  ): Promise<FirestoreReferralCode> {
+    const codeDoc = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).get();
+    if (!codeDoc.exists) throw new Error("Referral code not found");
+    const existing = codeDoc.data() as FirestoreReferralCode;
+
+    const finalCode = updates.newCode?.toUpperCase().trim() || oldCode;
+    const isCodeChanged = finalCode !== oldCode;
+
+    if (isCodeChanged) {
+      const dupCheck = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(finalCode).get();
+      if (dupCheck.exists) throw new Error("Code already exists");
+    }
+
+    const updated: FirestoreReferralCode = {
+      ...existing,
+      code: finalCode,
+      ownerName: updates.ownerName ?? existing.ownerName,
+      ownerEmail: updates.ownerEmail !== undefined ? updates.ownerEmail : existing.ownerEmail,
+      ownerType: updates.ownerType ?? existing.ownerType,
+    };
+
+    const statsUpdates: Record<string, any> = {
+      ownerName: updated.ownerName,
+      ownerType: updated.ownerType,
+      updatedAt: now(),
+    };
+
+    if (isCodeChanged) {
+      await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).delete();
+      await db().collection(COLLECTIONS.REFERRAL_CODES).doc(finalCode).set(updated);
+
+      const statsDoc = await db().collection(COLLECTIONS.REFERRAL_STATS).doc(oldCode).get();
+      if (statsDoc.exists) {
+        const statsData = { ...statsDoc.data()!, ...statsUpdates, code: finalCode };
+        await db().collection(COLLECTIONS.REFERRAL_STATS).doc(oldCode).delete();
+        await db().collection(COLLECTIONS.REFERRAL_STATS).doc(finalCode).set(statsData);
+      }
+    } else {
+      await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).update({
+        ownerName: updated.ownerName,
+        ownerEmail: updated.ownerEmail,
+        ownerType: updated.ownerType,
+      });
+      await db().collection(COLLECTIONS.REFERRAL_STATS).doc(oldCode).update(statsUpdates).catch(() => {});
+    }
+
+    return updated;
   },
 
   async deleteCode(code: string): Promise<void> {
