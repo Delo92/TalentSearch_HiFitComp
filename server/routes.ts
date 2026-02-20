@@ -30,6 +30,7 @@ import {
   firestoreReferrals,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
+import { sendInviteEmail, sendPurchaseReceipt, isEmailConfigured } from "./email";
 import {
   uploadImageToDrive,
   uploadFileToDriveFolder,
@@ -1535,6 +1536,21 @@ export async function registerRoutes(
         message: message || undefined,
       });
 
+      if (isEmailConfigured() && email) {
+        const protocol = req.headers["x-forwarded-proto"] || "https";
+        const host = req.headers.host || "";
+        const siteUrl = `${protocol}://${host}`;
+        const inviterName = senderUser?.displayName || req.firebaseUser!.email || "Someone";
+        const roleName = targetLevel >= 4 ? "admin" : targetLevel >= 3 ? "host" : targetLevel >= 2 ? "talent" : "viewer";
+        sendInviteEmail({
+          to: email,
+          inviterName,
+          inviteToken: invitation.token,
+          role: roleName,
+          siteUrl,
+        }).catch(err => console.error("Invite email send failed:", err));
+      }
+
       res.status(201).json(invitation);
     } catch (error: any) {
       console.error("Create invitation error:", error);
@@ -2465,6 +2481,21 @@ export async function registerRoutes(
         purchaseId: purchase.id,
         voteCount: totalVotes,
       });
+
+      if (isEmailConfigured() && email) {
+        const contestant = await storage.getContestant(contestantId);
+        const contestantName = contestant?.talentProfile?.displayName || undefined;
+        sendPurchaseReceipt({
+          to: email,
+          buyerName: name,
+          items: [{ description: pkg.name, amount: `$${subtotalDollars.toFixed(2)}` }],
+          total: `$${amountInDollars.toFixed(2)}`,
+          tax: salesTaxPercent > 0 ? `$${taxAmount.toFixed(2)}` : undefined,
+          transactionId: chargeResult.transactionId,
+          competitionName: comp.title,
+          contestantName,
+        }).catch(err => console.error("Receipt email send failed:", err));
+      }
 
       res.status(201).json({
         success: true,
