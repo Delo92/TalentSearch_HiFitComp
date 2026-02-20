@@ -912,6 +912,19 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
   });
 
+  const deleteLiverySlotMutation = useMutation({
+    mutationFn: async (imageKey: string) => {
+      await apiRequest("DELETE", `/api/admin/livery/${imageKey}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/livery"] });
+      toast({ title: "Livery slot permanently deleted!" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Delete failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
   const updateLiveryTextMutation = useMutation({
     mutationFn: async ({ imageKey, textContent }: { imageKey: string; textContent: string }) => {
       await apiRequest("PUT", `/api/admin/livery/${imageKey}/text`, { textContent });
@@ -1542,6 +1555,22 @@ export default function AdminDashboard({ user }: { user: any }) {
                             data-testid={`button-reset-${item.imageKey}`}
                           >
                             <RotateCcw className="h-3 w-3 mr-1" /> Reset
+                          </Button>
+                        )}
+                        {item.imageKey.startsWith("category_") && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm(`Permanently delete "${item.label}"? This cannot be undone.`)) {
+                                deleteLiverySlotMutation.mutate(item.imageKey);
+                              }
+                            }}
+                            disabled={deleteLiverySlotMutation.isPending}
+                            className="text-red-400 text-xs"
+                            data-testid={`button-delete-livery-${item.imageKey}`}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" /> Delete
                           </Button>
                         )}
                       </div>

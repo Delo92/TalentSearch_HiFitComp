@@ -63,6 +63,7 @@ export interface IStorage {
   upsertLivery(item: FirestoreLiveryItem): Promise<FirestoreLiveryItem>;
   updateLiveryImage(imageKey: string, imageUrl: string | null, mediaType?: "image" | "video"): Promise<FirestoreLiveryItem | null>;
   updateLiveryText(imageKey: string, textContent: string | null): Promise<FirestoreLiveryItem | null>;
+  deleteLiverySlot(imageKey: string): Promise<void>;
 }
 
 export class FirestoreStorage implements IStorage {
@@ -280,6 +281,10 @@ export class FirestoreStorage implements IStorage {
 
   async updateLiveryText(imageKey: string, textContent: string | null): Promise<FirestoreLiveryItem | null> {
     return firestoreLivery.updateText(imageKey, textContent);
+  }
+
+  async deleteLiverySlot(imageKey: string): Promise<void> {
+    return firestoreLivery.delete(imageKey);
   }
 }
 
