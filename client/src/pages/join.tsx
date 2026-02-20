@@ -325,10 +325,10 @@ export default function JoinPage() {
           </div>
         </div>
         <div className="relative z-10 flex justify-center mt-6">
-          <div className="bg-white text-center pt-8 pb-5 px-8 w-[calc(100%-60px)] max-w-[552px]">
-            <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">Get Started</p>
+          <div className="bg-black/60 backdrop-blur-sm text-center pt-8 pb-5 px-8 w-[calc(100%-60px)] max-w-[552px]">
+            <p className="text-white/60 text-base leading-relaxed mb-1">Get Started</p>
             <h2
-              className="text-[24px] md:text-[30px] uppercase text-black font-normal leading-none"
+              className="text-[24px] md:text-[30px] uppercase text-white font-normal leading-none"
               style={{ letterSpacing: "10px" }}
               data-testid="text-page-title"
             >

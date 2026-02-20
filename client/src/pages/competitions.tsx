@@ -48,10 +48,10 @@ export default function Competitions() {
           <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${getImage("competitions_header", "/images/template/breadcumb2.jpg")}')` }} />
         )}
         <div className="absolute inset-0 bg-black/65" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
-          <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">See what&apos;s new</p>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
+          <p className="text-white/60 text-base leading-relaxed mb-1">See what&apos;s new</p>
           <h2
-            className="text-[30px] uppercase text-black font-normal leading-none"
+            className="text-[30px] uppercase text-white font-normal leading-none"
             style={{ letterSpacing: "10px" }}
             data-testid="text-page-title"
           >

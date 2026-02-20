@@ -302,16 +302,16 @@ export default function CheckoutPage() {
           <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${getImage("breadcrumb_bg", "/images/template/breadcumb.jpg")}')` }} />
         )}
         <div className="absolute inset-0 bg-black/65" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
-          <p className="text-[#5f5f5f] text-base leading-relaxed mb-1">
-            <Link href={`/${slugify(competition.category)}/${slugify(competition.title)}`} className="hover:text-black transition-colors" data-testid="link-back-comp">
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-center pt-8 pb-5 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
+          <p className="text-white/60 text-base leading-relaxed mb-1">
+            <Link href={`/${slugify(competition.category)}/${slugify(competition.title)}`} className="hover:text-[#FF5A09] transition-colors text-white/60" data-testid="link-back-comp">
               {competition.title}
             </Link>
             <span className="mx-2">/</span>
             Buy Votes
           </p>
           <h2
-            className="text-[24px] md:text-[30px] uppercase text-black font-normal leading-none"
+            className="text-[24px] md:text-[30px] uppercase text-white font-normal leading-none"
             style={{ letterSpacing: "10px" }}
             data-testid="text-page-title"
           >
