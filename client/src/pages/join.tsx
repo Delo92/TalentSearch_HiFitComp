@@ -761,23 +761,23 @@ export default function JoinPage() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="join-card" className="text-white/60 uppercase text-xs tracking-wider">Card Number</Label>
-                <Input id="join-card" type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^\d\s]/g, ""))}
+                <Input id="join-card" name="cardnumber" autoComplete="cc-number" type="text" inputMode="numeric" value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^\d\s]/g, ""))}
                   className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="4111 1111 1111 1111" maxLength={19} data-testid="input-card-number" />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">Month</Label>
-                  <Input type="text" value={expMonth} onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                  <Input name="cc-exp-month" autoComplete="cc-exp-month" type="text" inputMode="numeric" value={expMonth} onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
                     className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="MM" maxLength={2} data-testid="input-exp-month" />
                 </div>
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">Year</Label>
-                  <Input type="text" value={expYear} onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  <Input name="cc-exp-year" autoComplete="cc-exp-year" type="text" inputMode="numeric" value={expYear} onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
                     className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="YYYY" maxLength={4} data-testid="input-exp-year" />
                 </div>
                 <div>
                   <Label className="text-white/60 uppercase text-xs tracking-wider">CVV</Label>
-                  <Input type="text" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  <Input name="cc-csc" autoComplete="cc-csc" type="text" inputMode="numeric" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
                     className="bg-white/[0.08] border-white/20 text-white mt-2" placeholder="123" maxLength={4} data-testid="input-cvv" />
                 </div>
               </div>

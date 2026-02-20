@@ -546,7 +546,10 @@ export default function CheckoutPage() {
               </Label>
               <Input
                 id="card-number"
+                name="cardnumber"
+                autoComplete="cc-number"
                 type="text"
+                inputMode="numeric"
                 value={cardNumber}
                 onChange={(e) => setCardNumber(e.target.value.replace(/[^\d\s]/g, ""))}
                 className="bg-white/[0.08] border-white/20 text-white mt-2"
@@ -562,7 +565,10 @@ export default function CheckoutPage() {
                 </Label>
                 <Input
                   id="exp-month"
+                  name="cc-exp-month"
+                  autoComplete="cc-exp-month"
                   type="text"
+                  inputMode="numeric"
                   value={expMonth}
                   onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
                   className="bg-white/[0.08] border-white/20 text-white mt-2"
@@ -577,7 +583,10 @@ export default function CheckoutPage() {
                 </Label>
                 <Input
                   id="exp-year"
+                  name="cc-exp-year"
+                  autoComplete="cc-exp-year"
                   type="text"
+                  inputMode="numeric"
                   value={expYear}
                   onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   className="bg-white/[0.08] border-white/20 text-white mt-2"
@@ -592,7 +601,10 @@ export default function CheckoutPage() {
                 </Label>
                 <Input
                   id="cvv"
+                  name="cc-csc"
+                  autoComplete="cc-csc"
                   type="text"
+                  inputMode="numeric"
                   value={cvv}
                   onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   className="bg-white/[0.08] border-white/20 text-white mt-2"
