@@ -51,6 +51,13 @@ function getInvitableLevels(senderLevel: number): number[] {
   return levels;
 }
 
+interface Competition {
+  id: number;
+  title: string;
+  category: string;
+  status: string;
+}
+
 export function InviteDialog({ senderLevel }: { senderLevel: number }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -58,6 +65,8 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
   const [name, setName] = useState("");
   const [targetLevel, setTargetLevel] = useState("");
   const [message, setMessage] = useState("");
+  const [emailTemplate, setEmailTemplate] = useState("welcome");
+  const [competitionId, setCompetitionId] = useState("");
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
 
@@ -68,8 +77,13 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
     enabled: open,
   });
 
+  const { data: competitions } = useQuery<Competition[]>({
+    queryKey: ["/api/competitions"],
+    enabled: open && emailTemplate === "nominee_welcome",
+  });
+
   const inviteMutation = useMutation({
-    mutationFn: async (data: { email: string; name: string; targetLevel: number; message?: string }) => {
+    mutationFn: async (data: { email: string; name: string; targetLevel: number; message?: string; emailTemplate?: string; competitionId?: number }) => {
       const res = await apiRequest("POST", "/api/invitations", data);
       return res.json();
     },
@@ -79,6 +93,8 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
       setName("");
       setTargetLevel("");
       setMessage("");
+      setEmailTemplate("welcome");
+      setCompetitionId("");
       const link = `${window.location.origin}/register?invite=${data.token}`;
       setNewInviteLink(link);
       navigator.clipboard.writeText(link).then(() => {
@@ -115,6 +131,8 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
       name,
       targetLevel: parseInt(targetLevel),
       message: message || undefined,
+      emailTemplate,
+      competitionId: competitionId && competitionId !== "none" ? parseInt(competitionId) : undefined,
     });
   };
 
@@ -181,6 +199,41 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-white/60">Email Template</Label>
+            <Select value={emailTemplate} onValueChange={(v) => { setEmailTemplate(v); if (v !== "nominee_welcome") setCompetitionId(""); }}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-email-template">
+                <SelectValue placeholder="Select email template..." />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-white/10">
+                <SelectItem value="welcome">Welcome / Invite Email</SelectItem>
+                <SelectItem value="nominee_welcome">Nominee Welcome Email (auto-creates account)</SelectItem>
+              </SelectContent>
+            </Select>
+            {emailTemplate === "nominee_welcome" && (
+              <p className="text-[10px] text-orange-400/70 mt-1">Creates a Firebase account with default password and sends login credentials.</p>
+            )}
+          </div>
+
+          {emailTemplate === "nominee_welcome" && (
+            <div className="space-y-1.5">
+              <Label className="text-white/60">Competition (optional)</Label>
+              <Select value={competitionId} onValueChange={setCompetitionId}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-invite-competition">
+                  <SelectValue placeholder="Select competition..." />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-white/10">
+                  <SelectItem value="none">No competition</SelectItem>
+                  {(competitions || []).filter(c => c.status === "active").map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.title} ({c.category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-white/60">Message (optional)</Label>

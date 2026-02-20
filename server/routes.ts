@@ -1523,7 +1523,7 @@ export async function registerRoutes(
 
   app.post("/api/invitations", firebaseAuth, requireTalent, async (req, res) => {
     try {
-      const { email, name, targetLevel, message } = req.body;
+      const { email, name, targetLevel, message, emailTemplate, competitionId } = req.body;
       if (!email || !name || !targetLevel) {
         return res.status(400).json({ message: "Email, name, and target level are required" });
       }
@@ -1553,13 +1553,93 @@ export async function registerRoutes(
         const siteUrl = `${protocol}://${host}`;
         const inviterName = senderUser?.displayName || req.firebaseUser!.email || "Someone";
         const roleName = targetLevel >= 4 ? "admin" : targetLevel >= 3 ? "host" : targetLevel >= 2 ? "talent" : "viewer";
-        sendInviteEmail({
-          to: email,
-          inviterName,
-          inviteToken: invitation.token,
-          role: roleName,
-          siteUrl,
-        }).catch(err => console.error("Invite email send failed:", err));
+
+        if (emailTemplate === "nominee_welcome") {
+          const DEFAULT_PASSWORD = "Hifitcomp2026";
+          const nomineeEmail = email.toLowerCase().trim();
+          const nomineeName = name.trim();
+
+          try {
+            let existingUser: any = null;
+            let firebaseUid: string | null = null;
+            try {
+              existingUser = await getFirebaseAuth().getUserByEmail(nomineeEmail);
+              firebaseUid = existingUser.uid;
+            } catch (e: any) {
+              if (e.code === "auth/user-not-found") {
+                const newUser = await createFirebaseUser(nomineeEmail, DEFAULT_PASSWORD, nomineeName);
+                firebaseUid = newUser.uid;
+                await setUserLevel(firebaseUid, targetLevel);
+                await createFirestoreUser({
+                  uid: firebaseUid,
+                  email: nomineeEmail,
+                  displayName: nomineeName,
+                  level: targetLevel,
+                });
+              } else {
+                throw e;
+              }
+            }
+
+            if (firebaseUid) {
+              let existingProfile = await storage.getTalentProfileByUserId(firebaseUid);
+              if (!existingProfile && targetLevel >= 2) {
+                existingProfile = await storage.createTalentProfile({
+                  userId: firebaseUid,
+                  displayName: nomineeName,
+                  stageName: null,
+                  email: nomineeEmail,
+                  bio: null,
+                  category: null,
+                  location: "Hawaii",
+                  imageUrls: [],
+                  videoUrls: [],
+                  socialLinks: null,
+                  role: "talent",
+                });
+              }
+
+              const parsedCompId = competitionId ? Number(competitionId) : NaN;
+              if (existingProfile && Number.isFinite(parsedCompId)) {
+                const existingContestant = await storage.getContestant(parsedCompId, existingProfile.id);
+                if (!existingContestant) {
+                  await storage.createContestant({
+                    competitionId: parsedCompId,
+                    talentProfileId: existingProfile.id,
+                    applicationStatus: "approved",
+                    appliedAt: new Date().toISOString(),
+                  });
+                }
+              }
+
+              if (!existingUser) {
+                let competitionName = "a HiFitComp competition";
+                if (Number.isFinite(parsedCompId)) {
+                  const comp = await storage.getCompetition(parsedCompId);
+                  if (comp) competitionName = comp.title;
+                }
+                sendNomineeWelcomeEmail({
+                  to: nomineeEmail,
+                  nomineeName,
+                  nominatorName: inviterName,
+                  competitionName,
+                  defaultPassword: DEFAULT_PASSWORD,
+                  siteUrl,
+                }).catch(err => console.error("Nominee welcome email send failed:", err));
+              }
+            }
+          } catch (autoCreateErr: any) {
+            console.error("Auto-create invited user account error (non-fatal):", autoCreateErr.message);
+          }
+        } else {
+          sendInviteEmail({
+            to: email,
+            inviterName,
+            inviteToken: invitation.token,
+            role: roleName,
+            siteUrl,
+          }).catch(err => console.error("Invite email send failed:", err));
+        }
       }
 
       res.status(201).json(invitation);
