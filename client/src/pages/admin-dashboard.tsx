@@ -1491,7 +1491,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                 const isCustom = !!item.imageUrl;
                 const isVideo = item.mediaType === "video";
                 return (
-                  <div key={item.imageKey} className="rounded-md bg-zinc-900 border border-white/15 overflow-visible" data-testid={`livery-item-${item.imageKey}`}>
+                  <div key={item.imageKey} className="rounded-md bg-white/5 border border-white/10 overflow-visible" data-testid={`livery-item-${item.imageKey}`}>
                     <div className="relative aspect-video bg-black/50">
                       {isVideo ? (
                         <video
