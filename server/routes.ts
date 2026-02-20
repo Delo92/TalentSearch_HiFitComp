@@ -30,7 +30,7 @@ import {
   firestoreReferrals,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
-import { sendInviteEmail, sendPurchaseReceipt, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
+import { sendInviteEmail, sendPurchaseReceipt, sendTestEmail, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
 import {
   uploadImageToDrive,
   uploadFileToDriveFolder,
@@ -1129,6 +1129,17 @@ export async function registerRoutes(
       totalContestants: contestants.length,
       totalPurchases: purchases.length,
     });
+  });
+
+  app.post("/api/admin/test-email", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { to } = req.body;
+      if (!to) return res.status(400).json({ error: "Missing 'to' email address" });
+      await sendTestEmail(to);
+      res.json({ success: true, message: `Test email sent to ${to}` });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.get("/api/admin/contestants", firebaseAuth, requireAdmin, async (_req, res) => {

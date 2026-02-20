@@ -224,6 +224,32 @@ export async function exchangeGmailCode(code: string, redirectUri: string): Prom
   return tokens.refresh_token;
 }
 
+export async function sendTestEmail(to: string): Promise<boolean> {
+  try {
+    const transporter = await getTransporter();
+    const html = wrapInTemplate(`
+      <h2>Test Email Successful!</h2>
+      <p>This is a test email from <strong>HiFitComp</strong>.</p>
+      <p>If you're reading this, your email system is working correctly.</p>
+      <p style="color: #FF5A09; font-weight: bold;">All systems go!</p>
+    `);
+
+    await transporter.sendMail({
+      from: `"${DISPLAY_NAME}" <${GMAIL_ADDRESS}>`,
+      to,
+      subject: "HiFitComp - Test Email",
+      html,
+    });
+
+    console.log(`Test email sent to ${to}`);
+    return true;
+  } catch (err: any) {
+    console.error("Failed to send test email:", err.message);
+    resetTransporter();
+    throw err;
+  }
+}
+
 export function isEmailConfigured(): boolean {
   const clientId = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_OAUTH_CLIENT_SECRET;
