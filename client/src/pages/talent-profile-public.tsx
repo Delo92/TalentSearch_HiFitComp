@@ -70,10 +70,10 @@ export default function TalentProfilePublic() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-black/65" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
-          <p className="text-white/60 text-base leading-relaxed mb-1">Talent Profile</p>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm text-center pt-10 pb-6 px-8 z-10 w-[calc(100%-60px)] max-w-[552px]">
+          <p className="text-black/50 text-base leading-relaxed mb-1">Talent Profile</p>
           <h2
-            className="text-[24px] md:text-[30px] uppercase text-white font-normal leading-none"
+            className="text-[24px] md:text-[30px] uppercase text-black/80 font-normal leading-none"
             style={{ letterSpacing: "10px" }}
             data-testid="text-profile-name"
           >
