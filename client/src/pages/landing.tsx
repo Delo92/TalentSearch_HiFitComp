@@ -35,40 +35,10 @@ export default function Landing() {
   const { items, isLoading: liveryLoading, getImage, getMedia, getText } = useLivery();
   const { data: dynamicCategories } = useQuery<any[]>({ queryKey: ["/api/categories"] });
 
-  const defaultImages: Record<string, string> = {
-    "Music": "/images/template/a1.jpg",
-    "Modeling": "/images/template/a2.jpg",
-    "Bodybuilding": "/images/template/b1.jpg",
-    "Dance": "/images/template/a4.jpg",
-    "Comedy": "/images/template/e1.jpg",
-    "Acting": "/images/template/e2.jpg",
-  };
-
   const getCategoryMedia = (cat: any): { url: string; type: "image" | "video" } => {
-    const nameKey = (cat.name || "").toLowerCase().replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
-    const liveryKey = `category_${nameKey}`;
-    const liveryMedia = getMedia(liveryKey, "");
-    if (liveryMedia.url && liveryMedia.url !== "") return liveryMedia;
-
-    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const liveryItems = items || [];
-    const catImageKeys = liveryItems
-      .filter(i => i.imageKey.startsWith("category_") && i.imageKey.endsWith("_title") && i.itemType === "text")
-      .map(i => ({ baseKey: i.imageKey.replace("_title", ""), title: normalize(i.textContent || i.defaultText || "") }));
-    const catNameNorm = normalize(cat.name || "");
-    const match = catImageKeys.find(k =>
-      k.title === catNameNorm ||
-      catNameNorm.includes(k.title) ||
-      k.title.includes(catNameNorm)
-    );
-    if (match) {
-      const matchMedia = getMedia(match.baseKey, "");
-      if (matchMedia.url && matchMedia.url !== "") return matchMedia;
-    }
-
-    if (cat.imageUrl) return { url: cat.imageUrl, type: "image" };
     if (cat.videoUrl) return { url: cat.videoUrl, type: "video" };
-    return { url: defaultImages[cat.name] || "/images/template/a1.jpg", type: "image" };
+    if (cat.imageUrl) return { url: cat.imageUrl, type: "image" };
+    return { url: getImage("competition_card_fallback", "/images/template/e1.jpg"), type: "image" };
   };
 
   const fallbackCategories = [
