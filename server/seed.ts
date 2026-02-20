@@ -13,6 +13,7 @@ import {
   firestoreSettings,
   firestoreLivery,
   firestoreVotes,
+  firestoreJoinSettings,
 } from "./firestore-collections";
 
 export async function seedDatabase() {
@@ -289,6 +290,14 @@ export async function seedSettings() {
     defaultMaxVotesPerDay: 10,
   });
   console.log("Settings seeded (Firestore)");
+}
+
+export async function seedJoinTitle() {
+  const current = await firestoreJoinSettings.get();
+  if (current && current.pageTitle === "JOIN A COMPETITION") {
+    await firestoreJoinSettings.update({ pageTitle: "NOMINATE NOW" });
+    console.log("Join page title updated to NOMINATE NOW");
+  }
 }
 
 const TEST_ACCOUNTS = [

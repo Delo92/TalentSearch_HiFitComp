@@ -966,7 +966,7 @@ export const firestoreSettings = {
 const JOIN_SETTINGS_DEFAULTS: Omit<FirestoreJoinSettings, "updatedAt"> = {
   mode: "request",
   price: 0,
-  pageTitle: "JOIN A COMPETITION",
+  pageTitle: "NOMINATE NOW",
   pageDescription: "Ready to showcase your talent? Submit your application to join an upcoming competition. Fill out the form below with your details and we'll review your entry.",
   requiredFields: ["fullName", "email", "phone", "bio", "category"],
   isActive: true,

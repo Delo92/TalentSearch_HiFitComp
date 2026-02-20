@@ -50,7 +50,7 @@ const FIELD_LABELS: Record<string, string> = {
 
 export default function JoinPage() {
   useSEO({
-    title: "Join a Competition",
+    title: "Nominate Now",
     description: "Ready to showcase your talent? Apply to join an active competition on HiFitComp. Compete in music, modeling, bodybuilding, dance, and more.",
     canonical: "https://hifitcomp.com/join",
   });
