@@ -572,6 +572,8 @@ export default function AdminDashboard({ user }: { user: any }) {
   const [compCategoryFilter, setCompCategoryFilter] = useState("all");
   const [compPage, setCompPage] = useState(1);
   const COMPS_PER_PAGE = 10;
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PER_PAGE = 10;
   const [hostSearch, setHostSearch] = useState("");
   const [hostPage, setHostPage] = useState(1);
   const [expandedHostId, setExpandedHostId] = useState<string | null>(null);
@@ -1038,6 +1040,13 @@ export default function AdminDashboard({ user }: { user: any }) {
       u.category?.toLowerCase().includes(q)
     );
   });
+
+  const totalUserPages = Math.max(1, Math.ceil((filteredUsers?.length || 0) / USERS_PER_PAGE));
+  const paginatedUsers = useMemo(() => {
+    if (!filteredUsers) return [];
+    const start = (userPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(start, start + USERS_PER_PAGE);
+  }, [filteredUsers, userPage]);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -2515,7 +2524,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
                     <Input
                       value={userSearch}
-                      onChange={(e) => setUserSearch(e.target.value)}
+                      onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
                       placeholder="Search by name, stage name, or category..."
                       className="bg-white/5 border-white/10 text-white pl-10"
                       data-testid="input-user-search"
@@ -2528,7 +2537,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                     </div>
                   ) : filteredUsers && filteredUsers.length > 0 ? (
                     <div className="space-y-2">
-                      {filteredUsers.map((u) => (
+                      {paginatedUsers.map((u) => (
                         <div
                           key={u.id}
                           className="rounded-md bg-white/5 border border-white/5 p-4 cursor-pointer transition-colors hover:bg-white/[0.08]"
@@ -2556,6 +2565,17 @@ export default function AdminDashboard({ user }: { user: any }) {
                           </div>
                         </div>
                       ))}
+                      {totalUserPages > 1 && (
+                        <div className="flex flex-wrap items-center justify-center gap-2 mt-6" data-testid="user-pagination">
+                          {Array.from({ length: totalUserPages }, (_, i) => i + 1).map(page => (
+                            <Button key={page} variant={page === userPage ? "default" : "ghost"} size="sm" onClick={() => setUserPage(page)}
+                              className={page === userPage ? "bg-orange-500 text-white" : "text-white/50 hover:text-white"}
+                              data-testid={`user-page-${page}`}>
+                              {page}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="rounded-md bg-white/5 border border-white/5 p-6 text-center">
