@@ -653,11 +653,22 @@ export default function TalentDashboard({ user, profile }: Props) {
                 </div>
               </div>
 
-              <Button onClick={() => saveProfileMutation.mutate()} disabled={saveProfileMutation.isPending || !displayName.trim()}
-                data-testid="button-save-profile" className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white">
-                <Save className="h-4 w-4 mr-2" />
-                {saveProfileMutation.isPending ? "Saving..." : "Save Profile"}
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => saveProfileMutation.mutate()} disabled={saveProfileMutation.isPending || !displayName.trim()}
+                  data-testid="button-save-profile" className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white">
+                  <Save className="h-4 w-4 mr-2" />
+                  {saveProfileMutation.isPending ? "Saving..." : "Save Profile"}
+                </Button>
+                {profile && (
+                  <a href={`/talent/${profile.id}`} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" data-testid="button-view-profile"
+                      className="border-white/20 text-white/70 hover:text-white hover:border-white/40">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Profile
+                    </Button>
+                  </a>
+                )}
+              </div>
             </div>
           </TabsContent>
 
