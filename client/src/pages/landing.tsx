@@ -321,7 +321,7 @@ export default function Landing() {
             Ready to Shine
           </h2>
           <p className="text-white/60 mb-10 text-base max-w-xl mx-auto">
-            Join talented individuals competing for recognition across the globe. Your spotlight is waiting.
+            Nominate talented individuals to compete for recognition across the globe. The spotlight is waiting.
           </p>
           <a href="/join">
             <span
