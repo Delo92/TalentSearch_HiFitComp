@@ -3337,31 +3337,6 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/referral/:code", firebaseAuth, requireAdmin, async (req, res) => {
-    try {
-      const { newCode, ownerName, ownerEmail, ownerType, competitionId, contestantId } = req.body;
-      if (newCode) {
-        const cleaned = newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "");
-        if (cleaned.length < 3 || cleaned.length > 20) {
-          return res.status(400).json({ message: "Code must be 3-20 characters (letters, numbers, dashes, underscores)" });
-        }
-      }
-      const sanitizedCode = newCode ? newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "") : undefined;
-      const updated = await firestoreReferrals.updateCode(req.params.code, {
-        newCode: sanitizedCode || undefined,
-        ownerName: ownerName || undefined,
-        ownerEmail: ownerEmail !== undefined ? ownerEmail : undefined,
-        ownerType: ownerType || undefined,
-        competitionId: competitionId !== undefined ? competitionId : undefined,
-        contestantId: contestantId !== undefined ? contestantId : undefined,
-      });
-      res.json(updated);
-    } catch (err: any) {
-      console.error("Update referral code error:", err);
-      res.status(500).json({ message: err.message || "Failed to update referral code" });
-    }
-  });
-
   app.post("/api/referral/generate", firebaseAuth, async (req, res) => {
     try {
       const uid = req.firebaseUser!.uid;
@@ -3435,6 +3410,31 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("Get referral stats error:", err);
       res.status(500).json({ message: "Failed to get referral stats" });
+    }
+  });
+
+  app.put("/api/referral/:code", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { newCode, ownerName, ownerEmail, ownerType, competitionId, contestantId } = req.body;
+      if (newCode) {
+        const cleaned = newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "");
+        if (cleaned.length < 3 || cleaned.length > 20) {
+          return res.status(400).json({ message: "Code must be 3-20 characters (letters, numbers, dashes, underscores)" });
+        }
+      }
+      const sanitizedCode = newCode ? newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "") : undefined;
+      const updated = await firestoreReferrals.updateCode(req.params.code, {
+        newCode: sanitizedCode || undefined,
+        ownerName: ownerName || undefined,
+        ownerEmail: ownerEmail !== undefined ? ownerEmail : undefined,
+        ownerType: ownerType || undefined,
+        competitionId: competitionId !== undefined ? competitionId : undefined,
+        contestantId: contestantId !== undefined ? contestantId : undefined,
+      });
+      res.json(updated);
+    } catch (err: any) {
+      console.error("Update referral code error:", err);
+      res.status(500).json({ message: err.message || "Failed to update referral code" });
     }
   });
 
