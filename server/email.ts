@@ -110,30 +110,55 @@ function wrapInTemplate(bodyHtml: string): string {
 export async function sendInviteEmail(opts: {
   to: string;
   inviterName: string;
-  inviteToken: string;
+  inviteToken?: string;
   role: string;
   siteUrl: string;
+  nomineeName?: string;
+  nominatorName?: string;
+  competitionName?: string;
+  defaultPassword?: string;
+  accountCreated?: boolean;
 }): Promise<boolean> {
   try {
     const transporter = await getTransporter();
-    const joinUrl = `${opts.siteUrl}/join?invite=${opts.inviteToken}`;
     const roleDisplay = opts.role.charAt(0).toUpperCase() + opts.role.slice(1);
 
-    const vars = { inviterName: opts.inviterName, role: roleDisplay };
+    const vars: Record<string, string> = {
+      inviterName: opts.inviterName,
+      role: roleDisplay,
+      nomineeName: opts.nomineeName || opts.to.split("@")[0],
+      nominatorName: opts.nominatorName || opts.inviterName,
+      competitionName: opts.competitionName || "a HiFitComp competition",
+      email: opts.to,
+      defaultPassword: opts.defaultPassword || "",
+    };
     const [subject, heading, body] = await Promise.all([
       getEmailTemplate("email_welcome_subject", "{inviterName} invited you to join HiFitComp!"),
       getEmailTemplate("email_welcome_heading", "You've Been Invited!"),
       getEmailTemplate("email_welcome_body", "{inviterName} has invited you to join HiFitComp as a {role}.\n\nHiFitComp is Hawaii's premier live talent competition platform where artists, models, bodybuilders, and performers compete for public votes.\n\nClick the button below to accept your invitation and get started!"),
     ]);
 
+    let actionUrl: string;
+    let actionLabel: string;
+    if (opts.accountCreated) {
+      actionUrl = `${opts.siteUrl}/login`;
+      actionLabel = "Log In Now";
+    } else if (opts.inviteToken) {
+      actionUrl = `${opts.siteUrl}/join?invite=${opts.inviteToken}`;
+      actionLabel = "Accept Invitation";
+    } else {
+      actionUrl = `${opts.siteUrl}/login`;
+      actionLabel = "Get Started";
+    }
+
     const html = wrapInTemplate(`
       <h2>${applyPlaceholders(heading, vars)}</h2>
       <p>${applyPlaceholders(body, vars)}</p>
       <p style="text-align: center;">
-        <a href="${joinUrl}" class="btn">Accept Invitation</a>
+        <a href="${actionUrl}" class="btn">${actionLabel}</a>
       </p>
       <p style="font-size: 13px; color: #888;">Or copy and paste this link into your browser:<br/>
-        <span style="color: #FF5A09; word-break: break-all;">${joinUrl}</span>
+        <span style="color: #FF5A09; word-break: break-all;">${actionUrl}</span>
       </p>
     `);
 
