@@ -241,17 +241,9 @@ export default function AboutPage() {
               href="/join"
               className="inline-block bg-transparent text-white font-bold text-sm uppercase px-8 leading-[47px] min-w-[212px] text-center border border-white/30 transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
               style={{ letterSpacing: "3px" }}
-              data-testid="cta-become-competitor"
+              data-testid="cta-start-nominating"
             >
-              Become A Competitor <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
-            </Link>
-            <Link
-              href="/host"
-              className="inline-block bg-transparent text-white font-bold text-sm uppercase px-8 leading-[47px] min-w-[212px] text-center border border-white/30 transition-all duration-500 hover:bg-white hover:text-black hover:border-white cursor-pointer"
-              style={{ letterSpacing: "3px" }}
-              data-testid="cta-host-event"
-            >
-              Host An Event <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+              Start Nominating <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
             </Link>
           </div>
         </div>
