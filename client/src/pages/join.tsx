@@ -70,6 +70,7 @@ export default function JoinPage() {
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [compSearch, setCompSearch] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const competitionSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,6 +80,11 @@ export default function JoinPage() {
       setSelectedCompetitionId(parseInt(compId, 10));
     }
   }, [searchString]);
+
+  useEffect(() => {
+    const savedRef = localStorage.getItem("hfc_ref");
+    if (savedRef) setReferralCode(savedRef);
+  }, []);
 
   const { data: settings, isLoading } = useQuery<JoinSettings>({
     queryKey: ["/api/join/settings"],
@@ -200,6 +206,7 @@ export default function JoinPage() {
           nominatorName: nominatorForm.name,
           nominatorEmail: nominatorForm.email,
           nominatorPhone: nominatorForm.phone || "",
+          referralCode: referralCode || undefined,
           dataDescriptor,
           dataValue,
         });
@@ -476,6 +483,30 @@ export default function JoinPage() {
                 placeholder="Enter your phone number"
                 data-testid="input-nominator-phone"
               />
+            </div>
+            <div>
+              <Label className="text-white/60 uppercase text-xs tracking-wider">
+                Referral / Promo Code
+              </Label>
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  value={referralCode}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setReferralCode(val);
+                    if (val) localStorage.setItem("hfc_ref", val);
+                    else localStorage.removeItem("hfc_ref");
+                  }}
+                  className="bg-white/[0.08] border-white/20 text-white"
+                  placeholder="Enter code (optional)"
+                  data-testid="input-referral-code"
+                />
+                {referralCode && (
+                  <span className="text-green-400 text-xs uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
+                    <CheckCircle className="h-3.5 w-3.5" /> Applied
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

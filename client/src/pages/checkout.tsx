@@ -78,6 +78,7 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [successData, setSuccessData] = useState<{ transactionId: string; votesAdded: number } | null>(null);
+  const [referralCode, setReferralCode] = useState("");
   const [acceptLoaded, setAcceptLoaded] = useState(false);
 
   const { data: competition, isLoading: compLoading } = useQuery<CompetitionDetail>({
@@ -103,6 +104,11 @@ export default function CheckoutPage() {
   const { data: paymentConfig } = useQuery<PaymentConfig>({
     queryKey: ["/api/payment-config"],
   });
+
+  useEffect(() => {
+    const savedRef = localStorage.getItem("hfc_ref");
+    if (savedRef) setReferralCode(savedRef);
+  }, []);
 
   useEffect(() => {
     if (paymentConfig && !acceptLoaded) {
@@ -192,6 +198,7 @@ export default function CheckoutPage() {
           createAccount,
           dataDescriptor: tokenResponse.opaqueData.dataDescriptor,
           dataValue: tokenResponse.opaqueData.dataValue,
+          referralCode: referralCode || undefined,
         };
         if (isIndividual) {
           body.individualVoteCount = individualVoteCount;
@@ -487,6 +494,31 @@ export default function CheckoutPage() {
                 Save my info to track purchases and vote history
               </span>
             </label>
+
+            <div className="mt-4">
+              <Label className="text-white/60 uppercase text-xs tracking-wider">
+                Referral / Promo Code
+              </Label>
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  value={referralCode}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setReferralCode(val);
+                    if (val) localStorage.setItem("hfc_ref", val);
+                    else localStorage.removeItem("hfc_ref");
+                  }}
+                  className="bg-white/[0.08] border-white/20 text-white"
+                  placeholder="Enter code (optional)"
+                  data-testid="input-checkout-referral-code"
+                />
+                {referralCode && (
+                  <span className="text-green-400 text-xs uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
+                    <CheckCircle className="h-3.5 w-3.5" /> Applied
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -593,6 +625,12 @@ export default function CheckoutPage() {
                 <span>For: {contestant.talentProfile.displayName}</span>
                 <span>in {competition.title}</span>
               </div>
+              {referralCode && (
+                <div className="flex items-center gap-1.5 text-green-400 text-xs mt-2 pt-2 border-t border-white/10">
+                  <CheckCircle className="h-3 w-3" />
+                  <span>Referral code applied: {referralCode}</span>
+                </div>
+              )}
             </div>
           );
         })()}
