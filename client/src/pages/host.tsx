@@ -155,15 +155,6 @@ export default function HostPage() {
     return true;
   }, [settings, form, selectedPrice, selectedPackage, cardNumber, expMonth, expYear, cvv, paymentConfig, toast]);
 
-  const handlePayClick = useCallback(() => {
-    if (!validateForm()) return;
-    if (selectedPrice > 0) {
-      setShowConfirmModal(true);
-    } else {
-      processPayment();
-    }
-  }, [validateForm, selectedPrice, processPayment]);
-
   const processPayment = useCallback(async () => {
     setShowConfirmModal(false);
     setProcessing(true);
@@ -214,6 +205,15 @@ export default function HostPage() {
       await submitData();
     }
   }, [settings, form, cardNumber, expMonth, expYear, cvv, paymentConfig, toast, selectedPrice, selectedPackage, referenceCompetitionId]);
+
+  const handlePayClick = useCallback(() => {
+    if (!validateForm()) return;
+    if (selectedPrice > 0) {
+      setShowConfirmModal(true);
+    } else {
+      processPayment();
+    }
+  }, [validateForm, selectedPrice, processPayment]);
 
   if (success) {
     return (

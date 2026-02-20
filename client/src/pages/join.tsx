@@ -229,15 +229,6 @@ export default function JoinPage() {
     return true;
   }, [settings, form, nominatorForm, selectedCompetitionId, needsPayment, cardNumber, expMonth, expYear, cvv, paymentConfig, toast]);
 
-  const handlePayClick = useCallback(() => {
-    if (!validateForm()) return;
-    if (needsPayment) {
-      setShowConfirmModal(true);
-    } else {
-      processPayment();
-    }
-  }, [validateForm, needsPayment, processPayment]);
-
   const processPayment = useCallback(async () => {
     setShowConfirmModal(false);
     setProcessing(true);
@@ -295,6 +286,15 @@ export default function JoinPage() {
       await submitData();
     }
   }, [settings, form, nominatorForm, mode, cardNumber, expMonth, expYear, cvv, paymentConfig, toast, selectedCompetitionId, needsPayment, nominationImageUrl]);
+
+  const handlePayClick = useCallback(() => {
+    if (!validateForm()) return;
+    if (needsPayment) {
+      setShowConfirmModal(true);
+    } else {
+      processPayment();
+    }
+  }, [validateForm, needsPayment, processPayment]);
 
   if (success) {
     return (

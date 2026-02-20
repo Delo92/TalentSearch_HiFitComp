@@ -161,11 +161,6 @@ export default function CheckoutPage() {
     return true;
   }, [name, email, selectedPackage, isIndividual, individualVoteCount, cardNumber, expMonth, expYear, cvv, paymentConfig, toast]);
 
-  const handlePayClick = useCallback(() => {
-    if (!validateCheckout()) return;
-    setShowConfirmModal(true);
-  }, [validateCheckout, processCheckout]);
-
   const processCheckout = useCallback(async () => {
     setShowConfirmModal(false);
     setProcessing(true);
@@ -227,6 +222,11 @@ export default function CheckoutPage() {
       }
     });
   }, [name, email, selectedPackage, cardNumber, expMonth, expYear, cvv, paymentConfig, competitionId, contestantId, createAccount, toast, isIndividual, individualVoteCount, referralCode]);
+
+  const handlePayClick = useCallback(() => {
+    if (!validateCheckout()) return;
+    setShowConfirmModal(true);
+  }, [validateCheckout]);
 
   if (success && successData) {
     return (
