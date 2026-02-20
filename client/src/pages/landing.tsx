@@ -32,7 +32,7 @@ export default function Landing() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-  const { items, getImage, getMedia, getText } = useLivery();
+  const { items, isLoading: liveryLoading, getImage, getMedia, getText } = useLivery();
   const { data: dynamicCategories } = useQuery<any[]>({ queryKey: ["/api/categories"] });
 
   const defaultImages: Record<string, string> = {
@@ -87,7 +87,7 @@ export default function Landing() {
   const cta = useInView();
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+    <div className={`min-h-screen bg-black text-white overflow-x-hidden transition-opacity duration-500 ${liveryLoading ? "opacity-0" : "opacity-100"}`}>
       <SiteNavbar />
 
       <section ref={heroRef} className="relative min-h-screen flex items-start justify-center pb-16" style={{ overflow: "visible" }}>
