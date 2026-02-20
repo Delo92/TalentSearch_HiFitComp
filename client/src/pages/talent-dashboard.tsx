@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check, Share2, Copy, ExternalLink, Palette, ImagePlus } from "lucide-react";
+import { Trophy, User, Image as ImageIcon, Video, Save, Upload, LogOut, X, Trash2, Loader2, FolderOpen, Pencil, Check, Share2, Copy, ExternalLink, Palette, ImagePlus, Globe } from "lucide-react";
+import { SiYoutube, SiInstagram, SiTiktok, SiFacebook } from "react-icons/si";
 import ColorWheelPicker from "@/components/color-wheel-picker";
 import { slugify } from "@shared/slugify";
 import { InviteDialog } from "@/components/invite-dialog";
@@ -38,6 +39,17 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [location, setLocation] = useState(profile?.location || "");
   const [profileColor, setProfileColor] = useState(profile?.profileColor || "#FF5A09");
   const [profileBgImage, setProfileBgImage] = useState(profile?.profileBgImage || "");
+  const parsedSocial = (() => {
+    try {
+      const raw = (profile as any)?.socialLinks;
+      if (!raw) return {};
+      return typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch { return {}; }
+  })();
+  const [socialYoutube, setSocialYoutube] = useState(parsedSocial.youtube || "");
+  const [socialInstagram, setSocialInstagram] = useState(parsedSocial.instagram || "");
+  const [socialTiktok, setSocialTiktok] = useState(parsedSocial.tiktok || "");
+  const [socialFacebook, setSocialFacebook] = useState(parsedSocial.facebook || "");
   const [bgImageUploading, setBgImageUploading] = useState(false);
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const [selectedCompId, setSelectedCompId] = useState<string>("");
@@ -97,7 +109,12 @@ export default function TalentDashboard({ user, profile }: Props) {
 
   const saveProfileMutation = useMutation({
     mutationFn: async () => {
-      const data = { displayName, email, showEmail, bio, category, location, profileColor, profileBgImage: profileBgImage || null };
+      const socialLinks: Record<string, string> = {};
+      if (socialYoutube.trim()) socialLinks.youtube = socialYoutube.trim();
+      if (socialInstagram.trim()) socialLinks.instagram = socialInstagram.trim();
+      if (socialTiktok.trim()) socialLinks.tiktok = socialTiktok.trim();
+      if (socialFacebook.trim()) socialLinks.facebook = socialFacebook.trim();
+      const data = { displayName, email, showEmail, bio, category, location, profileColor, profileBgImage: profileBgImage || null, socialLinks: Object.keys(socialLinks).length > 0 ? JSON.stringify(socialLinks) : null };
       if (profile) {
         await apiRequest("PATCH", "/api/talent-profiles/me", data);
       } else {
@@ -511,6 +528,42 @@ export default function TalentDashboard({ user, profile }: Props) {
                 <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself and your talent..."
                   className="min-h-[120px] resize-none bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" data-testid="input-bio" />
+              </div>
+
+              <div className="space-y-4 rounded-md bg-white/[0.03] border border-white/10 p-5">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                  <Globe className="h-5 w-5 text-orange-400" />
+                  <div>
+                    <Label className="text-white text-sm font-semibold">Social Media Links</Label>
+                    <p className="text-xs text-white/40 mt-0.5">Add your social media profiles. These will appear on your public profile page.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60 flex items-center gap-1.5"><SiYoutube className="h-3.5 w-3.5 text-red-500" /> YouTube</Label>
+                    <Input value={socialYoutube} onChange={(e) => setSocialYoutube(e.target.value)}
+                      placeholder="https://youtube.com/@yourchannel" data-testid="input-social-youtube"
+                      className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60 flex items-center gap-1.5"><SiInstagram className="h-3.5 w-3.5 text-pink-500" /> Instagram</Label>
+                    <Input value={socialInstagram} onChange={(e) => setSocialInstagram(e.target.value)}
+                      placeholder="https://instagram.com/yourhandle" data-testid="input-social-instagram"
+                      className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60 flex items-center gap-1.5"><SiTiktok className="h-3.5 w-3.5 text-white" /> TikTok</Label>
+                    <Input value={socialTiktok} onChange={(e) => setSocialTiktok(e.target.value)}
+                      placeholder="https://tiktok.com/@yourhandle" data-testid="input-social-tiktok"
+                      className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/60 flex items-center gap-1.5"><SiFacebook className="h-3.5 w-3.5 text-blue-500" /> Facebook</Label>
+                    <Input value={socialFacebook} onChange={(e) => setSocialFacebook(e.target.value)}
+                      placeholder="https://facebook.com/yourpage" data-testid="input-social-facebook"
+                      className="bg-white/[0.07] border-white/15 text-white placeholder:text-white/20" />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-4 rounded-md bg-white/[0.03] border border-white/10 p-5">

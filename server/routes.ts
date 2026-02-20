@@ -826,6 +826,20 @@ export async function registerRoutes(
   app.patch("/api/talent-profiles/me", firebaseAuth, async (req, res) => {
     const uid = req.firebaseUser!.uid;
     const { role, userId: _, ...safeData } = req.body;
+    if (safeData.socialLinks && typeof safeData.socialLinks === "string") {
+      try {
+        const parsed = JSON.parse(safeData.socialLinks);
+        const sanitized: Record<string, string> = {};
+        for (const [key, val] of Object.entries(parsed)) {
+          if (typeof val === "string" && /^https?:\/\//i.test(val)) {
+            sanitized[key] = val;
+          }
+        }
+        safeData.socialLinks = Object.keys(sanitized).length > 0 ? JSON.stringify(sanitized) : null;
+      } catch {
+        safeData.socialLinks = null;
+      }
+    }
     const updated = await storage.updateTalentProfile(uid, safeData);
     if (!updated) return res.status(404).json({ message: "Profile not found" });
     res.json(updated);

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, MapPin, Tag, ChevronRight, Play } from "lucide-react";
+import { SiYoutube, SiInstagram, SiTiktok, SiFacebook } from "react-icons/si";
 import { Link } from "wouter";
 import { useState } from "react";
 import type { TalentProfile } from "@shared/schema";
@@ -103,6 +104,33 @@ export default function TalentProfilePublic() {
             </p>
           </div>
         )}
+
+        {(() => {
+          let socialObj: Record<string, string> = {};
+          try {
+            const raw = (profile as any).socialLinks;
+            if (raw) socialObj = typeof raw === "string" ? JSON.parse(raw) : raw;
+          } catch {}
+          const platforms = [
+            { key: "youtube", icon: SiYoutube, label: "YouTube", color: "hover:text-red-500" },
+            { key: "instagram", icon: SiInstagram, label: "Instagram", color: "hover:text-pink-500" },
+            { key: "tiktok", icon: SiTiktok, label: "TikTok", color: "hover:text-white" },
+            { key: "facebook", icon: SiFacebook, label: "Facebook", color: "hover:text-blue-500" },
+          ];
+          const active = platforms.filter(p => socialObj[p.key] && /^https?:\/\//i.test(socialObj[p.key]));
+          if (active.length === 0) return null;
+          return (
+            <div className="flex flex-wrap items-center justify-center gap-5 mb-10" data-testid="social-links">
+              {active.map(({ key, icon: Icon, label, color }) => (
+                <a key={key} href={socialObj[key]} target="_blank" rel="noopener noreferrer"
+                  className={`text-white/40 ${color} transition-colors duration-300`}
+                  data-testid={`link-social-${key}`} title={label}>
+                  <Icon className="h-5 w-5" />
+                </a>
+              ))}
+            </div>
+          );
+        })()}
 
         {profile.imageUrls && profile.imageUrls.length > 0 && (
           <div className="mb-10">
