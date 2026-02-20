@@ -12,6 +12,7 @@ import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
 import { CheckCircle, CreditCard, Search, Trophy, UserPlus, Heart, Upload, X, Loader2, ImageIcon } from "lucide-react";
+import PaymentConfirmationModal from "@/components/payment-confirmation-modal";
 import HeroCoverflowGallery from "@/components/hero-coverflow-gallery";
 import type { Competition } from "@shared/schema";
 
@@ -73,6 +74,7 @@ export default function JoinPage() {
   const [referralCode, setReferralCode] = useState("");
   const [nominationImageUrl, setNominationImageUrl] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const nominationImageRef = useRef<HTMLInputElement>(null);
   const competitionSectionRef = useRef<HTMLDivElement>(null);
 
@@ -192,31 +194,52 @@ export default function JoinPage() {
     }
   };
 
-  const handleSubmit = useCallback(async () => {
-    if (!settings) return;
-
+  const validateForm = useCallback(() => {
+    if (!settings) return false;
     if (!selectedCompetitionId) {
       toast({ title: "Please select a competition", variant: "destructive" });
-      return;
+      return false;
     }
-
     if (!form.fullName?.trim()) {
       toast({ title: "Nominee's name is required", variant: "destructive" });
-      return;
+      return false;
     }
     if (!form.email?.trim()) {
       toast({ title: "Nominee's email is required", variant: "destructive" });
-      return;
+      return false;
     }
     if (!nominatorForm.name?.trim()) {
       toast({ title: "Your name is required", variant: "destructive" });
-      return;
+      return false;
     }
     if (!nominatorForm.email?.trim()) {
       toast({ title: "Your email is required", variant: "destructive" });
-      return;
+      return false;
     }
+    if (needsPayment) {
+      if (!cardNumber || !expMonth || !expYear || !cvv) {
+        toast({ title: "Please enter your card details", variant: "destructive" });
+        return false;
+      }
+      if (!paymentConfig || !window.Accept) {
+        toast({ title: "Payment system not ready", variant: "destructive" });
+        return false;
+      }
+    }
+    return true;
+  }, [settings, form, nominatorForm, selectedCompetitionId, needsPayment, cardNumber, expMonth, expYear, cvv, paymentConfig, toast]);
 
+  const handlePayClick = useCallback(() => {
+    if (!validateForm()) return;
+    if (needsPayment) {
+      setShowConfirmModal(true);
+    } else {
+      processPayment();
+    }
+  }, [validateForm, needsPayment, processPayment]);
+
+  const processPayment = useCallback(async () => {
+    setShowConfirmModal(false);
     setProcessing(true);
 
     const submitData = async (dataDescriptor?: string, dataValue?: string) => {
@@ -247,18 +270,8 @@ export default function JoinPage() {
     };
 
     if (needsPayment) {
-      if (!cardNumber || !expMonth || !expYear || !cvv) {
-        toast({ title: "Please enter your card details", variant: "destructive" });
-        setProcessing(false);
-        return;
-      }
-      if (!paymentConfig || !window.Accept) {
-        toast({ title: "Payment system not ready", variant: "destructive" });
-        setProcessing(false);
-        return;
-      }
-      window.Accept.dispatchData({
-        authData: { clientKey: paymentConfig.clientKey, apiLoginID: paymentConfig.apiLoginId },
+      window.Accept!.dispatchData({
+        authData: { clientKey: paymentConfig!.clientKey, apiLoginID: paymentConfig!.apiLoginId },
         cardData: {
           cardNumber: cardNumber.replace(/\s/g, ""),
           month: expMonth.padStart(2, "0"),
@@ -773,7 +786,7 @@ export default function JoinPage() {
         )}
 
         <button
-          onClick={handleSubmit}
+          onClick={handlePayClick}
           disabled={processing}
           className="w-full bg-[#FF5A09] text-white font-bold text-base uppercase px-8 leading-[52px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           data-testid="button-submit"
@@ -795,6 +808,24 @@ export default function JoinPage() {
           <p className="text-white/30 text-xs text-center mt-4">
             Payments processed securely via Authorize.Net.
           </p>
+        )}
+
+        {needsPayment && (
+          <PaymentConfirmationModal
+            open={showConfirmModal}
+            onClose={() => setShowConfirmModal(false)}
+            onConfirm={processPayment}
+            processing={processing}
+            title="Confirm Nomination"
+            description="Please review your nomination details before proceeding."
+            lineItems={[
+              { label: "Nominee", value: form.fullName || "" },
+              { label: "Nominated by", value: nominatorForm.name || "" },
+              { label: "Nomination Fee", value: `$${(paymentAmount / 100).toFixed(2)}` },
+            ]}
+            totalAmount={`$${(paymentAmount / 100).toFixed(2)}`}
+            confirmText={`PAY $${(paymentAmount / 100).toFixed(2)} & NOMINATE`}
+          />
         )}
       </div>
 

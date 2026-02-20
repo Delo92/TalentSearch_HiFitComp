@@ -11,6 +11,7 @@ import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
 import { CheckCircle, Send, CreditCard, Trophy } from "lucide-react";
+import PaymentConfirmationModal from "@/components/payment-confirmation-modal";
 import type { Competition } from "@shared/schema";
 
 interface HostSettings {
@@ -84,6 +85,7 @@ export default function HostPage() {
   const [success, setSuccess] = useState(false);
   const [acceptLoaded, setAcceptLoaded] = useState(false);
   const [selectedPackageIdx, setSelectedPackageIdx] = useState<number | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const { data: settings, isLoading } = useQuery<HostSettings>({
     queryKey: ["/api/host/settings"],
@@ -128,23 +130,43 @@ export default function HostPage() {
 
   const isRequired = (field: string) => settings?.requiredFields?.includes(field) ?? false;
 
-  const handleSubmit = useCallback(async () => {
-    if (!settings) return;
-
+  const validateForm = useCallback(() => {
+    if (!settings) return false;
     for (const field of settings.requiredFields) {
       if (!form[field]?.trim()) {
         toast({ title: `${FIELD_LABELS[field] || field} is required`, variant: "destructive" });
-        return;
+        return false;
       }
     }
-
-    setProcessing(true);
-
     if (selectedPrice > 0 && !selectedPackage) {
       toast({ title: "Please select a hosting package", variant: "destructive" });
-      setProcessing(false);
-      return;
+      return false;
     }
+    if (selectedPrice > 0) {
+      if (!cardNumber || !expMonth || !expYear || !cvv) {
+        toast({ title: "Please enter your card details", variant: "destructive" });
+        return false;
+      }
+      if (!paymentConfig || !window.Accept) {
+        toast({ title: "Payment system not ready", variant: "destructive" });
+        return false;
+      }
+    }
+    return true;
+  }, [settings, form, selectedPrice, selectedPackage, cardNumber, expMonth, expYear, cvv, paymentConfig, toast]);
+
+  const handlePayClick = useCallback(() => {
+    if (!validateForm()) return;
+    if (selectedPrice > 0) {
+      setShowConfirmModal(true);
+    } else {
+      processPayment();
+    }
+  }, [validateForm, selectedPrice, processPayment]);
+
+  const processPayment = useCallback(async () => {
+    setShowConfirmModal(false);
+    setProcessing(true);
 
     const submitData = async (dataDescriptor?: string, dataValue?: string) => {
       try {
@@ -167,18 +189,8 @@ export default function HostPage() {
     };
 
     if (selectedPrice > 0) {
-      if (!cardNumber || !expMonth || !expYear || !cvv) {
-        toast({ title: "Please enter your card details", variant: "destructive" });
-        setProcessing(false);
-        return;
-      }
-      if (!paymentConfig || !window.Accept) {
-        toast({ title: "Payment system not ready", variant: "destructive" });
-        setProcessing(false);
-        return;
-      }
-      window.Accept.dispatchData({
-        authData: { clientKey: paymentConfig.clientKey, apiLoginID: paymentConfig.apiLoginId },
+      window.Accept!.dispatchData({
+        authData: { clientKey: paymentConfig!.clientKey, apiLoginID: paymentConfig!.apiLoginId },
         cardData: {
           cardNumber: cardNumber.replace(/\s/g, ""),
           month: expMonth.padStart(2, "0"),
@@ -201,7 +213,7 @@ export default function HostPage() {
     } else {
       await submitData();
     }
-  }, [settings, form, cardNumber, expMonth, expYear, cvv, paymentConfig, toast, selectedPrice, selectedPackage]);
+  }, [settings, form, cardNumber, expMonth, expYear, cvv, paymentConfig, toast, selectedPrice, selectedPackage, referenceCompetitionId]);
 
   if (success) {
     return (
@@ -469,7 +481,7 @@ export default function HostPage() {
         )}
 
         <button
-          onClick={handleSubmit}
+          onClick={handlePayClick}
           disabled={processing || (hostingPackages.length > 0 && selectedPackageIdx === null)}
           className="w-full bg-[#FF5A09] text-white font-bold text-base uppercase px-8 leading-[52px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           data-testid="button-submit"
@@ -491,6 +503,24 @@ export default function HostPage() {
           <p className="text-white/30 text-xs text-center mt-4">
             Payments processed securely via Authorize.Net.
           </p>
+        )}
+
+        {selectedPrice > 0 && selectedPackage && (
+          <PaymentConfirmationModal
+            open={showConfirmModal}
+            onClose={() => setShowConfirmModal(false)}
+            onConfirm={processPayment}
+            processing={processing}
+            title="Confirm Host Application"
+            description="Please review your hosting package details before proceeding."
+            lineItems={[
+              { label: "Applicant", value: form.fullName || form.name || "" },
+              { label: "Package", value: selectedPackage.name },
+              { label: "Hosting Fee", value: `$${selectedPrice}` },
+            ]}
+            totalAmount={`$${selectedPrice}`}
+            confirmText={`PAY $${selectedPrice} & SUBMIT`}
+          />
         )}
       </div>
 

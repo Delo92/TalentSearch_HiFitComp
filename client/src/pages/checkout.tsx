@@ -11,6 +11,7 @@ import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { ShoppingCart, CreditCard, CheckCircle, ArrowLeft, Heart, Package } from "lucide-react";
+import PaymentConfirmationModal from "@/components/payment-confirmation-modal";
 import { slugify } from "@shared/slugify";
 
 declare global {
@@ -80,6 +81,7 @@ export default function CheckoutPage() {
   const [successData, setSuccessData] = useState<{ transactionId: string; votesAdded: number } | null>(null);
   const [referralCode, setReferralCode] = useState("");
   const [acceptLoaded, setAcceptLoaded] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const { data: competition, isLoading: compLoading } = useQuery<CompetitionDetail>({
     queryKey: ["/api/competitions", competitionId?.toString()],
@@ -135,34 +137,43 @@ export default function CheckoutPage() {
   const isIndividual = selectedPackage === "individual";
   const individualTotal = individualVoteCount * perVotePrice * 100;
 
-  const handleCheckout = useCallback(async () => {
+  const validateCheckout = useCallback(() => {
     if (!name.trim() || !email.trim()) {
       toast({ title: "Please enter your name and email", variant: "destructive" });
-      return;
+      return false;
     }
     if (!selectedPackage) {
       toast({ title: "Please select a vote option", variant: "destructive" });
-      return;
+      return false;
     }
     if (isIndividual && (individualVoteCount < 1 || individualVoteCount > 10000)) {
       toast({ title: "Please enter a valid number of votes (1-10,000)", variant: "destructive" });
-      return;
+      return false;
     }
     if (!cardNumber || !expMonth || !expYear || !cvv) {
       toast({ title: "Please enter your card details", variant: "destructive" });
-      return;
+      return false;
     }
     if (!paymentConfig || !window.Accept) {
       toast({ title: "Payment system not ready. Please try again.", variant: "destructive" });
-      return;
+      return false;
     }
+    return true;
+  }, [name, email, selectedPackage, isIndividual, individualVoteCount, cardNumber, expMonth, expYear, cvv, paymentConfig, toast]);
 
+  const handlePayClick = useCallback(() => {
+    if (!validateCheckout()) return;
+    setShowConfirmModal(true);
+  }, [validateCheckout, processCheckout]);
+
+  const processCheckout = useCallback(async () => {
+    setShowConfirmModal(false);
     setProcessing(true);
 
     const secureData = {
       authData: {
-        clientKey: paymentConfig.clientKey,
-        apiLoginID: paymentConfig.apiLoginId,
+        clientKey: paymentConfig!.clientKey,
+        apiLoginID: paymentConfig!.apiLoginId,
       },
       cardData: {
         cardNumber: cardNumber.replace(/\s/g, ""),
@@ -172,7 +183,7 @@ export default function CheckoutPage() {
       },
     };
 
-    window.Accept.dispatchData(secureData, async (tokenResponse) => {
+    window.Accept!.dispatchData(secureData, async (tokenResponse) => {
       if (tokenResponse.messages?.resultCode === "Error") {
         setProcessing(false);
         const errMsg = tokenResponse.messages.message[0]?.text || "Card tokenization failed";
@@ -215,7 +226,7 @@ export default function CheckoutPage() {
         setProcessing(false);
       }
     });
-  }, [name, email, selectedPackage, cardNumber, expMonth, expYear, cvv, paymentConfig, competitionId, contestantId, createAccount, toast]);
+  }, [name, email, selectedPackage, cardNumber, expMonth, expYear, cvv, paymentConfig, competitionId, contestantId, createAccount, toast, isIndividual, individualVoteCount, referralCode]);
 
   if (success && successData) {
     return (
@@ -636,7 +647,7 @@ export default function CheckoutPage() {
         })()}
 
         <button
-          onClick={handleCheckout}
+          onClick={handlePayClick}
           disabled={processing || !selectedPackage || !acceptLoaded}
           className="w-full bg-[#FF5A09] text-white font-bold text-base uppercase px-8 leading-[52px] border border-[#FF5A09] transition-all duration-500 hover:bg-transparent hover:text-[#FF5A09] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           data-testid="button-checkout"
@@ -648,6 +659,39 @@ export default function CheckoutPage() {
         <p className="text-white/30 text-xs text-center mt-4">
           Payments processed securely via Authorize.Net. Your card info never touches our servers.
         </p>
+
+        {(() => {
+          const subtotal = isIndividual ? (individualVoteCount * perVotePrice) : (selectedPkg ? selectedPkg.price / 100 : 0);
+          const voteLabel = isIndividual
+            ? `${individualVoteCount.toLocaleString()} vote${individualVoteCount !== 1 ? "s" : ""}`
+            : selectedPkg ? `${selectedPkg.name} (${selectedPkg.voteCount.toLocaleString()}${selectedPkg.bonusVotes > 0 ? ` + ${selectedPkg.bonusVotes.toLocaleString()} bonus` : ""} votes)` : "";
+          const taxRate = platformSettings?.salesTaxPercent || 0;
+          const taxAmount = subtotal * (taxRate / 100);
+          const total = subtotal + taxAmount;
+          const lineItems = [
+            { label: "Contestant", value: contestant?.talentProfile?.displayName || "" },
+            { label: "Competition", value: competition?.title || "" },
+            { label: "Package", value: voteLabel },
+            { label: "Subtotal", value: `$${subtotal.toFixed(2)}` },
+            ...(taxRate > 0 ? [{ label: `Sales Tax (${taxRate}%)`, value: `$${taxAmount.toFixed(2)}` }] : []),
+          ];
+          if (referralCode) {
+            lineItems.push({ label: "Referral Code", value: referralCode, highlight: true });
+          }
+          return (
+            <PaymentConfirmationModal
+              open={showConfirmModal}
+              onClose={() => setShowConfirmModal(false)}
+              onConfirm={processCheckout}
+              processing={processing}
+              title="Confirm Vote Purchase"
+              description="Please review your order before proceeding."
+              lineItems={lineItems}
+              totalAmount={`$${total.toFixed(2)}`}
+              confirmText={`PAY $${total.toFixed(2)}`}
+            />
+          );
+        })()}
       </div>
 
       <SiteFooter />
