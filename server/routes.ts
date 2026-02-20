@@ -3345,7 +3345,7 @@ export async function registerRoutes(
 
   app.put("/api/referral/:code", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      const { newCode, ownerName, ownerEmail, ownerType } = req.body;
+      const { newCode, ownerName, ownerEmail, ownerType, competitionId, contestantId } = req.body;
       if (newCode) {
         const cleaned = newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "");
         if (cleaned.length < 3 || cleaned.length > 20) {
@@ -3358,6 +3358,8 @@ export async function registerRoutes(
         ownerName: ownerName || undefined,
         ownerEmail: ownerEmail !== undefined ? ownerEmail : undefined,
         ownerType: ownerType || undefined,
+        competitionId: competitionId !== undefined ? competitionId : undefined,
+        contestantId: contestantId !== undefined ? contestantId : undefined,
       });
       res.json(updated);
     } catch (err: any) {

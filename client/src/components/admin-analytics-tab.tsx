@@ -111,11 +111,13 @@ export default function AdminAnalyticsTab() {
   const [newRefName, setNewRefName] = useState("");
   const [newRefEmail, setNewRefEmail] = useState("");
   const [newRefCustomCode, setNewRefCustomCode] = useState("");
-  const [editingRef, setEditingRef] = useState<{ code: string; ownerName: string; ownerEmail: string; ownerType: string } | null>(null);
+  const [newRefCompId, setNewRefCompId] = useState<number | null>(null);
+  const [editingRef, setEditingRef] = useState<{ code: string; ownerName: string; ownerEmail: string; ownerType: string; competitionId?: number | null; contestantId?: number | null } | null>(null);
   const [editRefCode, setEditRefCode] = useState("");
   const [editRefName, setEditRefName] = useState("");
   const [editRefEmail, setEditRefEmail] = useState("");
   const [editRefType, setEditRefType] = useState("");
+  const [editRefCompId, setEditRefCompId] = useState<number | null>(null);
 
   const { data: analytics, isLoading: analyticsLoading } = useQuery<AnalyticsOverview>({
     queryKey: ["/api/analytics/overview"],
@@ -182,7 +184,7 @@ export default function AdminAnalyticsTab() {
   });
 
   const createRefMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; customCode?: string }) => {
+    mutationFn: async (data: { name: string; email: string; customCode?: string; competitionId?: number | null }) => {
       await apiRequest("POST", "/api/referral/create", data);
     },
     onSuccess: () => {
@@ -192,6 +194,7 @@ export default function AdminAnalyticsTab() {
       setNewRefName("");
       setNewRefEmail("");
       setNewRefCustomCode("");
+      setNewRefCompId(null);
     },
     onError: (err: any) => {
       toast({ title: err?.message || "Failed to create referral code", variant: "destructive" });
@@ -199,7 +202,7 @@ export default function AdminAnalyticsTab() {
   });
 
   const updateRefMutation = useMutation({
-    mutationFn: async (data: { oldCode: string; newCode?: string; ownerName?: string; ownerEmail?: string; ownerType?: string }) => {
+    mutationFn: async (data: { oldCode: string; newCode?: string; ownerName?: string; ownerEmail?: string; ownerType?: string; competitionId?: number | null }) => {
       const { oldCode, ...body } = data;
       await apiRequest("PUT", `/api/referral/${oldCode}`, body);
     },
@@ -516,6 +519,7 @@ export default function AdminAnalyticsTab() {
                       <th className="text-left text-white/50 pb-3 pr-4 font-medium">Email</th>
                       <th className="text-left text-white/50 pb-3 pr-4 font-medium">Type</th>
                       <th className="text-left text-white/50 pb-3 pr-4 font-medium">Code</th>
+                      <th className="text-left text-white/50 pb-3 pr-4 font-medium">Competition</th>
                       <th className="text-right text-white/50 pb-3 pr-4 font-medium">Votes Driven</th>
                       <th className="text-right text-white/50 pb-3 pr-4 font-medium">Unique Voters</th>
                       <th className="text-right text-white/50 pb-3 font-medium">Actions</th>
@@ -540,6 +544,15 @@ export default function AdminAnalyticsTab() {
                         <td className="py-3 pr-4">
                           <code className="bg-white/10 px-2 py-0.5 rounded text-orange-300 text-xs font-mono">{r.code}</code>
                         </td>
+                        <td className="py-3 pr-4 text-white/50 text-xs">
+                          {r.competitionId ? (
+                            <span className="bg-white/10 px-2 py-0.5 rounded text-blue-300 text-[10px]">
+                              {analytics?.competitionStats?.find(c => c.id === r.competitionId)?.title || `#${r.competitionId}`}
+                            </span>
+                          ) : (
+                            <span className="text-white/20">All</span>
+                          )}
+                        </td>
                         <td className="py-3 pr-4 text-right text-orange-400 font-bold">{r.totalVotesDriven.toLocaleString()}</td>
                         <td className="py-3 pr-4 text-right text-white/60">{r.uniqueVoters.toLocaleString()}</td>
                         <td className="py-3 text-right">
@@ -549,11 +562,12 @@ export default function AdminAnalyticsTab() {
                               variant="ghost"
                               className="text-white/40"
                               onClick={() => {
-                                setEditingRef({ code: r.code, ownerName: r.ownerName, ownerEmail: r.ownerEmail || "", ownerType: r.ownerType });
+                                setEditingRef({ code: r.code, ownerName: r.ownerName, ownerEmail: r.ownerEmail || "", ownerType: r.ownerType, competitionId: r.competitionId, contestantId: r.contestantId });
                                 setEditRefCode(r.code);
                                 setEditRefName(r.ownerName);
                                 setEditRefEmail(r.ownerEmail || "");
                                 setEditRefType(r.ownerType);
+                                setEditRefCompId(r.competitionId || null);
                               }}
                               data-testid={`button-edit-ref-${r.code}`}
                             >
@@ -591,7 +605,7 @@ export default function AdminAnalyticsTab() {
                       </tr>
                     ))}
                     {filteredReferrals.length === 0 && (
-                      <tr><td colSpan={8} className="py-8 text-center text-white/30">No referral codes yet</td></tr>
+                      <tr><td colSpan={9} className="py-8 text-center text-white/30">No referral codes yet</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -832,9 +846,24 @@ export default function AdminAnalyticsTab() {
               />
               <p className="text-white/30 text-[10px] mt-1">3-20 characters: letters, numbers, dashes, underscores</p>
             </div>
+            <div>
+              <Label className="text-white/60 text-xs">Competition (optional)</Label>
+              <select
+                value={newRefCompId ?? ""}
+                onChange={(e) => setNewRefCompId(e.target.value ? Number(e.target.value) : null)}
+                className="w-full mt-1 rounded-md bg-white/5 border border-white/10 text-white px-3 py-2 text-sm"
+                data-testid="select-create-ref-competition"
+              >
+                <option value="" className="bg-zinc-900">All Competitions</option>
+                {(analytics?.competitionStats || []).map(c => (
+                  <option key={c.id} value={c.id} className="bg-zinc-900">{c.title} ({c.category})</option>
+                ))}
+              </select>
+              <p className="text-white/30 text-[10px] mt-1">Optionally link this code to a specific competition</p>
+            </div>
             <Button
               className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white"
-              onClick={() => createRefMutation.mutate({ name: newRefName, email: newRefEmail, customCode: newRefCustomCode || undefined })}
+              onClick={() => createRefMutation.mutate({ name: newRefName, email: newRefEmail, customCode: newRefCustomCode || undefined, competitionId: newRefCompId })}
               disabled={!newRefName.trim() || createRefMutation.isPending || (newRefCustomCode.length > 0 && newRefCustomCode.length < 3)}
               data-testid="button-submit-create-referral"
             >
@@ -902,6 +931,21 @@ export default function AdminAnalyticsTab() {
                   <option value="custom" className="bg-zinc-900">Custom</option>
                 </select>
               </div>
+              <div>
+                <Label className="text-white/60 text-xs">Competition</Label>
+                <select
+                  value={editRefCompId ?? ""}
+                  onChange={(e) => setEditRefCompId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full mt-1 rounded-md bg-white/5 border border-white/10 text-white px-3 py-2 text-sm"
+                  data-testid="select-edit-ref-competition"
+                >
+                  <option value="" className="bg-zinc-900">All Competitions</option>
+                  {(analytics?.competitionStats || []).map(c => (
+                    <option key={c.id} value={c.id} className="bg-zinc-900">{c.title} ({c.category})</option>
+                  ))}
+                </select>
+                <p className="text-white/30 text-[10px] mt-1">Link this code to a specific competition or leave as "All"</p>
+              </div>
               <Button
                 className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white"
                 onClick={() => {
@@ -911,6 +955,7 @@ export default function AdminAnalyticsTab() {
                     ownerName: editRefName,
                     ownerEmail: editRefEmail,
                     ownerType: editRefType,
+                    competitionId: editRefCompId,
                   });
                 }}
                 disabled={!editRefName.trim() || editRefCode.length < 3 || updateRefMutation.isPending}

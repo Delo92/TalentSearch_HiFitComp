@@ -1289,7 +1289,7 @@ export const firestoreReferrals = {
 
   async updateCode(
     oldCode: string,
-    updates: { newCode?: string; ownerName?: string; ownerEmail?: string | null; ownerType?: "talent" | "host" | "admin" | "custom" }
+    updates: { newCode?: string; ownerName?: string; ownerEmail?: string | null; ownerType?: "talent" | "host" | "admin" | "custom"; competitionId?: number | null; contestantId?: number | null }
   ): Promise<FirestoreReferralCode> {
     const codeDoc = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).get();
     if (!codeDoc.exists) throw new Error("Referral code not found");
@@ -1309,6 +1309,8 @@ export const firestoreReferrals = {
       ownerName: updates.ownerName ?? existing.ownerName,
       ownerEmail: updates.ownerEmail !== undefined ? updates.ownerEmail : existing.ownerEmail,
       ownerType: updates.ownerType ?? existing.ownerType,
+      competitionId: updates.competitionId !== undefined ? updates.competitionId : existing.competitionId,
+      contestantId: updates.contestantId !== undefined ? updates.contestantId : existing.contestantId,
     };
 
     const statsUpdates: Record<string, any> = {
@@ -1332,6 +1334,8 @@ export const firestoreReferrals = {
         ownerName: updated.ownerName,
         ownerEmail: updated.ownerEmail,
         ownerType: updated.ownerType,
+        competitionId: updated.competitionId ?? null,
+        contestantId: updated.contestantId ?? null,
       });
       await db().collection(COLLECTIONS.REFERRAL_STATS).doc(oldCode).update(statsUpdates).catch(() => {});
     }
