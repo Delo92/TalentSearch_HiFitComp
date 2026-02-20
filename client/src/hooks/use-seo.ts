@@ -45,8 +45,9 @@ export function useSEO({ title, description, canonical, ogImage, ogType }: SEOOp
     setMetaTag("twitter:description", desc);
 
     setMetaTag("og:type", ogType || "website", true);
-    setMetaTag("og:image", ogImage || "https://hifitcomp.com/images/template/bg-1.jpg", true);
-    setMetaTag("twitter:image", ogImage || "https://hifitcomp.com/images/template/bg-1.jpg");
+    const defaultOgImage = "https://storage.googleapis.com/hifitcomp.firebasestorage.app/livery%2Fcompetition_card_fallback.jpg";
+    setMetaTag("og:image", ogImage || defaultOgImage, true);
+    setMetaTag("twitter:image", ogImage || defaultOgImage);
 
     const url = canonical || "https://hifitcomp.com";
     setCanonical(url);
@@ -57,12 +58,12 @@ export function useSEO({ title, description, canonical, ogImage, ogType }: SEOOp
       setMetaTag("description", DEFAULT_DESC);
       setMetaTag("og:title", DEFAULT_TITLE, true);
       setMetaTag("og:description", DEFAULT_DESC, true);
-      setMetaTag("og:image", "https://hifitcomp.com/images/template/bg-1.jpg", true);
+      setMetaTag("og:image", defaultOgImage, true);
       setMetaTag("og:url", "https://hifitcomp.com", true);
       setMetaTag("og:type", "website", true);
       setMetaTag("twitter:title", DEFAULT_TITLE);
       setMetaTag("twitter:description", DEFAULT_DESC);
-      setMetaTag("twitter:image", "https://hifitcomp.com/images/template/bg-1.jpg");
+      setMetaTag("twitter:image", defaultOgImage);
       setCanonical("https://hifitcomp.com");
     };
   }, [title, description, canonical, ogImage, ogType]);

@@ -3491,7 +3491,7 @@ export async function registerRoutes(
       const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const ogTitle = `${comp.title} - ${comp.category} Competition | HiFitComp`;
       const ogDescription = comp.description || `Vote in the ${comp.title} ${comp.category} competition on HiFitComp. Browse contestants, cast your vote, and help decide the winner!`;
-      const ogImage = comp.coverImage || "https://hifitcomp.com/images/template/bg-1.jpg";
+      const ogImage = comp.coverImage || "https://storage.googleapis.com/hifitcomp.firebasestorage.app/livery%2Fcompetition_card_fallback.jpg";
       const protocol = req.headers["x-forwarded-proto"] || req.protocol;
       const ogUrl = `${protocol}://${req.get("host")}/competition/${slug}`;
 
