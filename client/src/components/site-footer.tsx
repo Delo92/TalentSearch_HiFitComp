@@ -33,7 +33,7 @@ export default function SiteFooter() {
             className="text-white/60 text-sm uppercase tracking-widest transition-colors duration-300 hover:text-white"
             data-testid="link-footer-join"
           >
-            Join Now
+            Nominate
           </Link>
           <Link
             href="/about"
