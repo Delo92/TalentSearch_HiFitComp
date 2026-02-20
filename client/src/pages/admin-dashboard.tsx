@@ -1590,14 +1590,15 @@ export default function AdminDashboard({ user }: { user: any }) {
                 { label: "About Page", keys: ["about_rules_text", "about_details_text"], pairs: null },
                 { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"], pairs: null },
                 { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"], pairs: null },
-                { label: "How It Works", keys: ["hiw_step1_desc", "hiw_step2_desc", "hiw_step3_desc"], pairs: null },
+                { label: "Why HiFitComp", keys: ["why_subtitle", "why_heading", "why_card1_title", "why_card1_desc", "why_card2_title", "why_card2_desc", "why_card3_title", "why_card3_desc"], pairs: null },
+                { label: "How It Works", keys: ["hiw_section_title", "hiw_step1_title", "hiw_step1_desc", "hiw_step2_title", "hiw_step2_desc", "hiw_step3_title", "hiw_step3_desc"], pairs: null },
                 { label: "FAQ Page", keys: faqPairs.flat(), pairs: faqPairs },
               ];
-              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary") || key.includes("faq_");
+              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary") || key.includes("faq_") || key.includes("_desc");
               const renderField = (item: any) => {
                 const currentText = item.textContent || item.defaultText || "";
                 const isCustomText = !!item.textContent;
-                const shortLabel = item.label.replace(/^(Category |Hero |Social - |About Page - |FAQ \d+ - )/, "");
+                const shortLabel = item.label.replace(/^(Category |Hero |Social - |About Page - |FAQ \d+ - |Why HiFitComp - |How It Works - |Step \d+: )/, "");
                 return (
                   <div key={item.imageKey} data-testid={`livery-item-${item.imageKey}`}>
                     <div className="flex items-center justify-between gap-1 mb-1 flex-wrap">

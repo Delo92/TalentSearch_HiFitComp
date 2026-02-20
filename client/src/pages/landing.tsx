@@ -208,20 +208,20 @@ export default function Landing() {
         <div className="absolute inset-0 bg-black/65" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div ref={featured.ref} className={`text-center mb-24 transition-all duration-1000 ${featured.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-            <p className="text-[#5f5f5f] text-sm mb-1">See what&apos;s new</p>
+            <p className="text-[#5f5f5f] text-sm mb-1">{getText("why_subtitle", "See what's new")}</p>
             <h2 className="text-lg uppercase text-white font-normal tracking-[5px] sm:tracking-[10px]">
-              Why HiFitComp
+              {getText("why_heading", "Why HiFitComp")}
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {[
-              { title: "Any Competition", desc: "Music, modeling, bodybuilding, dance, art -- create or join competitions in any talent category imaginable." },
-              { title: "Public Voting", desc: "Fair, transparent voting. The public decides who wins with configurable vote limits and pricing per competition." },
-              { title: "Rich Profiles", desc: "Upload photos, videos, share your bio and social links. Build a stunning profile that shows the world your talent." },
+              { title: getText("why_card1_title", "Any Competition"), desc: getText("why_card1_desc", "Music, modeling, bodybuilding, dance, art -- create or join competitions in any talent category imaginable.") },
+              { title: getText("why_card2_title", "Public Voting"), desc: getText("why_card2_desc", "Fair, transparent voting. The public decides who wins with configurable vote limits and pricing per competition.") },
+              { title: getText("why_card3_title", "Rich Profiles"), desc: getText("why_card3_desc", "Upload photos, videos, share your bio and social links. Build a stunning profile that shows the world your talent.") },
             ].map((item, i) => (
               <div
-                key={item.title}
+                key={i}
                 className={`text-center transition-all duration-700 ${featured.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
                 style={{ transitionDelay: `${i * 150}ms` }}
               >
