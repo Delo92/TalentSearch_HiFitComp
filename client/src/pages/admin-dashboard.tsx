@@ -1581,18 +1581,23 @@ export default function AdminDashboard({ user }: { user: any }) {
             </div>
             {(() => {
               const textItems = liveryItems?.filter((item: any) => item.itemType === "text") || [];
+              const faqPairs: string[][] = [];
+              for (let i = 1; i <= 19; i++) {
+                faqPairs.push([`faq_${i}_q`, `faq_${i}_a`]);
+              }
               const groups = [
                 { label: "Hero Section", keys: ["hero_title_top", "hero_title_main", "hero_summary"], pairs: null },
                 { label: "About Page", keys: ["about_rules_text", "about_details_text"], pairs: null },
                 { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"], pairs: null },
                 { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"], pairs: null },
                 { label: "How It Works", keys: ["hiw_step1_desc", "hiw_step2_desc", "hiw_step3_desc"], pairs: null },
+                { label: "FAQ Page", keys: faqPairs.flat(), pairs: faqPairs },
               ];
-              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary");
+              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary") || key.includes("faq_");
               const renderField = (item: any) => {
                 const currentText = item.textContent || item.defaultText || "";
                 const isCustomText = !!item.textContent;
-                const shortLabel = item.label.replace(/^(Category |Hero |Social - |About Page - )/, "");
+                const shortLabel = item.label.replace(/^(Category |Hero |Social - |About Page - |FAQ \d+ - )/, "");
                 return (
                   <div key={item.imageKey} data-testid={`livery-item-${item.imageKey}`}>
                     <div className="flex items-center justify-between gap-1 mb-1 flex-wrap">
@@ -1649,7 +1654,8 @@ export default function AdminDashboard({ user }: { user: any }) {
                           {group.pairs.map((pair) => {
                             const pairItems = pair.map(k => textItems.find((t: any) => t.imageKey === k)).filter(Boolean) as any[];
                             if (pairItems.length === 0) return null;
-                            const pairLabel = (pairItems[0]?.label || "").replace(/^Category (Title|Description) - /, "");
+                            const rawLabel = pairItems[0]?.label || "";
+                            const pairLabel = rawLabel.startsWith("FAQ ") ? rawLabel.replace(/ - (Question|Answer)$/, "") : rawLabel.replace(/^Category (Title|Description) - /, "");
                             return (
                               <div key={pair[0]} className="rounded-md bg-zinc-800/60 border border-white/10 p-3">
                                 <h4 className="text-xs text-orange-300/80 font-semibold uppercase tracking-wider mb-2">{pairLabel}</h4>

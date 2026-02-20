@@ -147,6 +147,13 @@ export default function SiteNavbar() {
           >
             About
           </Link>
+          <Link
+            href="/faq"
+            className="text-white text-sm font-bold uppercase tracking-wider transition-colors duration-300 hover:text-white/70"
+            data-testid="link-nav-faq"
+          >
+            FAQ
+          </Link>
         </div>
 
         <div className="hidden md:flex items-center gap-6">
@@ -217,6 +224,14 @@ export default function SiteNavbar() {
             data-testid="link-mobile-about"
           >
             About
+          </Link>
+          <Link
+            href="/faq"
+            className="block py-2 text-white font-bold uppercase tracking-wider text-sm"
+            onClick={() => setMenuOpen(false)}
+            data-testid="link-mobile-faq"
+          >
+            FAQ
           </Link>
           <Link
             href="/competitions"

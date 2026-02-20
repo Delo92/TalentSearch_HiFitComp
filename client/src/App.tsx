@@ -19,6 +19,7 @@ import HostPage from "@/pages/host";
 import ContestantSharePage from "@/pages/contestant-share";
 import HostProfilePublic from "@/pages/host-profile-public";
 import AboutPage from "@/pages/about";
+import FAQPage from "@/pages/faq";
 import ViewerDashboard from "@/pages/viewer-dashboard";
 
 function Router() {
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/join" component={JoinPage} />
       <Route path="/host" component={HostPage} />
       <Route path="/about" component={AboutPage} />
+      <Route path="/faq" component={FAQPage} />
       <Route path="/host/:hostSlug" component={HostProfilePublic} />
       <Route path="/viewer" component={ViewerDashboard} />
       <Route path="/dashboard" component={Dashboard} />

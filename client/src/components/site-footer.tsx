@@ -42,6 +42,13 @@ export default function SiteFooter() {
           >
             About
           </Link>
+          <Link
+            href="/faq"
+            className="text-white/60 text-sm uppercase tracking-widest transition-colors duration-300 hover:text-white"
+            data-testid="link-footer-faq"
+          >
+            FAQ
+          </Link>
         </nav>
         <p className="text-xs text-white/30">
           &copy; {new Date().getFullYear()} HiFitComp
