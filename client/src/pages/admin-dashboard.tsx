@@ -1603,12 +1603,13 @@ export default function AdminDashboard({ user }: { user: any }) {
                 { label: "Why HiFitComp", keys: ["why_subtitle", "why_heading", "why_card1_title", "why_card1_desc", "why_card2_title", "why_card2_desc", "why_card3_title", "why_card3_desc"], pairs: null },
                 { label: "How It Works", keys: ["hiw_section_title", "hiw_step1_title", "hiw_step1_desc", "hiw_step2_title", "hiw_step2_desc", "hiw_step3_title", "hiw_step3_desc"], pairs: null },
                 { label: "FAQ Page", keys: faqPairs.flat(), pairs: faqPairs },
+                { label: "Email Templates", keys: ["email_welcome_subject", "email_welcome_heading", "email_welcome_body", "email_receipt_subject", "email_receipt_heading", "email_receipt_body", "email_receipt_footer", "email_nominee_welcome_subject", "email_nominee_welcome_heading", "email_nominee_welcome_body"], pairs: [["email_welcome_subject", "email_welcome_heading", "email_welcome_body"], ["email_receipt_subject", "email_receipt_heading", "email_receipt_body", "email_receipt_footer"], ["email_nominee_welcome_subject", "email_nominee_welcome_heading", "email_nominee_welcome_body"]] },
               ];
-              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary") || key.includes("faq_") || key.includes("_desc") || key.includes("how_");
+              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary") || key.includes("faq_") || key.includes("_desc") || key.includes("how_") || (key.startsWith("email_") && (key.includes("_body") || key.includes("_footer")));
               const renderField = (item: any) => {
                 const currentText = item.textContent || item.defaultText || "";
                 const isCustomText = !!item.textContent;
-                const shortLabel = item.label.replace(/^(Category |Hero |Social - |About Page - |FAQ \d+ - |Why HiFitComp - |How It Works - |Step \d+: )/, "");
+                const shortLabel = item.label.replace(/^(Category |Hero |Social - |About Page - |FAQ \d+ - |Why HiFitComp - |How It Works - |Step \d+: |Welcome Email - |Purchase Receipt Email - |Nominee Welcome Email - )/, "");
                 return (
                   <div key={item.imageKey} data-testid={`livery-item-${item.imageKey}`}>
                     <div className="flex items-center justify-between gap-1 mb-1 flex-wrap">
@@ -1660,13 +1661,22 @@ export default function AdminDashboard({ user }: { user: any }) {
                       <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform [details[open]>&]:rotate-180" />
                     </summary>
                     <div className="px-3 pb-3">
+                      {group.label === "Email Templates" && (
+                        <div className="mb-3 p-2 rounded bg-zinc-800/80 border border-white/10">
+                          <p className="text-[10px] text-white/40 mb-2">Use placeholders: <code className="text-orange-400">{"{inviterName}"}</code>, <code className="text-orange-400">{"{role}"}</code> for Welcome emails; <code className="text-orange-400">{"{buyerName}"}</code> for Receipt emails; <code className="text-orange-400">{"{nomineeName}"}</code>, <code className="text-orange-400">{"{nominatorName}"}</code>, <code className="text-orange-400">{"{competitionName}"}</code>, <code className="text-orange-400">{"{email}"}</code>, <code className="text-orange-400">{"{defaultPassword}"}</code> for Nominee Welcome emails.</p>
+                          <div className="flex items-center gap-2">
+                            <Input placeholder="Test email address" className="bg-zinc-800 border-white/25 text-white text-xs h-7 flex-1" data-testid="input-test-email" id="test-email-input" />
+                            <Button size="sm" onClick={async () => { const el = document.getElementById("test-email-input") as HTMLInputElement; const to = el?.value?.trim(); if (!to) return; try { await apiRequest("POST", "/api/admin/test-email", { to }); toast({ title: "Test email sent!", description: `Sent to ${to}` }); } catch (err: any) { toast({ title: "Failed to send test email", description: err.message, variant: "destructive" }); } }} className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white text-[10px] h-7 px-3" data-testid="button-send-test-email">Send Test</Button>
+                          </div>
+                        </div>
+                      )}
                       {group.pairs ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {group.pairs.map((pair) => {
                             const pairItems = pair.map(k => textItems.find((t: any) => t.imageKey === k)).filter(Boolean) as any[];
                             if (pairItems.length === 0) return null;
                             const rawLabel = pairItems[0]?.label || "";
-                            const pairLabel = rawLabel.startsWith("FAQ ") ? rawLabel.replace(/ - (Question|Answer)$/, "") : rawLabel.replace(/^Category (Title|Description) - /, "");
+                            const pairLabel = rawLabel.startsWith("FAQ ") ? rawLabel.replace(/ - (Question|Answer)$/, "") : rawLabel.startsWith("Welcome Email") ? "Welcome / Invite Email" : rawLabel.startsWith("Purchase Receipt") ? "Purchase Receipt Email" : rawLabel.replace(/^Category (Title|Description) - /, "");
                             return (
                               <div key={pair[0]} className="rounded-md bg-zinc-800/60 border border-white/10 p-3">
                                 <h4 className="text-xs text-orange-300/80 font-semibold uppercase tracking-wider mb-2">{pairLabel}</h4>

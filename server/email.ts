@@ -1,8 +1,25 @@
 import nodemailer from "nodemailer";
 import { google } from "googleapis";
+import { firestoreLivery } from "./firestore-collections";
 
 const GMAIL_ADDRESS = "chronicstudios2021@gmail.com";
 const DISPLAY_NAME = "HiFitComp";
+
+async function getEmailTemplate(key: string, fallback: string): Promise<string> {
+  try {
+    const item = await firestoreLivery.getByKey(key);
+    if (item && item.textContent) return item.textContent;
+  } catch {}
+  return fallback;
+}
+
+function applyPlaceholders(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.split(`{${key}}`).join(value);
+  }
+  return result.replace(/\n/g, "<br/>");
+}
 
 let cachedTransporter: nodemailer.Transporter | null = null;
 
@@ -102,10 +119,16 @@ export async function sendInviteEmail(opts: {
     const joinUrl = `${opts.siteUrl}/join?invite=${opts.inviteToken}`;
     const roleDisplay = opts.role.charAt(0).toUpperCase() + opts.role.slice(1);
 
+    const vars = { inviterName: opts.inviterName, role: roleDisplay };
+    const [subject, heading, body] = await Promise.all([
+      getEmailTemplate("email_welcome_subject", "{inviterName} invited you to join HiFitComp!"),
+      getEmailTemplate("email_welcome_heading", "You've Been Invited!"),
+      getEmailTemplate("email_welcome_body", "{inviterName} has invited you to join HiFitComp as a {role}.\n\nHiFitComp is Hawaii's premier live talent competition platform where artists, models, bodybuilders, and performers compete for public votes.\n\nClick the button below to accept your invitation and get started!"),
+    ]);
+
     const html = wrapInTemplate(`
-      <h2>You've Been Invited!</h2>
-      <p><strong>${opts.inviterName}</strong> has invited you to join HiFitComp as a <strong>${roleDisplay}</strong>.</p>
-      <p>HiFitComp is Hawaii's premier live talent competition platform where artists, models, bodybuilders, and performers compete for public votes.</p>
+      <h2>${applyPlaceholders(heading, vars)}</h2>
+      <p>${applyPlaceholders(body, vars)}</p>
       <p style="text-align: center;">
         <a href="${joinUrl}" class="btn">Accept Invitation</a>
       </p>
@@ -117,7 +140,7 @@ export async function sendInviteEmail(opts: {
     await transporter.sendMail({
       from: `"${DISPLAY_NAME}" <${GMAIL_ADDRESS}>`,
       to: opts.to,
-      subject: `${opts.inviterName} invited you to join HiFitComp!`,
+      subject: applyPlaceholders(subject, vars).replace(/<br\/>/g, ""),
       html,
     });
 
@@ -142,6 +165,14 @@ export async function sendPurchaseReceipt(opts: {
 }): Promise<boolean> {
   try {
     const transporter = await getTransporter();
+
+    const vars = { buyerName: opts.buyerName };
+    const [subject, heading, body, footer] = await Promise.all([
+      getEmailTemplate("email_receipt_subject", "Your HiFitComp Purchase Receipt"),
+      getEmailTemplate("email_receipt_heading", "Purchase Receipt"),
+      getEmailTemplate("email_receipt_body", "Hi {buyerName}, thank you for your purchase!\n\nYour support helps power the competition and makes a real difference. Below are your transaction details."),
+      getEmailTemplate("email_receipt_footer", "If you have questions about this purchase, please contact us."),
+    ]);
 
     let itemsHtml = opts.items.map(item => `
       <tr>
@@ -171,21 +202,21 @@ export async function sendPurchaseReceipt(opts: {
       : "";
 
     const html = wrapInTemplate(`
-      <h2>Purchase Receipt</h2>
-      <p>Hi <strong>${opts.buyerName}</strong>, thank you for your purchase!</p>
+      <h2>${applyPlaceholders(heading, vars)}</h2>
+      <p>${applyPlaceholders(body, vars)}</p>
       ${contextLine}
       <table class="receipt">
         ${itemsHtml}
       </table>
       <p style="font-size: 13px; color: #888;">Transaction ID: ${opts.transactionId}</p>
       <p style="font-size: 13px; color: #888;">Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
-      <p>If you have questions about this purchase, please contact us.</p>
+      <p>${applyPlaceholders(footer, vars)}</p>
     `);
 
     await transporter.sendMail({
       from: `"${DISPLAY_NAME}" <${GMAIL_ADDRESS}>`,
       to: opts.to,
-      subject: `Your HiFitComp Purchase Receipt`,
+      subject: applyPlaceholders(subject, vars).replace(/<br\/>/g, ""),
       html,
     });
 
@@ -222,6 +253,59 @@ export async function exchangeGmailCode(code: string, redirectUri: string): Prom
   const { tokens } = await oauth2Client.getToken(code);
   if (!tokens.refresh_token) throw new Error("No refresh token received. Make sure you revoke access and try again.");
   return tokens.refresh_token;
+}
+
+export async function sendNomineeWelcomeEmail(opts: {
+  to: string;
+  nomineeName: string;
+  nominatorName: string;
+  competitionName: string;
+  defaultPassword: string;
+  siteUrl: string;
+}): Promise<boolean> {
+  try {
+    const transporter = await getTransporter();
+
+    const vars = {
+      nomineeName: opts.nomineeName,
+      nominatorName: opts.nominatorName,
+      competitionName: opts.competitionName,
+      defaultPassword: opts.defaultPassword,
+      email: opts.to,
+    };
+    const [subject, heading, body] = await Promise.all([
+      getEmailTemplate("email_nominee_welcome_subject", "You've been nominated for {competitionName}!"),
+      getEmailTemplate("email_nominee_welcome_heading", "Congratulations, {nomineeName}!"),
+      getEmailTemplate("email_nominee_welcome_body", "{nominatorName} has nominated you to compete in {competitionName} on HiFitComp!\n\nYour account has been created and is ready to go. Log in to set up your profile, upload photos and videos, and start collecting votes.\n\nYour login credentials:\nEmail: {email}\nTemporary Password: {defaultPassword}\n\nWe strongly recommend changing your password after your first login by using the \"Forgot Password\" option on the login page."),
+    ]);
+
+    const loginUrl = `${opts.siteUrl}/login`;
+
+    const html = wrapInTemplate(`
+      <h2>${applyPlaceholders(heading, vars)}</h2>
+      <p>${applyPlaceholders(body, vars)}</p>
+      <p style="text-align: center;">
+        <a href="${loginUrl}" class="btn">Log In Now</a>
+      </p>
+      <p style="font-size: 13px; color: #888;">Or copy and paste this link into your browser:<br/>
+        <span style="color: #FF5A09; word-break: break-all;">${loginUrl}</span>
+      </p>
+    `);
+
+    await transporter.sendMail({
+      from: `"${DISPLAY_NAME}" <${GMAIL_ADDRESS}>`,
+      to: opts.to,
+      subject: applyPlaceholders(subject, vars).replace(/<br\/>/g, ""),
+      html,
+    });
+
+    console.log(`Nominee welcome email sent to ${opts.to}`);
+    return true;
+  } catch (err: any) {
+    console.error("Failed to send nominee welcome email:", err.message);
+    resetTransporter();
+    return false;
+  }
 }
 
 export async function sendTestEmail(to: string): Promise<boolean> {

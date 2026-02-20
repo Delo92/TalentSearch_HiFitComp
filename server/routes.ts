@@ -30,7 +30,7 @@ import {
   firestoreReferrals,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
-import { sendInviteEmail, sendPurchaseReceipt, sendTestEmail, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
+import { sendInviteEmail, sendPurchaseReceipt, sendNomineeWelcomeEmail, sendTestEmail, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
 import {
   uploadImageToDrive,
   uploadFileToDriveFolder,
@@ -2185,10 +2185,95 @@ export async function registerRoutes(
         amountPaid = settings.nominationFee;
       }
 
+      const nomineeEmail = email.toLowerCase().trim();
+      const nomineeName = fullName.trim();
+      const DEFAULT_PASSWORD = "Hifitcomp2026";
+
+      let firebaseUid: string | null = null;
+      let talentProfileId: number | null = null;
+      let contestantId: number | null = null;
+      let emailSent = false;
+
+      try {
+        let existingUser: any = null;
+        try {
+          existingUser = await getFirebaseAuth().getUserByEmail(nomineeEmail);
+          firebaseUid = existingUser.uid;
+        } catch (e: any) {
+          if (e.code === "auth/user-not-found") {
+            const newUser = await createFirebaseUser(nomineeEmail, DEFAULT_PASSWORD, nomineeName);
+            firebaseUid = newUser.uid;
+            await setUserLevel(firebaseUid, 2);
+            await createFirestoreUser({
+              uid: firebaseUid,
+              email: nomineeEmail,
+              displayName: nomineeName,
+              level: 2,
+            });
+          } else {
+            throw e;
+          }
+        }
+
+        if (firebaseUid) {
+          let existingProfile = await storage.getTalentProfileByUserId(firebaseUid);
+          if (!existingProfile) {
+            existingProfile = await storage.createTalentProfile({
+              userId: firebaseUid,
+              displayName: nomineeName,
+              stageName: null,
+              email: nomineeEmail,
+              bio: bio || null,
+              category: category || null,
+              location: "Hawaii",
+              imageUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
+              videoUrls: [],
+              socialLinks: null,
+              role: "talent",
+            });
+          }
+          talentProfileId = existingProfile.id;
+
+          if (competitionId && talentProfileId) {
+            const existingContestant = await storage.getContestant(Number(competitionId), talentProfileId);
+            if (!existingContestant) {
+              const newContestant = await storage.createContestant({
+                competitionId: Number(competitionId),
+                talentProfileId,
+                applicationStatus: "approved",
+                appliedAt: new Date().toISOString(),
+              });
+              contestantId = newContestant.id;
+            } else {
+              contestantId = existingContestant.id;
+            }
+          }
+
+          if (!existingUser) {
+            let competitionName = "a HiFitComp competition";
+            if (competitionId) {
+              const comp = await storage.getCompetition(Number(competitionId));
+              if (comp) competitionName = comp.title;
+            }
+            const siteUrl = `${req.protocol}://${req.get("host")}`;
+            emailSent = await sendNomineeWelcomeEmail({
+              to: nomineeEmail,
+              nomineeName,
+              nominatorName: nominatorName.trim(),
+              competitionName,
+              defaultPassword: DEFAULT_PASSWORD,
+              siteUrl,
+            });
+          }
+        }
+      } catch (autoCreateErr: any) {
+        console.error("Auto-create nominee account error (non-fatal):", autoCreateErr.message);
+      }
+
       const submission = await firestoreJoinSubmissions.create({
         competitionId: competitionId || null,
-        fullName: fullName.trim(),
-        email: email.toLowerCase().trim(),
+        fullName: nomineeName,
+        email: nomineeEmail,
         phone: phone || null,
         address: null,
         city: null,
@@ -2208,7 +2293,13 @@ export async function registerRoutes(
         nominationStatus: "pending",
       });
 
-      res.status(201).json(submission);
+      res.status(201).json({
+        ...submission,
+        accountCreated: !!firebaseUid,
+        talentProfileId,
+        contestantId,
+        emailSent,
+      });
     } catch (error: any) {
       console.error("Nomination submission error:", error);
       if (error.errorMessage) {
