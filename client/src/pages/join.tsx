@@ -11,7 +11,7 @@ import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
-import { CheckCircle, CreditCard, Search, Trophy, UserPlus, Heart } from "lucide-react";
+import { CheckCircle, CreditCard, Search, Trophy, UserPlus, Heart, Upload, X, Loader2, ImageIcon } from "lucide-react";
 import HeroCoverflowGallery from "@/components/hero-coverflow-gallery";
 import type { Competition } from "@shared/schema";
 
@@ -71,6 +71,9 @@ export default function JoinPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [compSearch, setCompSearch] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [nominationImageUrl, setNominationImageUrl] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const nominationImageRef = useRef<HTMLInputElement>(null);
   const competitionSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -166,6 +169,29 @@ export default function JoinPage() {
 
   const isRequired = (field: string) => settings?.requiredFields?.includes(field) ?? false;
 
+  const handleNominationImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("/api/join/nomination-image", { method: "POST", body: formData });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Upload failed");
+      }
+      const data = await res.json();
+      setNominationImageUrl(data.url);
+      toast({ title: "Image uploaded!" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImageUploading(false);
+      if (nominationImageRef.current) nominationImageRef.current.value = "";
+    }
+  };
+
   const handleSubmit = useCallback(async () => {
     if (!settings) return;
 
@@ -207,6 +233,7 @@ export default function JoinPage() {
           nominatorEmail: nominatorForm.email,
           nominatorPhone: nominatorForm.phone || "",
           referralCode: referralCode || undefined,
+          mediaUrls: nominationImageUrl ? [nominationImageUrl] : [],
           dataDescriptor,
           dataValue,
         });
@@ -254,7 +281,7 @@ export default function JoinPage() {
     } else {
       await submitData();
     }
-  }, [settings, form, nominatorForm, mode, cardNumber, expMonth, expYear, cvv, paymentConfig, toast, selectedCompetitionId, needsPayment]);
+  }, [settings, form, nominatorForm, mode, cardNumber, expMonth, expYear, cvv, paymentConfig, toast, selectedCompetitionId, needsPayment, nominationImageUrl]);
 
   if (success) {
     return (
@@ -523,25 +550,68 @@ export default function JoinPage() {
             const label = field === "fullName" ? "Nominee's Full Name"
               : field === "email" ? "Nominee's Email"
               : field === "phone" ? "Nominee's Phone"
-              : field === "bio" ? "About the Nominee"
+              : field === "bio" ? "Why Are You Making This Nomination?"
               : field === "category" ? "Talent Category"
               : FIELD_LABELS[field] || field;
 
             if (field === "bio") {
               return (
-                <div key={field}>
-                  <Label htmlFor={field} className="text-white/60 uppercase text-xs tracking-wider">
-                    {label} {required && <span className="text-[#FF5A09]">*</span>}
-                  </Label>
-                  <Textarea
-                    id={field}
-                    value={form[field] || ""}
-                    onChange={(e) => updateField(field, e.target.value)}
-                    className="bg-white/[0.08] border-white/20 text-white mt-2 resize-none min-h-[100px]"
-                    placeholder="Tell us about this person and why you're nominating them"
-                    required={required}
-                    data-testid={`input-${field}`}
-                  />
+                <div key={field} className="space-y-4">
+                  <div>
+                    <Label htmlFor={field} className="text-white/60 uppercase text-xs tracking-wider">
+                      {label} {required && <span className="text-[#FF5A09]">*</span>}
+                    </Label>
+                    <Textarea
+                      id={field}
+                      value={form[field] || ""}
+                      onChange={(e) => updateField(field, e.target.value)}
+                      className="bg-white/[0.08] border-white/20 text-white mt-2 resize-none min-h-[100px]"
+                      placeholder="Tell us why this person, brand, or company deserves to be nominated"
+                      required={required}
+                      data-testid={`input-${field}`}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white/60 uppercase text-xs tracking-wider">
+                      Photo of Nominee <span className="text-white/30 normal-case">(optional)</span>
+                    </Label>
+                    <p className="text-white/30 text-xs mt-1 mb-2">Upload a photo of the person, brand, or company you're nominating</p>
+                    <input
+                      ref={nominationImageRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleNominationImageUpload}
+                      className="hidden"
+                      data-testid="input-nomination-image"
+                    />
+                    {nominationImageUrl ? (
+                      <div className="relative inline-block">
+                        <img src={nominationImageUrl} alt="Nominee" className="w-32 h-32 object-cover rounded border border-white/20" />
+                        <button
+                          type="button"
+                          onClick={() => setNominationImageUrl(null)}
+                          className="absolute -top-2 -right-2 bg-red-600 rounded-full p-1 hover:bg-red-500"
+                          data-testid="button-remove-nomination-image"
+                        >
+                          <X className="h-3 w-3 text-white" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => nominationImageRef.current?.click()}
+                        disabled={imageUploading}
+                        className="flex items-center gap-2 px-4 py-2 border border-white/20 text-white/60 text-sm hover:border-[#FF5A09] hover:text-[#FF5A09] transition-colors disabled:opacity-50"
+                        data-testid="button-upload-nomination-image"
+                      >
+                        {imageUploading ? (
+                          <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                        ) : (
+                          <><ImageIcon className="h-4 w-4" /> Choose Image</>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             }

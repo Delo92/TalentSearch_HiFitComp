@@ -2075,6 +2075,33 @@ export async function registerRoutes(
     }
   });
 
+  const nominationImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = /\.(jpg|jpeg|png|gif|webp)$/i;
+      if (allowed.test(path.extname(file.originalname))) {
+        cb(null, true);
+      } else {
+        cb(new Error("Only image files are allowed"));
+      }
+    },
+  });
+
+  app.post("/api/join/nomination-image", nominationImageUpload.single("image"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No image file provided" });
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+      const storagePath = `nominations/${uniqueName}`;
+      const url = await uploadToFirebaseStorage(storagePath, req.file.buffer, req.file.mimetype);
+      res.json({ url });
+    } catch (error: any) {
+      console.error("Nomination image upload error:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
   app.post("/api/join/nominate", async (req, res) => {
     try {
       const settings = await firestoreJoinSettings.get();
@@ -2085,7 +2112,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Nominations are not currently accepted" });
       }
 
-      const { fullName, email, phone, bio, category, competitionId, nominatorName, nominatorEmail, nominatorPhone, dataDescriptor, dataValue, chosenNonprofit } = req.body;
+      const { fullName, email, phone, bio, category, competitionId, nominatorName, nominatorEmail, nominatorPhone, dataDescriptor, dataValue, chosenNonprofit, mediaUrls } = req.body;
       if (!fullName || !email) {
         return res.status(400).json({ message: "Nominee name and email are required" });
       }
@@ -2129,7 +2156,7 @@ export async function registerRoutes(
         bio: bio || null,
         category: category || null,
         socialLinks: null,
-        mediaUrls: [],
+        mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
         transactionId,
         amountPaid,
         type: "nomination",
