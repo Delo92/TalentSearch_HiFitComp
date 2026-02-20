@@ -107,6 +107,10 @@ export default function JoinPage() {
     queryKey: ["/api/categories"],
   });
 
+  const { data: platformSettings } = useQuery<any>({
+    queryKey: ["/api/platform-settings"],
+  });
+
   const filteredCompetitions = useMemo(() => {
     if (!competitions) return [];
     let openComps = competitions.filter(c => c.status === "active" || c.status === "voting" || c.status === "draft");
@@ -825,6 +829,8 @@ export default function JoinPage() {
             ]}
             totalAmount={`$${(paymentAmount / 100).toFixed(2)}`}
             confirmText={`PAY $${(paymentAmount / 100).toFixed(2)} & NOMINATE`}
+            termsSummary={platformSettings?.termsSummary}
+            termsFinePrint={platformSettings?.termsFinePrint}
           />
         )}
       </div>

@@ -3271,6 +3271,33 @@ export default function AdminDashboard({ user }: { user: any }) {
                     </div>
                   </div>
 
+                  <div className="rounded-md bg-white/5 border border-white/10 p-5 space-y-4">
+                    <h4 className="text-xs uppercase tracking-widest text-orange-400 font-bold">Terms & Conditions</h4>
+                    <p className="text-[10px] text-white/25">Displayed in the payment confirmation modal. Summary appears as bullet points; full details are viewable via an expandable link.</p>
+                    <div>
+                      <Label className="text-white/50 text-xs">Summary (Bullet Points)</Label>
+                      <Textarea
+                        value={form.termsSummary ?? ""}
+                        onChange={(e) => updateForm("termsSummary", e.target.value)}
+                        className="bg-white/[0.08] border-white/20 text-white mt-2 min-h-[120px]"
+                        placeholder={"All fees are non-refundable once processed.\nBy proceeding, you agree to the official competition rules.\nVote purchases support the contestant's chosen nonprofit."}
+                        data-testid="input-terms-summary"
+                      />
+                      <p className="text-[10px] text-white/25 mt-1">Each line becomes a bullet point in the confirmation modal</p>
+                    </div>
+                    <div>
+                      <Label className="text-white/50 text-xs">Full Details (Fine Print)</Label>
+                      <Textarea
+                        value={form.termsFinePrint ?? ""}
+                        onChange={(e) => updateForm("termsFinePrint", e.target.value)}
+                        className="bg-white/[0.08] border-white/20 text-white mt-2 min-h-[200px]"
+                        placeholder="Enter the full legal terms and conditions here..."
+                        data-testid="input-terms-fine-print"
+                      />
+                      <p className="text-[10px] text-white/25 mt-1">Viewable via "View Full Details" link in the payment modal</p>
+                    </div>
+                  </div>
+
                   <div className="flex justify-end">
                     <Button
                       onClick={() => saveSettingsMutation.mutate(settingsForm || {})}

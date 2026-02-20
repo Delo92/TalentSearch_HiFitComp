@@ -520,6 +520,8 @@ export default function HostPage() {
             ]}
             totalAmount={`$${selectedPrice}`}
             confirmText={`PAY $${selectedPrice} & SUBMIT`}
+            termsSummary={platformSettings?.termsSummary}
+            termsFinePrint={platformSettings?.termsFinePrint}
           />
         )}
       </div>

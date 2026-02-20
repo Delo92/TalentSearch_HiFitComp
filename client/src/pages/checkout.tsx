@@ -701,6 +701,8 @@ export default function CheckoutPage() {
               lineItems={lineItems}
               totalAmount={`$${total.toFixed(2)}`}
               confirmText={`PAY $${total.toFixed(2)}`}
+              termsSummary={platformSettings?.termsSummary}
+              termsFinePrint={platformSettings?.termsFinePrint}
             />
           );
         })()}
