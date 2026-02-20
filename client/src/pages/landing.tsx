@@ -135,46 +135,42 @@ export default function Landing() {
             transition={{ duration: 0.8, delay: 1.4 }}
             className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link href="/competitions">
-              <span
-                className="inline-block bg-[#FF5A09] border border-[#FF5A09] text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-transparent hover:text-white cursor-pointer"
-                data-testid="button-hero-start-voting"
+            <div className="flex flex-col items-center">
+              <Link href="/competitions">
+                <span
+                  className="inline-block bg-[#FF5A09] border border-[#FF5A09] text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-transparent hover:text-white cursor-pointer"
+                  data-testid="button-hero-start-voting"
+                >
+                  Start Voting <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+                </span>
+              </Link>
+              <button
+                onClick={() => setShowVotingModal(true)}
+                className="inline-flex items-center gap-1.5 text-white/90 text-xs uppercase tracking-widest transition-colors duration-300 hover:text-[#FF5A09] mt-3"
+                data-testid="button-hero-how-voting"
               >
-                Start Voting <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
-              </span>
-            </Link>
-            <Link href="/join">
-              <span
-                className="inline-block bg-transparent border border-white text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
-                data-testid="button-hero-join-nominate"
+                <Info className="h-3.5 w-3.5" />
+                How Voting Works
+              </button>
+            </div>
+            <div className="flex flex-col items-center">
+              <Link href="/join">
+                <span
+                  className="inline-block bg-transparent border border-white text-white font-bold text-sm sm:text-base capitalize px-6 sm:px-8 leading-[42px] sm:leading-[47px] w-full sm:w-auto sm:min-w-[212px] text-center transition-all duration-500 hover:bg-white hover:text-black cursor-pointer"
+                  data-testid="button-hero-join-nominate"
+                >
+                  Nominate <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
+                </span>
+              </Link>
+              <button
+                onClick={() => setShowNominationModal(true)}
+                className="inline-flex items-center gap-1.5 text-white/90 text-xs uppercase tracking-widest transition-colors duration-300 hover:text-[#FF5A09] mt-3"
+                data-testid="button-hero-how-nominations"
               >
-                Nominate <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
-              </span>
-            </Link>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 1.6 }}
-            className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3"
-          >
-            <button
-              onClick={() => setShowVotingModal(true)}
-              className="inline-flex items-center gap-1.5 text-white/60 text-xs uppercase tracking-widest transition-colors duration-300 hover:text-[#FF5A09]"
-              data-testid="button-hero-how-voting"
-            >
-              <Info className="h-3.5 w-3.5" />
-              How Voting Works
-            </button>
-            <button
-              onClick={() => setShowNominationModal(true)}
-              className="inline-flex items-center gap-1.5 text-white/60 text-xs uppercase tracking-widest transition-colors duration-300 hover:text-[#FF5A09]"
-              data-testid="button-hero-how-nominations"
-            >
-              <Info className="h-3.5 w-3.5" />
-              How Nominations Work
-            </button>
+                <Info className="h-3.5 w-3.5" />
+                How Nominations Work
+              </button>
+            </div>
           </motion.div>
 
           {getText("hero_summary") && (
