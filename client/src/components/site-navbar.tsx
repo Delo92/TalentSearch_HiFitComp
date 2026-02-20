@@ -138,7 +138,7 @@ export default function SiteNavbar() {
             className="text-white text-sm font-bold uppercase tracking-wider transition-colors duration-300 hover:text-white/70"
             data-testid="link-nav-join"
           >
-            Join
+            Nominate
           </Link>
           <Link
             href="/about"
@@ -208,7 +208,7 @@ export default function SiteNavbar() {
             onClick={() => setMenuOpen(false)}
             data-testid="link-mobile-join"
           >
-            Join
+            Nominate
           </Link>
           <Link
             href="/about"
