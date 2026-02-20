@@ -67,6 +67,7 @@ export default function Landing() {
     }
 
     if (cat.imageUrl) return { url: cat.imageUrl, type: "image" };
+    if (cat.videoUrl) return { url: cat.videoUrl, type: "video" };
     return { url: defaultImages[cat.name] || "/images/template/a1.jpg", type: "image" };
   };
 
