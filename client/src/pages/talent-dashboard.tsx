@@ -49,6 +49,9 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [editingVideoUri, setEditingVideoUri] = useState<string | null>(null);
   const [editingVideoName, setEditingVideoName] = useState("");
   const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
+  const [editingPromoCode, setEditingPromoCode] = useState(false);
+  const [customPromoCode, setCustomPromoCode] = useState("");
+  const [promoCodeSaving, setPromoCodeSaving] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -320,6 +323,31 @@ export default function TalentDashboard({ user, profile }: Props) {
   const appliedContests = myContests?.filter((c: any) => c.applicationStatus === "approved" || c.applicationStatus === "pending") || [];
   const approvedContests = myContests?.filter((c: any) => c.applicationStatus === "approved") || [];
   const hasActiveEntry = appliedContests.length > 0;
+
+  const handleSavePromoCode = async () => {
+    if (!customPromoCode.trim()) return;
+    setPromoCodeSaving(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch("/api/referral/my-code", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newCode: customPromoCode.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to update code");
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/referral/my-code"] });
+      setEditingPromoCode(false);
+      toast({ title: "Promo code updated!", description: `Your new code is ${customPromoCode.trim().toUpperCase()}` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to update promo code", variant: "destructive" });
+    } finally {
+      setPromoCodeSaving(false);
+    }
+  };
 
   const ensureRefCode = async (): Promise<string | null> => {
     if (myRefCode?.code) return myRefCode.code;
@@ -878,6 +906,85 @@ export default function TalentDashboard({ user, profile }: Props) {
               </div>
             ) : (
               <div className="space-y-6">
+                {profile && (
+                  <div className="rounded-md bg-white/[0.06] border border-white/12 p-4">
+                    <h3 className="font-bold mb-2 text-lg flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-orange-400" />
+                      My Promo Code
+                    </h3>
+                    <p className="text-sm text-white/40 mb-3">This code is included in your share links. People who use it get bonus rewards when they vote or sign up.</p>
+                    {myRefCode?.code ? (
+                      <div className="flex items-center gap-2">
+                        {editingPromoCode ? (
+                          <>
+                            <Input
+                              value={customPromoCode}
+                              onChange={(e) => setCustomPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+                              placeholder="Enter custom code (3-20 chars)"
+                              maxLength={20}
+                              className="bg-black/50 border-white/10 text-white uppercase font-mono tracking-wider"
+                              data-testid="input-promo-code"
+                            />
+                            <Button
+                              onClick={handleSavePromoCode}
+                              disabled={promoCodeSaving || customPromoCode.trim().length < 3}
+                              className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white shrink-0"
+                              data-testid="button-save-promo-code"
+                            >
+                              {promoCodeSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => setEditingPromoCode(false)}
+                              className="text-white/40 shrink-0"
+                              data-testid="button-cancel-promo-code"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex-1 rounded bg-black/50 border border-white/5 px-3 py-2 font-mono text-orange-400 tracking-widest text-lg" data-testid="text-promo-code">
+                              {myRefCode.code}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              onClick={() => { setCustomPromoCode(myRefCode.code); setEditingPromoCode(true); }}
+                              className="text-white/60 shrink-0"
+                              data-testid="button-edit-promo-code"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(myRefCode.code);
+                                toast({ title: "Copied!", description: "Promo code copied to clipboard." });
+                              }}
+                              className="text-white/60 shrink-0"
+                              data-testid="button-copy-promo-code"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-white/30">No code yet — share a voting link below to auto-generate one, or</span>
+                        <Button
+                          size="sm"
+                          onClick={async () => { await ensureRefCode(); }}
+                          className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
+                          data-testid="button-generate-promo-code"
+                        >
+                          Generate Code
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {approvedContests.length > 0 && (
                   <div>
                     <h3 className="font-bold mb-3 text-lg flex items-center gap-2">

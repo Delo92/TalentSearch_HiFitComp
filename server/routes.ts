@@ -3372,6 +3372,28 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/referral/my-code", firebaseAuth, async (req, res) => {
+    try {
+      const uid = req.firebaseUser!.uid;
+      const existing = await firestoreReferrals.getCodeByOwner(uid);
+      if (!existing) return res.status(404).json({ message: "No referral code found. Share a link first to generate one." });
+
+      const { newCode } = req.body;
+      if (!newCode) return res.status(400).json({ message: "New code is required" });
+
+      const cleaned = newCode.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "");
+      if (cleaned.length < 3 || cleaned.length > 20) {
+        return res.status(400).json({ message: "Code must be 3-20 characters (letters, numbers, dashes, underscores)" });
+      }
+
+      const updated = await firestoreReferrals.updateCode(existing.code, { newCode: cleaned });
+      res.json(updated);
+    } catch (err: any) {
+      console.error("Update own referral code error:", err);
+      res.status(500).json({ message: err.message || "Failed to update referral code" });
+    }
+  });
+
   app.get("/api/referral/my-code", firebaseAuth, async (req, res) => {
     try {
       const uid = req.firebaseUser!.uid;
