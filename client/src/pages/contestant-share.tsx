@@ -348,10 +348,10 @@ export default function ContestantSharePage() {
             if (raw) socialObj = typeof raw === "string" ? JSON.parse(raw) : raw;
           } catch {}
           const platforms = [
-            { key: "youtube", icon: SiYoutube, label: "YouTube", color: "hover:text-red-500" },
-            { key: "instagram", icon: SiInstagram, label: "Instagram", color: "hover:text-pink-500" },
-            { key: "tiktok", icon: SiTiktok, label: "TikTok", color: "hover:text-white" },
-            { key: "facebook", icon: SiFacebook, label: "Facebook", color: "hover:text-blue-500" },
+            { key: "youtube", icon: SiYoutube, label: "YouTube", color: "text-[#FF0000] hover:text-[#FF0000]/80" },
+            { key: "instagram", icon: SiInstagram, label: "Instagram", color: "text-[#E4405F] hover:text-[#E4405F]/80" },
+            { key: "tiktok", icon: SiTiktok, label: "TikTok", color: "text-[#00F2EA] hover:text-[#00F2EA]/80" },
+            { key: "facebook", icon: SiFacebook, label: "Facebook", color: "text-[#1877F2] hover:text-[#1877F2]/80" },
           ];
           const active = platforms.filter(p => socialObj[p.key] && /^https?:\/\//i.test(socialObj[p.key]));
           if (active.length === 0) return null;
@@ -359,9 +359,9 @@ export default function ContestantSharePage() {
             <div className="flex flex-wrap items-center justify-center gap-5 mb-10" data-testid="social-links">
               {active.map(({ key, icon: Icon, label, color }) => (
                 <a key={key} href={socialObj[key]} target="_blank" rel="noopener noreferrer"
-                  className={`text-white/40 ${color} transition-colors duration-300`}
+                  className={`${color} transition-colors duration-300`}
                   data-testid={`link-social-${key}`} title={label}>
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-6 w-6" />
                 </a>
               ))}
             </div>
