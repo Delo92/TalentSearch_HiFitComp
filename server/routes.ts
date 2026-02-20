@@ -3390,7 +3390,17 @@ export async function registerRoutes(
 
       const profile = await storage.getTalentProfileByUserId(uid);
       const ownerName = profile?.displayName || fsUser.email || uid;
-      const code = await firestoreReferrals.generateCode(uid, ownerType, ownerName, profile?.id || null);
+      let competitionIds: number[] = [];
+      if (profile) {
+        const contests = await storage.getContestantsByTalent(profile.id);
+        competitionIds = contests
+          .filter(c => c.applicationStatus === "approved")
+          .map(c => c.competitionId);
+      }
+      const code = await firestoreReferrals.generateCode(uid, ownerType, ownerName, profile?.id || null, {
+        competitionId: competitionIds[0] || undefined,
+        competitionIds,
+      });
       res.json(code);
     } catch (err: any) {
       console.error("Generate referral code error:", err);
@@ -3409,9 +3419,22 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Code must be 3-20 characters (letters, numbers, dashes, underscores)" });
       }
 
+      const profile = await storage.getTalentProfileByUserId(uid);
+      let competitionIds: number[] = [];
+      if (profile) {
+        const contests = await storage.getContestantsByTalent(profile.id);
+        competitionIds = contests
+          .filter(c => c.applicationStatus === "approved")
+          .map(c => c.competitionId);
+      }
+
       const existing = await firestoreReferrals.getCodeByOwner(uid);
       if (existing) {
-        const updated = await firestoreReferrals.updateCode(existing.code, { newCode: cleaned });
+        const updated = await firestoreReferrals.updateCode(existing.code, {
+          newCode: cleaned,
+          competitionIds,
+          competitionId: competitionIds[0] || null,
+        });
         res.json(updated);
       } else {
         const fsUser = await getFirestoreUser(uid);
@@ -3421,9 +3444,12 @@ export async function registerRoutes(
         let ownerType: "talent" | "host" | "admin" = "talent";
         if (userLevel >= 4) ownerType = "admin";
         else if (userLevel >= 3) ownerType = "host";
-        const profile = await storage.getTalentProfileByUserId(uid);
         const ownerName = profile?.displayName || fsUser.email || uid;
-        const created = await firestoreReferrals.generateCode(uid, ownerType, ownerName, profile?.id || null, { customCode: cleaned });
+        const created = await firestoreReferrals.generateCode(uid, ownerType, ownerName, profile?.id || null, {
+          customCode: cleaned,
+          competitionId: competitionIds[0] || undefined,
+          competitionIds,
+        });
         res.json(created);
       }
     } catch (err: any) {

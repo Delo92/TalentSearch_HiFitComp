@@ -130,6 +130,7 @@ export interface FirestoreReferralCode {
   ownerEmail?: string | null;
   talentProfileId?: number | null;
   competitionId?: number | null;
+  competitionIds?: number[];
   contestantId?: number | null;
   createdAt: string;
   aliasFor?: string | null;
@@ -1216,7 +1217,7 @@ export const firestoreReferrals = {
     ownerType: "talent" | "host" | "admin" | "custom",
     ownerName: string,
     talentProfileId?: number | null,
-    opts?: { ownerEmail?: string; competitionId?: number; contestantId?: number; skipDuplicateCheck?: boolean; customCode?: string }
+    opts?: { ownerEmail?: string; competitionId?: number; competitionIds?: number[]; contestantId?: number; skipDuplicateCheck?: boolean; customCode?: string }
   ): Promise<FirestoreReferralCode> {
     if (!opts?.skipDuplicateCheck) {
       const existing = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).limit(1).get();
@@ -1233,6 +1234,7 @@ export const firestoreReferrals = {
       ownerEmail: opts?.ownerEmail || null,
       talentProfileId: talentProfileId || null,
       competitionId: opts?.competitionId || null,
+      competitionIds: opts?.competitionIds || [],
       contestantId: opts?.contestantId || null,
       createdAt: new Date().toISOString(),
     };
@@ -1315,7 +1317,7 @@ export const firestoreReferrals = {
 
   async updateCode(
     oldCode: string,
-    updates: { newCode?: string; ownerName?: string; ownerEmail?: string | null; ownerType?: "talent" | "host" | "admin" | "custom"; competitionId?: number | null; contestantId?: number | null }
+    updates: { newCode?: string; ownerName?: string; ownerEmail?: string | null; ownerType?: "talent" | "host" | "admin" | "custom"; competitionId?: number | null; competitionIds?: number[]; contestantId?: number | null }
   ): Promise<FirestoreReferralCode> {
     const codeDoc = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).get();
     if (!codeDoc.exists) throw new Error("Referral code not found");
@@ -1343,6 +1345,7 @@ export const firestoreReferrals = {
       ownerEmail: updates.ownerEmail !== undefined ? updates.ownerEmail : existing.ownerEmail,
       ownerType: updates.ownerType ?? existing.ownerType,
       competitionId: updates.competitionId !== undefined ? updates.competitionId : existing.competitionId,
+      competitionIds: updates.competitionIds !== undefined ? updates.competitionIds : (existing.competitionIds || []),
       contestantId: updates.contestantId !== undefined ? updates.contestantId : existing.contestantId,
       aliasFor: null,
       previousCodes: isCodeChanged ? [...previousCodes, oldCode] : previousCodes,
@@ -1383,6 +1386,7 @@ export const firestoreReferrals = {
         ownerEmail: updated.ownerEmail,
         ownerType: updated.ownerType,
         competitionId: updated.competitionId ?? null,
+        competitionIds: updated.competitionIds || [],
         contestantId: updated.contestantId ?? null,
       });
       await db().collection(COLLECTIONS.REFERRAL_STATS).doc(oldCode).update(statsUpdates).catch(() => {});
