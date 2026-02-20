@@ -701,17 +701,27 @@ export async function registerRoutes(
     }
 
     const { source, refCode } = parsed.data;
+    let resolvedRefCode = refCode || null;
+    if (refCode) {
+      try {
+        const resolved = await firestoreReferrals.resolveCode(refCode);
+        resolvedRefCode = resolved?.code || refCode;
+      } catch (e) {
+        console.error("Referral resolve error:", e);
+      }
+    }
+
     const vote = await storage.castVote({
       contestantId,
       competitionId: compId,
       voterIp,
       source,
-      refCode: refCode || null,
+      refCode: resolvedRefCode,
     });
 
-    if (refCode) {
+    if (resolvedRefCode) {
       try {
-        await firestoreReferrals.trackReferralVote(refCode, voterIp, 1);
+        await firestoreReferrals.trackReferralVote(resolvedRefCode, voterIp, 1);
       } catch (e) {
         console.error("Referral tracking error:", e);
       }
@@ -3375,9 +3385,6 @@ export async function registerRoutes(
   app.put("/api/referral/my-code", firebaseAuth, async (req, res) => {
     try {
       const uid = req.firebaseUser!.uid;
-      const existing = await firestoreReferrals.getCodeByOwner(uid);
-      if (!existing) return res.status(404).json({ message: "No referral code found. Share a link first to generate one." });
-
       const { newCode } = req.body;
       if (!newCode) return res.status(400).json({ message: "New code is required" });
 
@@ -3386,8 +3393,23 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Code must be 3-20 characters (letters, numbers, dashes, underscores)" });
       }
 
-      const updated = await firestoreReferrals.updateCode(existing.code, { newCode: cleaned });
-      res.json(updated);
+      const existing = await firestoreReferrals.getCodeByOwner(uid);
+      if (existing) {
+        const updated = await firestoreReferrals.updateCode(existing.code, { newCode: cleaned });
+        res.json(updated);
+      } else {
+        const fsUser = await getFirestoreUser(uid);
+        if (!fsUser) return res.status(404).json({ message: "User not found" });
+        const userLevel = typeof fsUser.level === "number" ? fsUser.level : (fsUser.level === "admin" ? 4 : fsUser.level === "host" ? 3 : fsUser.level === "talent" ? 2 : 1);
+        if (userLevel < 2) return res.status(403).json({ message: "Only talents, hosts, and admins can create promo codes" });
+        let ownerType: "talent" | "host" | "admin" = "talent";
+        if (userLevel >= 4) ownerType = "admin";
+        else if (userLevel >= 3) ownerType = "host";
+        const profile = await storage.getTalentProfileByUserId(uid);
+        const ownerName = profile?.displayName || fsUser.email || uid;
+        const created = await firestoreReferrals.generateCode(uid, ownerType, ownerName, profile?.id || null, { customCode: cleaned });
+        res.json(created);
+      }
     } catch (err: any) {
       console.error("Update own referral code error:", err);
       res.status(500).json({ message: err.message || "Failed to update referral code" });

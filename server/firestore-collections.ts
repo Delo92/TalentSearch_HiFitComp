@@ -132,6 +132,8 @@ export interface FirestoreReferralCode {
   competitionId?: number | null;
   contestantId?: number | null;
   createdAt: string;
+  aliasFor?: string | null;
+  previousCodes?: string[];
 }
 
 export interface FirestoreReferralStats {
@@ -1249,9 +1251,27 @@ export const firestoreReferrals = {
   },
 
   async getCodeByOwner(ownerId: string): Promise<FirestoreReferralCode | null> {
-    const snapshot = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).limit(1).get();
+    const snapshot = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).get();
     if (snapshot.empty) return null;
-    return snapshot.docs[0].data() as FirestoreReferralCode;
+    const codes = snapshot.docs.map(d => d.data() as FirestoreReferralCode);
+    const active = codes.find(c => !c.aliasFor);
+    return active || codes[0];
+  },
+
+  async getCodesByOwner(ownerId: string): Promise<FirestoreReferralCode[]> {
+    const snapshot = await db().collection(COLLECTIONS.REFERRAL_CODES).where("ownerId", "==", ownerId).get();
+    return snapshot.docs.map(d => d.data() as FirestoreReferralCode);
+  },
+
+  async resolveCode(code: string): Promise<FirestoreReferralCode | null> {
+    const doc = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(code).get();
+    if (!doc.exists) return null;
+    const data = doc.data() as FirestoreReferralCode;
+    if (data.aliasFor) {
+      const activeDoc = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(data.aliasFor).get();
+      if (activeDoc.exists) return activeDoc.data() as FirestoreReferralCode;
+    }
+    return data;
   },
 
   async getCodeByCode(code: string): Promise<FirestoreReferralCode | null> {
@@ -1271,7 +1291,13 @@ export const firestoreReferrals = {
   },
 
   async trackReferralVote(refCode: string, voterIp: string, voteCount: number = 1): Promise<void> {
-    const statsRef = db().collection(COLLECTIONS.REFERRAL_STATS).doc(refCode);
+    let activeCode = refCode;
+    try {
+      const resolved = await this.resolveCode(refCode);
+      if (resolved) activeCode = resolved.code;
+    } catch {}
+
+    const statsRef = db().collection(COLLECTIONS.REFERRAL_STATS).doc(activeCode);
     const statsDoc = await statsRef.get();
     if (!statsDoc.exists) return;
     const data = statsDoc.data() as FirestoreReferralStats;
@@ -1300,8 +1326,15 @@ export const firestoreReferrals = {
 
     if (isCodeChanged) {
       const dupCheck = await db().collection(COLLECTIONS.REFERRAL_CODES).doc(finalCode).get();
-      if (dupCheck.exists) throw new Error("Code already exists");
+      if (dupCheck.exists) {
+        const dupData = dupCheck.data() as FirestoreReferralCode;
+        if (!dupData.aliasFor || dupData.ownerId !== existing.ownerId) {
+          throw new Error("Code already exists");
+        }
+      }
     }
+
+    const previousCodes = existing.previousCodes || [];
 
     const updated: FirestoreReferralCode = {
       ...existing,
@@ -1311,6 +1344,8 @@ export const firestoreReferrals = {
       ownerType: updates.ownerType ?? existing.ownerType,
       competitionId: updates.competitionId !== undefined ? updates.competitionId : existing.competitionId,
       contestantId: updates.contestantId !== undefined ? updates.contestantId : existing.contestantId,
+      aliasFor: null,
+      previousCodes: isCodeChanged ? [...previousCodes, oldCode] : previousCodes,
     };
 
     const statsUpdates: Record<string, any> = {
@@ -1320,14 +1355,27 @@ export const firestoreReferrals = {
     };
 
     if (isCodeChanged) {
-      await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).delete();
+      await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).update({
+        aliasFor: finalCode,
+      });
+
       await db().collection(COLLECTIONS.REFERRAL_CODES).doc(finalCode).set(updated);
 
       const statsDoc = await db().collection(COLLECTIONS.REFERRAL_STATS).doc(oldCode).get();
       if (statsDoc.exists) {
         const statsData = { ...statsDoc.data()!, ...statsUpdates, code: finalCode };
-        await db().collection(COLLECTIONS.REFERRAL_STATS).doc(oldCode).delete();
         await db().collection(COLLECTIONS.REFERRAL_STATS).doc(finalCode).set(statsData);
+      } else {
+        await db().collection(COLLECTIONS.REFERRAL_STATS).doc(finalCode).set({
+          code: finalCode,
+          ownerId: updated.ownerId,
+          ownerType: updated.ownerType,
+          ownerName: updated.ownerName,
+          totalVotesDriven: 0,
+          uniqueVoters: 0,
+          voterIps: [],
+          updatedAt: now(),
+        });
       }
     } else {
       await db().collection(COLLECTIONS.REFERRAL_CODES).doc(oldCode).update({

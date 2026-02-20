@@ -912,74 +912,77 @@ export default function TalentDashboard({ user, profile }: Props) {
                       <Trophy className="h-5 w-5 text-orange-400" />
                       My Promo Code
                     </h3>
-                    <p className="text-sm text-white/40 mb-3">This code is included in your share links. People who use it get bonus rewards when they vote or sign up.</p>
-                    {myRefCode?.code ? (
+                    <p className="text-sm text-white/40 mb-3">This code is included in your share links. People who use it get bonus rewards when they vote or sign up. Previous codes still work if you change it.</p>
+                    {editingPromoCode ? (
                       <div className="flex items-center gap-2">
-                        {editingPromoCode ? (
-                          <>
-                            <Input
-                              value={customPromoCode}
-                              onChange={(e) => setCustomPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
-                              placeholder="Enter custom code (3-20 chars)"
-                              maxLength={20}
-                              className="bg-black/50 border-white/10 text-white uppercase font-mono tracking-wider"
-                              data-testid="input-promo-code"
-                            />
-                            <Button
-                              onClick={handleSavePromoCode}
-                              disabled={promoCodeSaving || customPromoCode.trim().length < 3}
-                              className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white shrink-0"
-                              data-testid="button-save-promo-code"
-                            >
-                              {promoCodeSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => setEditingPromoCode(false)}
-                              className="text-white/40 shrink-0"
-                              data-testid="button-cancel-promo-code"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex-1 rounded bg-black/50 border border-white/5 px-3 py-2 font-mono text-orange-400 tracking-widest text-lg" data-testid="text-promo-code">
-                              {myRefCode.code}
-                            </div>
-                            <Button
-                              variant="ghost"
-                              onClick={() => { setCustomPromoCode(myRefCode.code); setEditingPromoCode(true); }}
-                              className="text-white/60 shrink-0"
-                              data-testid="button-edit-promo-code"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={async () => {
-                                await navigator.clipboard.writeText(myRefCode.code);
-                                toast({ title: "Copied!", description: "Promo code copied to clipboard." });
-                              }}
-                              className="text-white/60 shrink-0"
-                              data-testid="button-copy-promo-code"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </>
+                        <Input
+                          value={customPromoCode}
+                          onChange={(e) => setCustomPromoCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+                          placeholder="Enter custom code (3-20 chars)"
+                          maxLength={20}
+                          className="bg-black/50 border-white/10 text-white uppercase font-mono tracking-wider"
+                          data-testid="input-promo-code"
+                        />
+                        <Button
+                          onClick={handleSavePromoCode}
+                          disabled={promoCodeSaving || customPromoCode.trim().length < 3}
+                          className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white shrink-0"
+                          data-testid="button-save-promo-code"
+                        >
+                          {promoCodeSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setEditingPromoCode(false)}
+                          className="text-white/40 shrink-0"
+                          data-testid="button-cancel-promo-code"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : myRefCode?.code ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 rounded bg-black/50 border border-white/5 px-3 py-2 font-mono text-orange-400 tracking-widest text-lg" data-testid="text-promo-code">
+                            {myRefCode.code}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            onClick={() => { setCustomPromoCode(myRefCode.code); setEditingPromoCode(true); }}
+                            className="text-white/60 shrink-0"
+                            data-testid="button-edit-promo-code"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(myRefCode.code);
+                              toast({ title: "Copied!", description: "Promo code copied to clipboard." });
+                            }}
+                            className="text-white/60 shrink-0"
+                            data-testid="button-copy-promo-code"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {(myRefCode as any).previousCodes?.length > 0 && (
+                          <div className="text-xs text-white/30">
+                            Previous codes (still active): {(myRefCode as any).previousCodes.join(", ")}
+                          </div>
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-white/30">No code yet — share a voting link below to auto-generate one, or</span>
+                      <div className="flex items-center gap-2">
                         <Button
                           size="sm"
-                          onClick={async () => { await ensureRefCode(); }}
+                          onClick={() => { setCustomPromoCode(""); setEditingPromoCode(true); }}
                           className="bg-gradient-to-r from-orange-500 to-amber-500 border-0 text-white"
-                          data-testid="button-generate-promo-code"
+                          data-testid="button-create-promo-code"
                         >
-                          Generate Code
+                          Create My Code
                         </Button>
+                        <span className="text-sm text-white/30">or it will be auto-generated when you share a link</span>
                       </div>
                     )}
                   </div>
