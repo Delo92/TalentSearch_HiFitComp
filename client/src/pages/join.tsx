@@ -810,7 +810,7 @@ export default function JoinPage() {
           </p>
         )}
 
-        {needsPayment && (
+        {showConfirmModal && (
           <PaymentConfirmationModal
             open={showConfirmModal}
             onClose={() => setShowConfirmModal(false)}

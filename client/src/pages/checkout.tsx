@@ -660,7 +660,7 @@ export default function CheckoutPage() {
           Payments processed securely via Authorize.Net. Your card info never touches our servers.
         </p>
 
-        {(() => {
+        {showConfirmModal && (() => {
           const subtotal = isIndividual ? (individualVoteCount * perVotePrice) : (selectedPkg ? selectedPkg.price / 100 : 0);
           const voteLabel = isIndividual
             ? `${individualVoteCount.toLocaleString()} vote${individualVoteCount !== 1 ? "s" : ""}`

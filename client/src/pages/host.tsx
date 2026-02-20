@@ -505,7 +505,7 @@ export default function HostPage() {
           </p>
         )}
 
-        {selectedPrice > 0 && selectedPackage && (
+        {showConfirmModal && selectedPackage && (
           <PaymentConfirmationModal
             open={showConfirmModal}
             onClose={() => setShowConfirmModal(false)}
