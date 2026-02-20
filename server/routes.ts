@@ -30,7 +30,7 @@ import {
   firestoreReferrals,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
-import { sendInviteEmail, sendPurchaseReceipt, isEmailConfigured } from "./email";
+import { sendInviteEmail, sendPurchaseReceipt, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
 import {
   uploadImageToDrive,
   uploadFileToDriveFolder,

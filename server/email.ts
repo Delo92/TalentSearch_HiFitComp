@@ -198,16 +198,12 @@ export async function sendPurchaseReceipt(opts: {
   }
 }
 
-export function getGmailAuthUrl(): string {
+export function getGmailAuthUrl(redirectUri: string): string {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not set");
 
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    "https://developers.google.com/oauthplayground"
-  );
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
@@ -216,16 +212,12 @@ export function getGmailAuthUrl(): string {
   });
 }
 
-export async function exchangeGmailCode(code: string): Promise<string> {
+export async function exchangeGmailCode(code: string, redirectUri: string): Promise<string> {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not set");
 
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    "https://developers.google.com/oauthplayground"
-  );
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
   const { tokens } = await oauth2Client.getToken(code);
   if (!tokens.refresh_token) throw new Error("No refresh token received. Make sure you revoke access and try again.");
