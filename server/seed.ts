@@ -223,9 +223,6 @@ const LIVERY_DEFAULTS = [
   { imageKey: "email_receipt_heading", label: "Purchase Receipt Email - Heading", defaultUrl: "", itemType: "text" as const, defaultText: "Purchase Receipt" },
   { imageKey: "email_receipt_body", label: "Purchase Receipt Email - Body", defaultUrl: "", itemType: "text" as const, defaultText: "Hi {buyerName}, thank you for your purchase!\n\nYour support helps power the competition and makes a real difference. Below are your transaction details." },
   { imageKey: "email_receipt_footer", label: "Purchase Receipt Email - Footer Note", defaultUrl: "", itemType: "text" as const, defaultText: "If you have questions about this purchase, please contact us." },
-  { imageKey: "email_nominee_welcome_subject", label: "Nominee Welcome Email - Subject Line", defaultUrl: "", itemType: "text" as const, defaultText: "You've been nominated for {competitionName}!" },
-  { imageKey: "email_nominee_welcome_heading", label: "Nominee Welcome Email - Heading", defaultUrl: "", itemType: "text" as const, defaultText: "Congratulations, {nomineeName}!" },
-  { imageKey: "email_nominee_welcome_body", label: "Nominee Welcome Email - Body", defaultUrl: "", itemType: "text" as const, defaultText: "{nominatorName} has nominated you to compete in {competitionName} on HiFitComp!\n\nYour account has been created and is ready to go. Log in to set up your profile, upload photos and videos, and start collecting votes.\n\nYour login credentials:\nEmail: {email}\nTemporary Password: {defaultPassword}\n\nWe strongly recommend changing your password after your first login by using the \"Forgot Password\" option on the login page." },
 ];
 
 export async function seedLivery() {

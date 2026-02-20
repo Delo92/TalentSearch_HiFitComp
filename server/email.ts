@@ -151,9 +151,21 @@ export async function sendInviteEmail(opts: {
       actionLabel = "Get Started";
     }
 
+    let credentialBlock = "";
+    if (opts.accountCreated && opts.defaultPassword) {
+      credentialBlock = `
+        <div style="background: #1a1a1a; border: 1px solid #FF5A09; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center;">
+          <p style="color: #FF5A09; font-weight: bold; margin: 0 0 8px;">Your Login Credentials</p>
+          <p style="color: #ccc; margin: 4px 0;">Email: <strong style="color: #fff;">${opts.to}</strong></p>
+          <p style="color: #ccc; margin: 4px 0;">Temporary Password: <strong style="color: #fff;">${opts.defaultPassword}</strong></p>
+          <p style="color: #888; font-size: 12px; margin: 8px 0 0;">We recommend changing your password after your first login.</p>
+        </div>`;
+    }
+
     const html = wrapInTemplate(`
       <h2>${applyPlaceholders(heading, vars)}</h2>
       <p>${applyPlaceholders(body, vars)}</p>
+      ${credentialBlock}
       <p style="text-align: center;">
         <a href="${actionUrl}" class="btn">${actionLabel}</a>
       </p>
@@ -278,59 +290,6 @@ export async function exchangeGmailCode(code: string, redirectUri: string): Prom
   const { tokens } = await oauth2Client.getToken(code);
   if (!tokens.refresh_token) throw new Error("No refresh token received. Make sure you revoke access and try again.");
   return tokens.refresh_token;
-}
-
-export async function sendNomineeWelcomeEmail(opts: {
-  to: string;
-  nomineeName: string;
-  nominatorName: string;
-  competitionName: string;
-  defaultPassword: string;
-  siteUrl: string;
-}): Promise<boolean> {
-  try {
-    const transporter = await getTransporter();
-
-    const vars = {
-      nomineeName: opts.nomineeName,
-      nominatorName: opts.nominatorName,
-      competitionName: opts.competitionName,
-      defaultPassword: opts.defaultPassword,
-      email: opts.to,
-    };
-    const [subject, heading, body] = await Promise.all([
-      getEmailTemplate("email_nominee_welcome_subject", "You've been nominated for {competitionName}!"),
-      getEmailTemplate("email_nominee_welcome_heading", "Congratulations, {nomineeName}!"),
-      getEmailTemplate("email_nominee_welcome_body", "{nominatorName} has nominated you to compete in {competitionName} on HiFitComp!\n\nYour account has been created and is ready to go. Log in to set up your profile, upload photos and videos, and start collecting votes.\n\nYour login credentials:\nEmail: {email}\nTemporary Password: {defaultPassword}\n\nWe strongly recommend changing your password after your first login by using the \"Forgot Password\" option on the login page."),
-    ]);
-
-    const loginUrl = `${opts.siteUrl}/login`;
-
-    const html = wrapInTemplate(`
-      <h2>${applyPlaceholders(heading, vars)}</h2>
-      <p>${applyPlaceholders(body, vars)}</p>
-      <p style="text-align: center;">
-        <a href="${loginUrl}" class="btn">Log In Now</a>
-      </p>
-      <p style="font-size: 13px; color: #888;">Or copy and paste this link into your browser:<br/>
-        <span style="color: #FF5A09; word-break: break-all;">${loginUrl}</span>
-      </p>
-    `);
-
-    await transporter.sendMail({
-      from: `"${DISPLAY_NAME}" <${GMAIL_ADDRESS}>`,
-      to: opts.to,
-      subject: applyPlaceholders(subject, vars).replace(/<br\/>/g, ""),
-      html,
-    });
-
-    console.log(`Nominee welcome email sent to ${opts.to}`);
-    return true;
-  } catch (err: any) {
-    console.error("Failed to send nominee welcome email:", err.message);
-    resetTransporter();
-    return false;
-  }
 }
 
 export async function sendTestEmail(to: string): Promise<boolean> {

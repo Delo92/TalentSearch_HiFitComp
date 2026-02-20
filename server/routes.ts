@@ -30,7 +30,7 @@ import {
   firestoreReferrals,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
-import { sendInviteEmail, sendPurchaseReceipt, sendNomineeWelcomeEmail, sendTestEmail, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
+import { sendInviteEmail, sendPurchaseReceipt, sendTestEmail, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
 import {
   uploadImageToDrive,
   uploadFileToDriveFolder,
@@ -1523,7 +1523,7 @@ export async function registerRoutes(
 
   app.post("/api/invitations", firebaseAuth, requireTalent, async (req, res) => {
     try {
-      const { email, name, targetLevel, message, emailTemplate, competitionId } = req.body;
+      const { email, name, targetLevel, message } = req.body;
       if (!email || !name || !targetLevel) {
         return res.status(400).json({ message: "Email, name, and target level are required" });
       }
@@ -1547,99 +1547,74 @@ export async function registerRoutes(
         message: message || undefined,
       });
 
-      if (isEmailConfigured() && email) {
-        const protocol = req.headers["x-forwarded-proto"] || "https";
-        const host = req.headers.host || "";
-        const siteUrl = `${protocol}://${host}`;
-        const inviterName = senderUser?.displayName || req.firebaseUser!.email || "Someone";
-        const roleName = targetLevel >= 4 ? "admin" : targetLevel >= 3 ? "host" : targetLevel >= 2 ? "talent" : "viewer";
+      const protocol = req.headers["x-forwarded-proto"] || "https";
+      const host = req.headers.host || "";
+      const siteUrl = `${protocol}://${host}`;
+      const inviterName = senderUser?.displayName || req.firebaseUser!.email || "Someone";
+      const roleName = targetLevel >= 4 ? "admin" : targetLevel >= 3 ? "host" : targetLevel >= 2 ? "talent" : "viewer";
 
-        if (emailTemplate === "nominee_welcome") {
-          const DEFAULT_PASSWORD = "Hifitcomp2026";
-          const nomineeEmail = email.toLowerCase().trim();
-          const nomineeName = name.trim();
+      const DEFAULT_PASSWORD = "Hifitcomp2026";
+      const inviteeEmail = email.toLowerCase().trim();
+      const inviteeName = name.trim();
+      let accountCreated = false;
 
-          try {
-            let existingUser: any = null;
-            let firebaseUid: string | null = null;
-            try {
-              existingUser = await getFirebaseAuth().getUserByEmail(nomineeEmail);
-              firebaseUid = existingUser.uid;
-            } catch (e: any) {
-              if (e.code === "auth/user-not-found") {
-                const newUser = await createFirebaseUser(nomineeEmail, DEFAULT_PASSWORD, nomineeName);
-                firebaseUid = newUser.uid;
-                await setUserLevel(firebaseUid, targetLevel);
-                await createFirestoreUser({
-                  uid: firebaseUid,
-                  email: nomineeEmail,
-                  displayName: nomineeName,
-                  level: targetLevel,
-                });
-              } else {
-                throw e;
-              }
-            }
-
-            if (firebaseUid) {
-              let existingProfile = await storage.getTalentProfileByUserId(firebaseUid);
-              if (!existingProfile && targetLevel >= 2) {
-                existingProfile = await storage.createTalentProfile({
-                  userId: firebaseUid,
-                  displayName: nomineeName,
-                  stageName: null,
-                  email: nomineeEmail,
-                  bio: null,
-                  category: null,
-                  location: "Hawaii",
-                  imageUrls: [],
-                  videoUrls: [],
-                  socialLinks: null,
-                  role: "talent",
-                });
-              }
-
-              const parsedCompId = competitionId ? Number(competitionId) : NaN;
-              if (existingProfile && Number.isFinite(parsedCompId)) {
-                const existingContestant = await storage.getContestant(parsedCompId, existingProfile.id);
-                if (!existingContestant) {
-                  await storage.createContestant({
-                    competitionId: parsedCompId,
-                    talentProfileId: existingProfile.id,
-                    applicationStatus: "approved",
-                    appliedAt: new Date().toISOString(),
-                  });
-                }
-              }
-
-              if (!existingUser) {
-                let competitionName = "a HiFitComp competition";
-                if (Number.isFinite(parsedCompId)) {
-                  const comp = await storage.getCompetition(parsedCompId);
-                  if (comp) competitionName = comp.title;
-                }
-                sendNomineeWelcomeEmail({
-                  to: nomineeEmail,
-                  nomineeName,
-                  nominatorName: inviterName,
-                  competitionName,
-                  defaultPassword: DEFAULT_PASSWORD,
-                  siteUrl,
-                }).catch(err => console.error("Nominee welcome email send failed:", err));
-              }
-            }
-          } catch (autoCreateErr: any) {
-            console.error("Auto-create invited user account error (non-fatal):", autoCreateErr.message);
+      try {
+        let existingUser: any = null;
+        let firebaseUid: string | null = null;
+        try {
+          existingUser = await getFirebaseAuth().getUserByEmail(inviteeEmail);
+          firebaseUid = existingUser.uid;
+        } catch (e: any) {
+          if (e.code === "auth/user-not-found") {
+            const newUser = await createFirebaseUser(inviteeEmail, DEFAULT_PASSWORD, inviteeName);
+            firebaseUid = newUser.uid;
+            await setUserLevel(firebaseUid, targetLevel);
+            await createFirestoreUser({
+              uid: firebaseUid,
+              email: inviteeEmail,
+              displayName: inviteeName,
+              level: targetLevel,
+            });
+            accountCreated = true;
+          } else {
+            throw e;
           }
-        } else {
-          sendInviteEmail({
-            to: email,
-            inviterName,
-            inviteToken: invitation.token,
-            role: roleName,
-            siteUrl,
-          }).catch(err => console.error("Invite email send failed:", err));
         }
+
+        if (firebaseUid) {
+          let existingProfile = await storage.getTalentProfileByUserId(firebaseUid);
+          if (!existingProfile && targetLevel >= 2) {
+            existingProfile = await storage.createTalentProfile({
+              userId: firebaseUid,
+              displayName: inviteeName,
+              stageName: null,
+              email: inviteeEmail,
+              bio: null,
+              category: null,
+              location: "Hawaii",
+              imageUrls: [],
+              videoUrls: [],
+              socialLinks: null,
+              role: "talent",
+            });
+          }
+        }
+      } catch (autoCreateErr: any) {
+        console.error("Auto-create invited user account error (non-fatal):", autoCreateErr.message);
+      }
+
+      if (isEmailConfigured()) {
+        sendInviteEmail({
+          to: inviteeEmail,
+          inviterName,
+          inviteToken: accountCreated ? undefined : invitation.token,
+          role: roleName,
+          siteUrl,
+          nomineeName: inviteeName,
+          nominatorName: inviterName,
+          defaultPassword: accountCreated ? DEFAULT_PASSWORD : undefined,
+          accountCreated,
+        }).catch(err => console.error("Invite email send failed:", err));
       }
 
       res.status(201).json(invitation);
@@ -2336,13 +2311,16 @@ export async function registerRoutes(
               if (comp) competitionName = comp.title;
             }
             const siteUrl = `${req.protocol}://${req.get("host")}`;
-            emailSent = await sendNomineeWelcomeEmail({
+            emailSent = await sendInviteEmail({
               to: nomineeEmail,
+              inviterName: nominatorName.trim(),
+              role: "talent",
+              siteUrl,
               nomineeName,
               nominatorName: nominatorName.trim(),
               competitionName,
               defaultPassword: DEFAULT_PASSWORD,
-              siteUrl,
+              accountCreated: true,
             });
           }
         }
