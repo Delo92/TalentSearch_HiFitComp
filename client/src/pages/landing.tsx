@@ -1,13 +1,14 @@
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Info, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import HeroCoverflowGallery from "@/components/hero-coverflow-gallery";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -56,6 +57,22 @@ export default function Landing() {
   const featured = useInView();
   const steps = useInView();
   const cta = useInView();
+
+  const [showVotingModal, setShowVotingModal] = useState(false);
+  const [showNominationModal, setShowNominationModal] = useState(false);
+
+  const renderInfoText = (text: string) => {
+    return text.split("\n").map((line, i) => {
+      if (!line.trim()) return <br key={i} />;
+      const boldMatch = line.match(/^\*\*(.*)\*\*:?$/);
+      if (boldMatch) return <h4 key={i} className="text-white text-base font-bold mt-5 mb-2 uppercase" style={{ letterSpacing: "2px" }}>{boldMatch[1]}</h4>;
+      const listMatch = line.match(/^- (.*)$/);
+      if (listMatch) return <p key={i} className="text-white/70 text-sm leading-relaxed mb-1.5 pl-4 relative"><span className="absolute left-0 text-[#FF5A09]">&bull;</span>{listMatch[1]}</p>;
+      const numMatch = line.match(/^(\d+)\. (.*)$/);
+      if (numMatch) return <p key={i} className="text-white/70 text-sm leading-relaxed mb-1.5 pl-6 relative"><span className="absolute left-0 text-[#FF5A09] font-bold">{numMatch[1]}.</span>{numMatch[2]}</p>;
+      return <p key={i} className="text-white/70 text-sm leading-relaxed mb-2">{line}</p>;
+    });
+  };
 
   return (
     <div className={`min-h-screen bg-black text-white overflow-x-hidden transition-opacity duration-500 ${liveryLoading ? "opacity-0" : "opacity-100"}`}>
@@ -134,6 +151,30 @@ export default function Landing() {
                 Nominate <ChevronRight className="inline h-4 w-4 ml-1" /><ChevronRight className="inline h-4 w-4 -ml-2" />
               </span>
             </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1.6 }}
+            className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3"
+          >
+            <button
+              onClick={() => setShowVotingModal(true)}
+              className="inline-flex items-center gap-1.5 text-white/60 text-xs uppercase tracking-widest transition-colors duration-300 hover:text-[#FF5A09]"
+              data-testid="button-hero-how-voting"
+            >
+              <Info className="h-3.5 w-3.5" />
+              How Voting Works
+            </button>
+            <button
+              onClick={() => setShowNominationModal(true)}
+              className="inline-flex items-center gap-1.5 text-white/60 text-xs uppercase tracking-widest transition-colors duration-300 hover:text-[#FF5A09]"
+              data-testid="button-hero-how-nominations"
+            >
+              <Info className="h-3.5 w-3.5" />
+              How Nominations Work
+            </button>
           </motion.div>
 
           {getText("hero_summary") && (
@@ -298,6 +339,32 @@ export default function Landing() {
       </section>
 
       <SiteFooter />
+
+      {showVotingModal && (
+        <Dialog open={showVotingModal} onOpenChange={setShowVotingModal}>
+          <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-white uppercase tracking-[3px] text-base font-bold">How Voting Works</DialogTitle>
+            </DialogHeader>
+            <div className="mt-2">
+              {renderInfoText(getText("how_voting_works", "Information coming soon."))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showNominationModal && (
+        <Dialog open={showNominationModal} onOpenChange={setShowNominationModal}>
+          <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-white uppercase tracking-[3px] text-base font-bold">How Nominations Work</DialogTitle>
+            </DialogHeader>
+            <div className="mt-2">
+              {renderInfoText(getText("how_nominations_work", "Information coming soon."))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -1590,11 +1590,12 @@ export default function AdminDashboard({ user }: { user: any }) {
                 { label: "About Page", keys: ["about_rules_text", "about_details_text"], pairs: null },
                 { label: "Contact Info", keys: ["contact_email", "contact_phone", "contact_address"], pairs: null },
                 { label: "Social Links", keys: ["social_facebook", "social_instagram", "social_twitter", "social_youtube", "social_tiktok"], pairs: null },
+                { label: "Info Modals (Home Page)", keys: ["how_voting_works", "how_nominations_work"], pairs: null },
                 { label: "Why HiFitComp", keys: ["why_subtitle", "why_heading", "why_card1_title", "why_card1_desc", "why_card2_title", "why_card2_desc", "why_card3_title", "why_card3_desc"], pairs: null },
                 { label: "How It Works", keys: ["hiw_section_title", "hiw_step1_title", "hiw_step1_desc", "hiw_step2_title", "hiw_step2_desc", "hiw_step3_title", "hiw_step3_desc"], pairs: null },
                 { label: "FAQ Page", keys: faqPairs.flat(), pairs: faqPairs },
               ];
-              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary") || key.includes("faq_") || key.includes("_desc");
+              const isLongField = (key: string) => key.includes("rules") || key.includes("details") || key.includes("summary") || key.includes("faq_") || key.includes("_desc") || key.includes("how_");
               const renderField = (item: any) => {
                 const currentText = item.textContent || item.defaultText || "";
                 const isCustomText = !!item.textContent;
@@ -1609,7 +1610,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                       <Textarea
                         key={`${item.imageKey}-${currentText}`}
                         defaultValue={currentText}
-                        rows={3}
+                        rows={item.imageKey.startsWith("how_") || item.imageKey.includes("rules") || item.imageKey.includes("details") ? 8 : 3}
                         className="bg-zinc-800 border-white/25 text-white text-xs mb-1"
                         data-testid={`textarea-livery-${item.imageKey}`}
                         onBlur={(e) => {
