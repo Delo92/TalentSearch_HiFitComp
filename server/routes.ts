@@ -1133,10 +1133,43 @@ export async function registerRoutes(
 
   app.post("/api/admin/test-email", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      const { to } = req.body;
+      const { to, template } = req.body;
       if (!to) return res.status(400).json({ error: "Missing 'to' email address" });
-      await sendTestEmail(to);
-      res.json({ success: true, message: `Test email sent to ${to}` });
+
+      const siteUrl = `${req.protocol}://${req.get("host")}`;
+
+      if (template === "welcome") {
+        await sendInviteEmail({
+          to,
+          inviterName: "HiFitComp Admin",
+          role: "talent",
+          siteUrl,
+          nomineeName: "Sample Talent",
+          nominatorName: "HiFitComp Admin",
+          competitionName: "Sample Competition 2026",
+          defaultPassword: "Hifitcomp2026",
+          accountCreated: true,
+        });
+      } else if (template === "receipt") {
+        await sendPurchaseReceipt({
+          to,
+          buyerName: "Sample Buyer",
+          items: [
+            { description: "10 Votes Bundle", amount: "$9.99" },
+            { description: "25 Votes Bundle", amount: "$19.99" },
+          ],
+          tax: "$2.50",
+          total: "$32.48",
+          transactionId: "TEST-" + Date.now(),
+          competitionName: "Sample Competition 2026",
+          contestantName: "Sample Talent",
+        });
+      } else {
+        await sendTestEmail(to);
+      }
+
+      const templateLabel = template === "welcome" ? "Welcome/Invite" : template === "receipt" ? "Purchase Receipt" : "Generic Test";
+      res.json({ success: true, message: `${templateLabel} email sent to ${to}` });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
