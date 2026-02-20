@@ -400,36 +400,9 @@ export async function registerRoutes(
           let videoEmbedUrl: string | null = null;
           let displayName: string | null = null;
           let coverVideoUrl: string | null = null;
-
-          const nameKey = (cat.name || "").toLowerCase().replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
-          const liveryKey = `category_${nameKey}`;
-          const liveryItem = liveryItems.find((l: any) => l.imageKey === liveryKey);
-          let thumbnail: string | null = liveryItem?.imageUrl || cat.imageUrl || null;
-          if (liveryItem?.mediaType === "video" && liveryItem?.imageUrl) {
-            coverVideoUrl = liveryItem.imageUrl;
-          }
-
-          if (!thumbnail || thumbnail === cat.imageUrl) {
-            const catImageItems = liveryItems.filter((l: any) =>
-              l.imageKey.startsWith("category_") &&
-              !l.imageKey.endsWith("_title") &&
-              !l.imageKey.endsWith("_desc") &&
-              l.imageUrl
-            );
-            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-            for (const imgItem of catImageItems) {
-              const titleKey = imgItem.imageKey + "_title";
-              const titleItem = liveryItems.find((t: any) => t.imageKey === titleKey);
-              if (titleItem) {
-                const titleText = normalize(titleItem.textContent || titleItem.defaultText || "");
-                const catNameNorm = normalize(cat.name || "");
-                if (titleText === catNameNorm || catNameNorm.includes(titleText) || titleText.includes(catNameNorm)) {
-                  thumbnail = imgItem.imageUrl;
-                  if (imgItem.mediaType === "video") coverVideoUrl = imgItem.imageUrl;
-                  break;
-                }
-              }
-            }
+          let thumbnail: string | null = cat.imageUrl || null;
+          if (cat.videoUrl) {
+            coverVideoUrl = cat.videoUrl;
           }
 
           if (topContestant && topVoteCount > 0 && topCompetition) {
