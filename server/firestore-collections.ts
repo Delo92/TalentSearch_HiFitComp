@@ -226,6 +226,7 @@ export interface FirestoreJoinSettings {
   nominationFee: number;
   nominationEnabled: boolean;
   nonprofitRequired: boolean;
+  freeNominationPromoCode: string;
   updatedAt: admin.firestore.Timestamp;
 }
 
@@ -976,6 +977,7 @@ const JOIN_SETTINGS_DEFAULTS: Omit<FirestoreJoinSettings, "updatedAt"> = {
   nominationFee: 0,
   nominationEnabled: true,
   nonprofitRequired: false,
+  freeNominationPromoCode: "",
 };
 
 export const firestoreJoinSettings = {

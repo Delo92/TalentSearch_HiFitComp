@@ -62,6 +62,7 @@ interface JoinHostSettings {
   nominationFee?: number;
   nominationEnabled?: boolean;
   nonprofitRequired?: boolean;
+  freeNominationPromoCode?: string;
 }
 
 interface JoinSubmission {
@@ -1898,33 +1899,17 @@ export default function AdminDashboard({ user }: { user: any }) {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div className="space-y-1.5">
-                      <Label className="text-white/60">Mode</Label>
-                      <Select value={joinSettings.mode} onValueChange={(val) => updateJoinSettingsMutation.mutate({ mode: val as "request" | "purchase" })}>
-                        <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-join-mode">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-white/10">
-                          <SelectItem value="request">Free Application</SelectItem>
-                          <SelectItem value="purchase">Paid Entry</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-white/60">Free Nomination Promo Code</Label>
+                      <Input
+                        key={`promo-${joinSettings.freeNominationPromoCode}`}
+                        defaultValue={joinSettings.freeNominationPromoCode || ""}
+                        placeholder="e.g. HIFITFREE"
+                        onBlur={(e) => updateJoinSettingsMutation.mutate({ freeNominationPromoCode: e.target.value.trim().toUpperCase() })}
+                        className="bg-white/5 border-white/10 text-white uppercase"
+                        data-testid="input-promo-code"
+                      />
+                      <p className="text-xs text-white/30">Nominators who enter this code will skip the nomination fee. Leave blank to disable.</p>
                     </div>
-                    {joinSettings.mode === "purchase" && (
-                      <div className="space-y-1.5">
-                        <Label className="text-white/60">Price (cents)</Label>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-white/30" />
-                          <Input
-                            type="number"
-                            defaultValue={joinSettings.price}
-                            onBlur={(e) => updateJoinSettingsMutation.mutate({ price: parseInt(e.target.value) || 0 })}
-                            className="bg-white/5 border-white/10 text-white"
-                            data-testid="input-join-price"
-                          />
-                        </div>
-                        <p className="text-xs text-white/30">${((joinSettings.price || 0) / 100).toFixed(2)}</p>
-                      </div>
-                    )}
                   </div>
                   <div className="space-y-3">
                     <div className="space-y-1.5">

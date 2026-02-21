@@ -2099,10 +2099,23 @@ export async function registerRoutes(
   app.get("/api/join/settings", async (_req, res) => {
     try {
       const settings = await firestoreJoinSettings.get();
-      res.json(settings);
+      const { freeNominationPromoCode, ...publicSettings } = settings;
+      res.json({ ...publicSettings, hasPromoCode: !!freeNominationPromoCode });
     } catch (error: any) {
       console.error("Get join settings error:", error);
       res.status(500).json({ message: "Failed to get join settings" });
+    }
+  });
+
+  app.post("/api/join/validate-promo", async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ valid: false });
+      const settings = await firestoreJoinSettings.get();
+      const valid = !!(settings.freeNominationPromoCode && code.trim().toUpperCase() === settings.freeNominationPromoCode.trim().toUpperCase());
+      res.json({ valid });
+    } catch (error: any) {
+      res.status(500).json({ valid: false });
     }
   });
 
@@ -2241,7 +2254,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Nominations are not currently accepted" });
       }
 
-      const { fullName, email, phone, bio, category, competitionId, nominatorName, nominatorEmail, nominatorPhone, dataDescriptor, dataValue, chosenNonprofit, mediaUrls } = req.body;
+      const { fullName, email, phone, bio, category, competitionId, nominatorName, nominatorEmail, nominatorPhone, dataDescriptor, dataValue, chosenNonprofit, mediaUrls, promoCode } = req.body;
       if (!fullName || !email) {
         return res.status(400).json({ message: "Nominee name and email are required" });
       }
@@ -2255,9 +2268,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Choice of Non-Profit is required" });
       }
 
+      const promoValid = !!(promoCode && settings.freeNominationPromoCode && promoCode.trim().toUpperCase() === settings.freeNominationPromoCode.trim().toUpperCase());
+
       let transactionId: string | null = null;
       let amountPaid = 0;
-      if (settings.nominationFee > 0) {
+      if (settings.nominationFee > 0 && !promoValid) {
         if (!dataDescriptor || !dataValue) {
           return res.status(400).json({ message: "Payment is required for nominations" });
         }

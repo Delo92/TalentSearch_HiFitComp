@@ -27,6 +27,7 @@ interface JoinSettings {
   nominationEnabled?: boolean;
   nonprofitRequired?: boolean;
   charityName?: string;
+  hasPromoCode?: boolean;
 }
 
 interface PaymentConfig {
@@ -75,6 +76,9 @@ export default function JoinPage() {
   const [nominationImageUrl, setNominationImageUrl] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoValidated, setPromoValidated] = useState(false);
+  const [promoChecking, setPromoChecking] = useState(false);
   const nominationImageRef = useRef<HTMLInputElement>(null);
   const competitionSectionRef = useRef<HTMLDivElement>(null);
 
@@ -147,7 +151,7 @@ export default function JoinPage() {
     }, 100);
   }, []);
 
-  const needsPayment = (settings?.nominationFee || 0) > 0;
+  const needsPayment = (settings?.nominationFee || 0) > 0 && !promoValidated;
   const paymentAmount = settings?.nominationFee || 0;
 
   useEffect(() => {
@@ -252,6 +256,7 @@ export default function JoinPage() {
           nominatorPhone: nominatorForm.phone || "",
           referralCode: referralCode || undefined,
           mediaUrls: nominationImageUrl ? [nominationImageUrl] : [],
+          promoCode: promoValidated ? promoCode : undefined,
           dataDescriptor,
           dataValue,
         });
