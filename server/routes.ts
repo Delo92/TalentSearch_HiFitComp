@@ -523,13 +523,12 @@ export async function registerRoutes(
       return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid data" });
     }
 
-    const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
-    const globalMaxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
-    const globalMaxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
-
-    const globalSettings = await firestoreSettings.get();
-    const minVoteCost = globalSettings?.defaultVoteCost ?? 0;
-    const minMaxVotesPerDay = globalSettings?.defaultMaxVotesPerDay ?? 1;
+    const platformDoc = await getFirestore().collection("platformSettings").doc("global").get();
+    const platformData = platformDoc.exists ? platformDoc.data() : {};
+    const globalMaxImages = platformData?.maxImagesPerContestant ?? 10;
+    const globalMaxVideos = platformData?.maxVideosPerContestant ?? 3;
+    const minVoteCost = platformData?.defaultVoteCost ?? 0;
+    const minMaxVotesPerDay = platformData?.defaultMaxVotesPerDay ?? 1;
 
     let finalVoteCost = parsed.data.voteCost ?? 0;
     if (finalVoteCost < minVoteCost) finalVoteCost = minVoteCost;
@@ -592,9 +591,12 @@ export async function registerRoutes(
 
     const updateData = { ...req.body };
 
-    const globalSettings = await firestoreSettings.get();
-    const minVoteCost = globalSettings?.defaultVoteCost ?? 0;
-    const minMaxVotesPerDay = globalSettings?.defaultMaxVotesPerDay ?? 1;
+    const platformDoc = await getFirestore().collection("platformSettings").doc("global").get();
+    const platformData = platformDoc.exists ? platformDoc.data() : {};
+    const minVoteCost = platformData?.defaultVoteCost ?? 0;
+    const minMaxVotesPerDay = platformData?.defaultMaxVotesPerDay ?? 1;
+    const globalMaxImages = platformData?.maxImagesPerContestant ?? 10;
+    const globalMaxVideos = platformData?.maxVideosPerContestant ?? 3;
 
     if (updateData.voteCost !== undefined && updateData.voteCost < minVoteCost) {
       updateData.voteCost = minVoteCost;
@@ -602,10 +604,6 @@ export async function registerRoutes(
     if (updateData.maxVotesPerDay !== undefined && minMaxVotesPerDay > 0 && updateData.maxVotesPerDay > minMaxVotesPerDay) {
       updateData.maxVotesPerDay = minMaxVotesPerDay;
     }
-
-    const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
-    const globalMaxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
-    const globalMaxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
     if (updateData.maxImagesPerContestant !== undefined && updateData.maxImagesPerContestant > globalMaxImages) {
       updateData.maxImagesPerContestant = globalMaxImages;
     }
@@ -2213,8 +2211,8 @@ export async function registerRoutes(
 
   app.post("/api/admin/enforce-min-vote-cost", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      const globalSettings = await firestoreSettings.get();
-      const minVoteCost = globalSettings?.defaultVoteCost ?? 0;
+      const platformDoc = await getFirestore().collection("platformSettings").doc("global").get();
+      const minVoteCost = platformDoc.exists ? (platformDoc.data()?.defaultVoteCost ?? 0) : 0;
       if (minVoteCost <= 0) return res.json({ message: "No minimum set", updated: 0 });
       
       const allComps = await firestoreCompetitions.getAll();
@@ -2229,6 +2227,28 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Enforce min vote cost error:", error);
       res.status(500).json({ message: "Failed to enforce min vote cost" });
+    }
+  });
+
+  app.post("/api/admin/set-all-comp-dates", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { startDate, endDate, votingStartDate, votingEndDate, status } = req.body;
+      const allComps = await firestoreCompetitions.getAll();
+      let updated = 0;
+      for (const comp of allComps) {
+        const updateData: any = {};
+        if (startDate !== undefined) { updateData.startDate = startDate; updateData.startDateTbd = false; }
+        if (endDate !== undefined) { updateData.endDate = endDate; updateData.endDateTbd = false; }
+        if (votingStartDate !== undefined) updateData.votingStartDate = votingStartDate;
+        if (votingEndDate !== undefined) updateData.votingEndDate = votingEndDate;
+        if (status !== undefined) updateData.status = status;
+        await firestoreCompetitions.update(comp.id, updateData);
+        updated++;
+      }
+      res.json({ message: `Updated ${updated} competitions`, updated });
+    } catch (error: any) {
+      console.error("Set all comp dates error:", error);
+      res.status(500).json({ message: "Failed to update competition dates" });
     }
   });
 
@@ -2937,9 +2957,25 @@ export async function registerRoutes(
 
   app.put("/api/admin/platform-settings", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      const db = getFirestore();
+      const fsDb = getFirestore();
       const settings = req.body;
-      await db.collection("platformSettings").doc("global").set(settings, { merge: true });
+      await fsDb.collection("platformSettings").doc("global").set(settings, { merge: true });
+
+      if (settings.defaultVoteCost !== undefined && settings.defaultVoteCost > 0) {
+        const minVoteCost = settings.defaultVoteCost;
+        const allComps = await firestoreCompetitions.getAll();
+        let enforced = 0;
+        for (const comp of allComps) {
+          if ((comp.voteCost ?? 0) < minVoteCost) {
+            await firestoreCompetitions.update(comp.id, { voteCost: minVoteCost });
+            enforced++;
+          }
+        }
+        if (enforced > 0) {
+          console.log(`[Settings] Enforced min vote cost $${minVoteCost} on ${enforced} competitions`);
+        }
+      }
+
       res.json({ message: "Settings saved", ...settings });
     } catch (error: any) {
       console.error("Save platform settings error:", error);
