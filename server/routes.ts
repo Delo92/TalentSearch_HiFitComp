@@ -1682,6 +1682,9 @@ export async function registerRoutes(
             try {
               const comp = await storage.getCompetition(Number(competitionId));
               if (comp) {
+                if (comp.category && !existingProfile.category) {
+                  await storage.updateTalentProfile(firebaseUid, { category: comp.category });
+                }
                 const existingContestant = await storage.getContestant(comp.id, existingProfile.id);
                 if (!existingContestant) {
                   await storage.createContestant({

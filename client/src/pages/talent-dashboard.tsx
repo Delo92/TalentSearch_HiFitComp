@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getAuthToken } from "@/hooks/use-auth";
 import type { TalentProfile, Competition } from "@shared/schema";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import * as tus from "tus-js-client";
 
@@ -340,6 +340,12 @@ export default function TalentDashboard({ user, profile }: Props) {
   const appliedContests = myContests?.filter((c: any) => c.applicationStatus === "approved" || c.applicationStatus === "pending") || [];
   const approvedContests = myContests?.filter((c: any) => c.applicationStatus === "approved") || [];
   const hasActiveEntry = appliedContests.length > 0;
+
+  useEffect(() => {
+    if (!selectedCompId && appliedContests.length > 0) {
+      setSelectedCompId(String(appliedContests[0].competitionId));
+    }
+  }, [appliedContests, selectedCompId]);
 
   const handleSavePromoCode = async () => {
     if (!customPromoCode.trim()) return;
@@ -687,21 +693,31 @@ export default function TalentDashboard({ user, profile }: Props) {
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="rounded-md bg-white/[0.06] border border-white/12 p-4">
-                  <Label className="text-white/60 mb-2 block">Select Competition</Label>
-                  <Select value={selectedCompId} onValueChange={setSelectedCompId}>
-                    <SelectTrigger className="bg-white/[0.07] border-white/15 text-white" data-testid="select-competition">
-                      <SelectValue placeholder="Choose a competition to manage media..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-white/10">
-                      {appliedContests.map((c: any) => (
-                        <SelectItem key={c.competitionId} value={String(c.competitionId)} className="text-white">
-                          {c.competitionTitle || `Competition #${c.competitionId}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {appliedContests.length > 1 ? (
+                  <div className="rounded-md bg-white/[0.06] border border-white/12 p-4">
+                    <Label className="text-white/60 mb-2 block">Select Competition</Label>
+                    <Select value={selectedCompId} onValueChange={setSelectedCompId}>
+                      <SelectTrigger className="bg-white/[0.07] border-white/15 text-white" data-testid="select-competition">
+                        <SelectValue placeholder="Choose a competition to manage media..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10">
+                        {appliedContests.map((c: any) => (
+                          <SelectItem key={c.competitionId} value={String(c.competitionId)} className="text-white">
+                            {c.competitionTitle || `Competition #${c.competitionId}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : appliedContests.length === 1 ? (
+                  <div className="rounded-md bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 p-4 flex items-center gap-3">
+                    <Trophy className="h-5 w-5 text-orange-400 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-white">{appliedContests[0].competitionTitle || `Competition #${appliedContests[0].competitionId}`}</p>
+                      <p className="text-xs text-white/40">Upload your photos and videos for this competition below</p>
+                    </div>
+                  </div>
+                ) : null}
 
                 {selectedCompId && (
                   <>
