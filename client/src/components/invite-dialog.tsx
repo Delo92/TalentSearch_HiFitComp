@@ -196,20 +196,21 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
             </Select>
           </div>
 
-          {targetLevel === "2" && competitions && competitions.length > 0 && (
+          {targetLevel === "2" && (
             <div className="space-y-1.5">
-              <Label className="text-white/60">Add to Competition (optional)</Label>
+              <Label className="text-white/60">Competition <span className="text-orange-400">*</span></Label>
               <Select value={competitionId} onValueChange={setCompetitionId}>
                 <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-invite-competition">
                   <SelectValue placeholder="Select competition..." />
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-900 border-white/10">
-                  <SelectItem value="none">No competition</SelectItem>
-                  {competitions.map((c) => (
+                  {competitions && competitions.length > 0 ? competitions.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
                       {c.title}
                     </SelectItem>
-                  ))}
+                  )) : (
+                    <SelectItem value="none" disabled>No competitions available</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -229,7 +230,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
 
           <Button
             type="submit"
-            disabled={!email || !name || !targetLevel || inviteMutation.isPending}
+            disabled={!email || !name || !targetLevel || (targetLevel === "2" && (!competitionId || competitionId === "none")) || inviteMutation.isPending}
             className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white"
             data-testid="button-send-invite"
           >
