@@ -500,7 +500,7 @@ export async function registerRoutes(
     description: z.string().optional().default(""),
     category: z.string().min(1, "Category is required"),
     status: z.enum(["draft", "active", "voting", "completed"]).optional().default("active"),
-    voteCost: z.number().int().min(0).optional().default(0),
+    voteCost: z.number().min(0).optional().default(0),
     maxVotesPerDay: z.number().int().min(1).optional().default(10),
     maxImagesPerContestant: z.number().int().min(1).optional().nullable(),
     maxVideosPerContestant: z.number().int().min(1).optional().nullable(),

@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, serial, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, serial, pgEnum, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -36,7 +36,7 @@ export const competitions = pgTable("competitions", {
   coverImage: text("cover_image"),
   coverVideo: text("cover_video"),
   status: competitionStatusEnum("status").notNull().default("draft"),
-  voteCost: integer("vote_cost").notNull().default(0),
+  voteCost: real("vote_cost").notNull().default(0),
   maxVotesPerDay: integer("max_votes_per_day").notNull().default(10),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
