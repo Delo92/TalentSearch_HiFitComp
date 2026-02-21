@@ -29,6 +29,7 @@ import {
   firestoreHostSubmissions,
   firestoreInvitations,
   firestoreReferrals,
+  firestoreCompetitions,
 } from "./firestore-collections";
 import { chargePaymentNonce, getPublicConfig } from "./authorize-net";
 import { sendInviteEmail, sendPurchaseReceipt, sendTestEmail, isEmailConfigured, getGmailAuthUrl, exchangeGmailCode } from "./email";
@@ -2191,6 +2192,17 @@ export async function registerRoutes(
   app.put("/api/admin/settings", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const updated = await firestoreSettings.update(req.body);
+      
+      const minVoteCost = req.body.defaultVoteCost;
+      if (minVoteCost !== undefined && minVoteCost > 0) {
+        const allComps = await firestoreCompetitions.getAll();
+        for (const comp of allComps) {
+          if ((comp.voteCost ?? 0) < minVoteCost) {
+            await firestoreCompetitions.update(comp.id, { voteCost: minVoteCost });
+          }
+        }
+      }
+      
       res.json(updated);
     } catch (error: any) {
       console.error("Update settings error:", error);
@@ -2198,6 +2210,27 @@ export async function registerRoutes(
     }
   });
 
+
+  app.post("/api/admin/enforce-min-vote-cost", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const globalSettings = await firestoreSettings.get();
+      const minVoteCost = globalSettings?.defaultVoteCost ?? 0;
+      if (minVoteCost <= 0) return res.json({ message: "No minimum set", updated: 0 });
+      
+      const allComps = await firestoreCompetitions.getAll();
+      let updated = 0;
+      for (const comp of allComps) {
+        if ((comp.voteCost ?? 0) < minVoteCost) {
+          await firestoreCompetitions.update(comp.id, { voteCost: minVoteCost });
+          updated++;
+        }
+      }
+      res.json({ message: `Updated ${updated} competitions to minimum vote cost $${minVoteCost}`, updated });
+    } catch (error: any) {
+      console.error("Enforce min vote cost error:", error);
+      res.status(500).json({ message: "Failed to enforce min vote cost" });
+    }
+  });
 
   app.get("/api/join/settings", async (_req, res) => {
     try {
