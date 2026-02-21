@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import SiteNavbar from "@/components/site-navbar";
 import SiteFooter from "@/components/site-footer";
 import HeroCoverflowGallery from "@/components/hero-coverflow-gallery";
+import FlipCountdown from "@/components/flip-countdown";
 import { useLivery } from "@/hooks/use-livery";
 import { useSEO } from "@/hooks/use-seo";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -185,6 +186,16 @@ export default function Landing() {
               {getText("hero_summary")}
             </motion.p>
           )}
+        </div>
+      </section>
+
+      <section className="py-16 md:py-24 bg-black relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-[#0a0500] to-black opacity-60" />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <FlipCountdown
+            targetDate={new Date("2026-06-13T23:59:59")}
+            title="Voting Closes In"
+          />
         </div>
       </section>
 
