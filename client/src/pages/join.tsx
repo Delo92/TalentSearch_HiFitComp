@@ -394,10 +394,57 @@ export default function JoinPage() {
 
         {(settings.nominationFee || 0) > 0 && (
           <div className="border border-[#FF5A09]/30 bg-[#FF5A09]/5 p-4 mb-8">
-            <p className="text-[#FF5A09] font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
-              Nomination Fee: ${((settings.nominationFee || 0) / 100).toFixed(2)}
-            </p>
-            <p className="text-white/40 text-xs mt-1">Payment is required to submit a nomination.</p>
+            {promoValidated ? (
+              <>
+                <p className="text-green-400 font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
+                  Promo Code Applied - FREE Nomination
+                </p>
+                <p className="text-white/40 text-xs mt-1">Your promo code has been applied. No payment required.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[#FF5A09] font-bold uppercase text-sm" style={{ letterSpacing: "2px" }}>
+                  Nomination Fee: ${((settings.nominationFee || 0) / 100).toFixed(2)}
+                </p>
+                <p className="text-white/40 text-xs mt-1">Payment is required to submit a nomination.</p>
+              </>
+            )}
+            {settings.hasPromoCode && !promoValidated && (
+              <div className="mt-3 flex items-center gap-2">
+                <Input
+                  placeholder="Enter promo code"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  className="bg-white/5 border-white/10 text-white uppercase max-w-[200px] h-9"
+                  data-testid="input-promo-code"
+                />
+                <button
+                  onClick={async () => {
+                    if (!promoCode.trim()) return;
+                    setPromoChecking(true);
+                    try {
+                      const res = await apiRequest("POST", "/api/join/validate-promo", { code: promoCode });
+                      const data = await res.json();
+                      if (data.valid) {
+                        setPromoValidated(true);
+                        toast({ title: "Promo code applied!", description: "Nomination fee has been waived." });
+                      } else {
+                        toast({ title: "Invalid promo code", variant: "destructive" });
+                      }
+                    } catch {
+                      toast({ title: "Failed to validate promo code", variant: "destructive" });
+                    } finally {
+                      setPromoChecking(false);
+                    }
+                  }}
+                  disabled={promoChecking || !promoCode.trim()}
+                  className="text-xs uppercase tracking-wider border border-[#FF5A09]/40 bg-[#FF5A09]/10 text-[#FF5A09] px-4 py-2 transition-colors hover:bg-[#FF5A09]/20 disabled:opacity-40"
+                  data-testid="button-apply-promo"
+                >
+                  {promoChecking ? "Checking..." : "Apply"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
