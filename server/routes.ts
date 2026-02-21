@@ -2396,8 +2396,10 @@ export async function registerRoutes(
         nominatorName: nominatorName.trim(),
         nominatorEmail: nominatorEmail.toLowerCase().trim(),
         nominatorPhone: nominatorPhone || null,
-        nominationStatus: "pending",
+        nominationStatus: "joined",
       });
+
+      await firestoreJoinSubmissions.updateStatus(submission.id, "approved");
 
       res.status(201).json({
         ...submission,
