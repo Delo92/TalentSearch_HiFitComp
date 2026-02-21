@@ -410,7 +410,9 @@ export default function JoinPage() {
               </>
             )}
             {settings.hasPromoCode && !promoValidated && (
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3 space-y-2">
+              <p className="text-white/50 text-xs">If you have a promo code, enter it here:</p>
+              <div className="flex items-center gap-2">
                 <Input
                   placeholder="Enter promo code"
                   value={promoCode}
@@ -443,6 +445,7 @@ export default function JoinPage() {
                 >
                   {promoChecking ? "Checking..." : "Apply"}
                 </button>
+              </div>
               </div>
             )}
           </div>
