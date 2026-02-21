@@ -186,16 +186,18 @@ export default function Landing() {
               {getText("hero_summary")}
             </motion.p>
           )}
-        </div>
-      </section>
 
-      <section className="py-16 md:py-24 bg-black relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-[#0a0500] to-black opacity-60" />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <FlipCountdown
-            targetDate={new Date("2026-06-13T23:59:59")}
-            title="Voting Closes In"
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 2.0 }}
+            className="mt-12 sm:mt-16"
+          >
+            <FlipCountdown
+              targetDate={new Date("2026-06-13T23:59:59")}
+              title="Voting Closes In"
+            />
+          </motion.div>
         </div>
       </section>
 
