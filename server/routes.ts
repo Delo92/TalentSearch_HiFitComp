@@ -757,13 +757,7 @@ export async function registerRoutes(
       return res.status(400).json({ message: "You can only be in one competition at a time. Contact an admin to join additional competitions." });
     }
 
-    let autoApprove = false;
-    try {
-      const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
-      autoApprove = settingsDoc.exists ? (settingsDoc.data()?.autoApproveApplications === true) : false;
-    } catch {}
-
-    const applicationStatus = autoApprove ? "approved" : "pending";
+    const applicationStatus = "approved";
 
     const contestant = await storage.createContestant({
       competitionId: compId,
@@ -772,16 +766,14 @@ export async function registerRoutes(
       appliedAt: new Date().toISOString(),
     });
 
-    if (autoApprove) {
-      try {
-        const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
-        await Promise.all([
-          createContestantDriveFolders(comp.title, talentName),
-          createContestantVimeoFolder(comp.title, talentName),
-        ]);
-      } catch (folderErr: any) {
-        console.error("Auto-create contestant folders error (non-blocking):", folderErr.message);
-      }
+    try {
+      const talentName = (profile.displayName || profile.stageName).replace(/[^a-zA-Z0-9_\-\s]/g, "_").trim();
+      await Promise.all([
+        createContestantDriveFolders(comp.title, talentName),
+        createContestantVimeoFolder(comp.title, talentName),
+      ]);
+    } catch (folderErr: any) {
+      console.error("Auto-create contestant folders error (non-blocking):", folderErr.message);
     }
 
     res.status(201).json(contestant);
@@ -1136,7 +1128,7 @@ export async function registerRoutes(
       const { to, template } = req.body;
       if (!to) return res.status(400).json({ error: "Missing 'to' email address" });
 
-      const siteUrl = `${req.protocol}://${req.get("host")}`;
+      const siteUrl = process.env.SITE_URL || `${req.protocol}://${req.get("host")}`;
 
       if (template === "welcome") {
         await sendInviteEmail({
@@ -1556,7 +1548,7 @@ export async function registerRoutes(
 
   app.post("/api/invitations", firebaseAuth, requireTalent, async (req, res) => {
     try {
-      const { email, name, targetLevel, message } = req.body;
+      const { email, name, targetLevel, message, competitionId } = req.body;
       if (!email || !name || !targetLevel) {
         return res.status(400).json({ message: "Email, name, and target level are required" });
       }
@@ -1580,9 +1572,7 @@ export async function registerRoutes(
         message: message || undefined,
       });
 
-      const protocol = req.headers["x-forwarded-proto"] || "https";
-      const host = req.headers.host || "";
-      const siteUrl = `${protocol}://${host}`;
+      const siteUrl = process.env.SITE_URL || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host || ""}`;
       const inviterName = senderUser?.displayName || req.firebaseUser!.email || "Someone";
       const roleName = targetLevel >= 4 ? "admin" : targetLevel >= 3 ? "host" : targetLevel >= 2 ? "talent" : "viewer";
 
@@ -1630,6 +1620,25 @@ export async function registerRoutes(
               socialLinks: null,
               role: "talent",
             });
+          }
+
+          if (firebaseUid && existingProfile && competitionId && targetLevel >= 2) {
+            try {
+              const comp = await storage.getCompetition(Number(competitionId));
+              if (comp) {
+                const existingContestant = await storage.getContestant(comp.id, existingProfile.id);
+                if (!existingContestant) {
+                  await storage.createContestant({
+                    competitionId: comp.id,
+                    talentProfileId: existingProfile.id,
+                    applicationStatus: "approved",
+                    appliedAt: new Date().toISOString(),
+                  });
+                }
+              }
+            } catch (contestantErr: any) {
+              console.error("Auto-add invited contestant error (non-fatal):", contestantErr.message);
+            }
           }
         }
       } catch (autoCreateErr: any) {
@@ -2358,7 +2367,7 @@ export async function registerRoutes(
               const comp = await storage.getCompetition(Number(competitionId));
               if (comp) competitionName = comp.title;
             }
-            const siteUrl = `${req.protocol}://${req.get("host")}`;
+            const siteUrl = process.env.SITE_URL || `${req.protocol}://${req.get("host")}`;
             emailSent = await sendInviteEmail({
               to: nomineeEmail,
               inviterName: nominatorName.trim(),

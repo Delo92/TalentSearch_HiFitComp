@@ -51,17 +51,29 @@ function getInvitableLevels(senderLevel: number): number[] {
   return levels;
 }
 
+interface Competition {
+  id: number;
+  title: string;
+  status: string;
+}
+
 export function InviteDialog({ senderLevel }: { senderLevel: number }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [targetLevel, setTargetLevel] = useState("");
+  const [competitionId, setCompetitionId] = useState("");
   const [message, setMessage] = useState("");
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
 
   const invitableLevels = getInvitableLevels(senderLevel);
+
+  const { data: competitions } = useQuery<Competition[]>({
+    queryKey: ["/api/competitions"],
+    enabled: open,
+  });
 
   const { data: invitations, isLoading } = useQuery<Invitation[]>({
     queryKey: ["/api/invitations/sent"],
@@ -69,7 +81,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async (data: { email: string; name: string; targetLevel: number; message?: string }) => {
+    mutationFn: async (data: { email: string; name: string; targetLevel: number; message?: string; competitionId?: number }) => {
       const res = await apiRequest("POST", "/api/invitations", data);
       return res.json();
     },
@@ -78,6 +90,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
       setEmail("");
       setName("");
       setTargetLevel("");
+      setCompetitionId("");
       setMessage("");
       const link = `${window.location.origin}/register?invite=${data.token}`;
       setNewInviteLink(link);
@@ -115,6 +128,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
       name,
       targetLevel: parseInt(targetLevel),
       message: message || undefined,
+      competitionId: competitionId && competitionId !== "none" ? parseInt(competitionId) : undefined,
     });
   };
 
@@ -181,6 +195,25 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
               </SelectContent>
             </Select>
           </div>
+
+          {targetLevel === "2" && competitions && competitions.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-white/60">Add to Competition (optional)</Label>
+              <Select value={competitionId} onValueChange={setCompetitionId}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-invite-competition">
+                  <SelectValue placeholder="Select competition..." />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-white/10">
+                  <SelectItem value="none">No competition</SelectItem>
+                  {competitions.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-white/60">Message (optional)</Label>
