@@ -3116,7 +3116,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                           className="bg-white/[0.08] border-white/20 text-white"
                           data-testid="input-default-vote-cost"
                         />
-                        <p className="text-white/30 text-[10px] mt-0.5">Competitions cannot set vote cost below this amount</p>
+                        <p className="text-white/30 text-[10px] mt-0.5">Competitions cannot set vote cost below this amount. Saving settings auto-applies to all competitions.</p>
                       </div>
                       <div>
                         <Label className="text-white/50 text-xs">Price of 1 Vote ($)</Label>
