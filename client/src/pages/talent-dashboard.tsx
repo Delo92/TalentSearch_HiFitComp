@@ -56,8 +56,17 @@ export default function TalentDashboard({ user, profile }: Props) {
   const [imageUploading, setImageUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoUploadStep, setVideoUploadStep] = useState<"preparing" | "uploading" | "finalizing" | "done">("preparing");
+  const [videoUploadSpeed, setVideoUploadSpeed] = useState("");
+  const [videoUploadEta, setVideoUploadEta] = useState("");
+  const [videoUploadFileName, setVideoUploadFileName] = useState("");
+  const [videoUploadFileSize, setVideoUploadFileSize] = useState("");
+  const [videoUploadComplete, setVideoUploadComplete] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadError, setUploadError] = useState<{ type: "image" | "video"; message: string } | null>(null);
+  const uploadStartTimeRef = useRef<number>(0);
+  const lastBytesRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
   const [editingVideoUri, setEditingVideoUri] = useState<string | null>(null);
   const [editingVideoName, setEditingVideoName] = useState("");
   const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
@@ -263,10 +272,21 @@ export default function TalentDashboard({ user, profile }: Props) {
     const file = e.target.files?.[0];
     if (!file || !selectedCompId) return;
 
+    const fileSizeMb = (file.size / (1024 * 1024)).toFixed(1);
     setVideoUploading(true);
     setVideoUploadProgress(0);
+    setVideoUploadStep("preparing");
+    setVideoUploadSpeed("");
+    setVideoUploadEta("");
+    setVideoUploadFileName(file.name);
+    setVideoUploadFileSize(`${fileSizeMb} MB`);
+    setVideoUploadComplete(false);
     setUploadError(null);
-    setUploadStatus("Preparing video upload...");
+    setUploadStatus("Requesting upload slot...");
+    uploadStartTimeRef.current = Date.now();
+    lastBytesRef.current = 0;
+    lastTimeRef.current = Date.now();
+
     try {
       const token = getAuthToken();
       const ticketRes = await fetch("/api/vimeo/upload-ticket", {
@@ -288,7 +308,8 @@ export default function TalentDashboard({ user, profile }: Props) {
       }
 
       const ticket = await ticketRes.json();
-      setUploadStatus("Uploading video to Vimeo...");
+      setVideoUploadStep("uploading");
+      setUploadStatus("Starting upload...");
 
       await new Promise<void>((resolve, reject) => {
         const upload = new tus.Upload(file, {
@@ -301,7 +322,30 @@ export default function TalentDashboard({ user, profile }: Props) {
             setVideoUploadProgress(pct);
             const mbUploaded = (bytesUploaded / (1024 * 1024)).toFixed(1);
             const mbTotal = (bytesTotal / (1024 * 1024)).toFixed(1);
-            setUploadStatus(`Uploading video... ${mbUploaded} MB / ${mbTotal} MB`);
+            setUploadStatus(`${mbUploaded} MB / ${mbTotal} MB`);
+
+            const now = Date.now();
+            const elapsed = (now - lastTimeRef.current) / 1000;
+            if (elapsed >= 1) {
+              const bytesDelta = bytesUploaded - lastBytesRef.current;
+              const speed = bytesDelta / elapsed;
+              lastBytesRef.current = bytesUploaded;
+              lastTimeRef.current = now;
+
+              if (speed > 0) {
+                const speedMb = (speed / (1024 * 1024)).toFixed(1);
+                setVideoUploadSpeed(`${speedMb} MB/s`);
+                const remaining = bytesTotal - bytesUploaded;
+                const etaSec = Math.round(remaining / speed);
+                if (etaSec < 60) {
+                  setVideoUploadEta(`~${etaSec}s remaining`);
+                } else {
+                  const min = Math.floor(etaSec / 60);
+                  const sec = etaSec % 60;
+                  setVideoUploadEta(`~${min}m ${sec}s remaining`);
+                }
+              }
+            }
           },
           onSuccess: () => {
             resolve();
@@ -310,7 +354,12 @@ export default function TalentDashboard({ user, profile }: Props) {
         upload.start();
       });
 
-      setUploadStatus("Finalizing upload...");
+      setVideoUploadStep("finalizing");
+      setVideoUploadProgress(100);
+      setUploadStatus("Processing your video...");
+      setVideoUploadSpeed("");
+      setVideoUploadEta("");
+
       if (ticket.completeUri) {
         try {
           await fetch(`https://api.vimeo.com${ticket.completeUri}`, {
@@ -319,16 +368,32 @@ export default function TalentDashboard({ user, profile }: Props) {
         } catch {}
       }
 
-      setUploadStatus("");
+      setVideoUploadStep("done");
+      setVideoUploadComplete(true);
+      setUploadStatus("Upload complete!");
+      toast({ title: "Video uploaded!", description: "Your video has been saved. It may take a moment for the thumbnail to appear." });
+
       queryClient.invalidateQueries({ queryKey: ["/api/vimeo/videos", selectedCompId] });
-      toast({ title: "Uploaded!", description: "Your video has been saved to Vimeo." });
+
+      let pollCount = 0;
+      const pollInterval = setInterval(() => {
+        pollCount++;
+        queryClient.invalidateQueries({ queryKey: ["/api/vimeo/videos", selectedCompId] });
+        if (pollCount >= 6) clearInterval(pollInterval);
+      }, 5000);
+
+      setTimeout(() => {
+        setVideoUploading(false);
+        setVideoUploadProgress(0);
+        setVideoUploadComplete(false);
+      }, 4000);
     } catch (err: any) {
       setUploadStatus("");
       setUploadError({ type: "video", message: err.message || "Video upload failed" });
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
-    } finally {
       setVideoUploading(false);
       setVideoUploadProgress(0);
+    } finally {
       if (videoInputRef.current) videoInputRef.current.value = "";
     }
   }, [selectedCompId, toast]);
@@ -839,24 +904,97 @@ export default function TalentDashboard({ user, profile }: Props) {
                           </Button>
                         </div>
                       </div>
-                      <p className="text-xs text-white/30">Videos are uploaded to Vimeo in your competition folder.</p>
+                      {!videoUploading && (
+                        <p className="text-xs text-white/30">Videos are uploaded to Vimeo in your competition folder.</p>
+                      )}
 
                       {videoUploading && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3 bg-orange-500/10 border border-orange-500/20 rounded-md px-4 py-3" data-testid="status-video-uploading">
-                            <Loader2 className="h-5 w-5 animate-spin text-orange-400 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-orange-300">{uploadStatus || "Preparing upload..."}</p>
-                              <p className="text-xs text-white/40 mt-0.5">Please wait, do not close this page</p>
+                        <div className="rounded-lg bg-black/40 border border-orange-500/30 overflow-hidden" data-testid="status-video-uploading">
+                          <div className="px-4 py-3 border-b border-white/10">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Video className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                                <span className="text-sm text-white/80 truncate">{videoUploadFileName}</span>
+                              </div>
+                              <span className="text-xs text-white/40 flex-shrink-0">{videoUploadFileSize}</span>
                             </div>
                           </div>
-                          {videoUploadProgress > 0 && (
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between gap-2 text-sm">
-                                <span className="text-white/60">Progress</span>
-                                <span className="text-orange-400 font-medium">{videoUploadProgress}%</span>
+
+                          <div className="px-4 py-3 space-y-3">
+                            <div className="flex items-center gap-3">
+                              {videoUploadStep === "done" ? (
+                                <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                                  <Check className="h-4 w-4 text-green-400" />
+                                </div>
+                              ) : (
+                                <div className="h-8 w-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                                  <Loader2 className="h-4 w-4 animate-spin text-orange-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium ${videoUploadStep === "done" ? "text-green-300" : "text-orange-300"}`}>
+                                  {videoUploadStep === "preparing" && "Preparing upload..."}
+                                  {videoUploadStep === "uploading" && `Uploading — ${videoUploadProgress}%`}
+                                  {videoUploadStep === "finalizing" && "Processing video..."}
+                                  {videoUploadStep === "done" && "Upload complete!"}
+                                </p>
+                                <p className="text-xs text-white/40 mt-0.5">
+                                  {videoUploadStep === "preparing" && "Getting things ready, one moment..."}
+                                  {videoUploadStep === "uploading" && (uploadStatus || "Transferring file...")}
+                                  {videoUploadStep === "finalizing" && "Vimeo is processing your video, almost done..."}
+                                  {videoUploadStep === "done" && "Your video will appear below shortly."}
+                                </p>
                               </div>
-                              <Progress value={videoUploadProgress} className="h-2.5 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-amber-500" />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Progress
+                                value={videoUploadStep === "preparing" ? 0 : videoUploadProgress}
+                                className={`h-3 bg-white/10 transition-all ${
+                                  videoUploadStep === "done"
+                                    ? "[&>div]:bg-gradient-to-r [&>div]:from-green-500 [&>div]:to-emerald-400"
+                                    : "[&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-amber-500"
+                                }`}
+                              />
+                              <div className="flex items-center justify-between text-xs text-white/40">
+                                <span>
+                                  {videoUploadStep === "preparing" && "Waiting..."}
+                                  {videoUploadStep === "uploading" && (videoUploadSpeed || "Calculating speed...")}
+                                  {videoUploadStep === "finalizing" && "Almost there..."}
+                                  {videoUploadStep === "done" && "Finished"}
+                                </span>
+                                <span>
+                                  {videoUploadStep === "uploading" && videoUploadEta}
+                                  {videoUploadStep === "done" && "100%"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 pt-1">
+                              {["preparing", "uploading", "finalizing", "done"].map((step, i) => {
+                                const steps = ["preparing", "uploading", "finalizing", "done"];
+                                const currentIdx = steps.indexOf(videoUploadStep);
+                                const isActive = i <= currentIdx;
+                                const labels = ["Prepare", "Upload", "Process", "Done"];
+                                return (
+                                  <div key={step} className="flex items-center gap-1.5 flex-1">
+                                    <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                                      isActive
+                                        ? step === "done" ? "bg-green-400" : "bg-orange-400"
+                                        : "bg-white/20"
+                                    }`} />
+                                    <span className={`text-[10px] uppercase tracking-wider ${
+                                      isActive ? "text-white/60" : "text-white/20"
+                                    }`}>{labels[i]}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {videoUploadStep !== "done" && (
+                            <div className="px-4 py-2 bg-orange-500/5 border-t border-white/5">
+                              <p className="text-[11px] text-white/30 text-center">Please keep this page open until the upload finishes</p>
                             </div>
                           )}
                         </div>
