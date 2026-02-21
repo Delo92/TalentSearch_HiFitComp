@@ -540,6 +540,33 @@ export const firestoreContestants = {
     const updated = await ref.get();
     return updated.data() as FirestoreContestant;
   },
+
+  async delete(id: number): Promise<boolean> {
+    const ref = db().collection(COLLECTIONS.CONTESTANTS).doc(String(id));
+    const doc = await ref.get();
+    if (!doc.exists) return false;
+    const contestant = doc.data() as FirestoreContestant;
+    const votesSnapshot = await db()
+      .collection(COLLECTIONS.VOTES)
+      .where("contestantId", "==", id)
+      .get();
+    if (!votesSnapshot.empty) {
+      const batch = db().batch();
+      votesSnapshot.docs.forEach(voteDoc => batch.delete(voteDoc.ref));
+      await batch.commit();
+    }
+    const voteCountsSnapshot = await db()
+      .collection(COLLECTIONS.VOTE_COUNTS)
+      .where("contestantId", "==", id)
+      .get();
+    if (!voteCountsSnapshot.empty) {
+      const batch2 = db().batch();
+      voteCountsSnapshot.docs.forEach(vcDoc => batch2.delete(vcDoc.ref));
+      await batch2.commit();
+    }
+    await ref.delete();
+    return true;
+  },
 };
 
 export const firestoreVotes = {

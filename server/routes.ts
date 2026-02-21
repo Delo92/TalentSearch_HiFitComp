@@ -1203,6 +1203,32 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.delete("/api/admin/contestants/:id", firebaseAuth, requireHost, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid contestant ID" });
+
+      const allContestants = await storage.getAllContestants();
+      const contestant = allContestants.find(c => c.id === id);
+      if (!contestant) return res.status(404).json({ message: "Contestant not found" });
+
+      const isAdmin = req.firebaseUser!.level >= 4;
+      if (!isAdmin) {
+        const comp = await storage.getCompetition(contestant.competitionId);
+        if (!comp || comp.createdBy !== req.firebaseUser!.uid) {
+          return res.status(403).json({ message: "You can only remove contestants from your own competitions" });
+        }
+      }
+
+      const deleted = await storage.deleteContestant(id);
+      if (!deleted) return res.status(404).json({ message: "Contestant not found" });
+      res.json({ message: "Contestant removed successfully" });
+    } catch (error: any) {
+      console.error("Delete contestant error:", error);
+      res.status(500).json({ message: "Failed to remove contestant" });
+    }
+  });
+
   app.get("/api/admin/storage", firebaseAuth, requireAdmin, async (_req, res) => {
     try {
       const [driveUsage, vimeoUsage] = await Promise.all([

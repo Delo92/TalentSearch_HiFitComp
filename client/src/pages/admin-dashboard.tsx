@@ -529,6 +529,19 @@ function ExpandedHostComps({ hostUid, hostName }: { hostUid: string; hostName: s
                       {c.applicationStatus}
                     </Badge>
                     <span className="text-xs text-white/40">{c.voteCount} votes</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-red-400/60 hover:text-red-400 hover:bg-red-500/10"
+                      onClick={() => {
+                        if (confirm(`Remove ${c.displayName} from this competition? This will also delete their votes.`)) {
+                          deleteContestantMutation.mutate(c.id);
+                        }
+                      }}
+                      data-testid={`button-remove-contestant-${c.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -899,6 +912,21 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
     onError: (err: Error) => {
       toast({ title: "Delete failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
+  const deleteContestantMutation = useMutation({
+    mutationFn: async (contestantId: number) => {
+      await apiRequest("DELETE", `/api/admin/contestants/${contestantId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/contestants"] });
+      toast({ title: "Contestant removed from competition" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Remove failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
     },
   });
 

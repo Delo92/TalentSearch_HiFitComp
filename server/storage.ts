@@ -42,6 +42,7 @@ export interface IStorage {
   createContestant(contestant: Omit<FirestoreContestant, "id">): Promise<FirestoreContestant>;
   updateContestantStatus(id: number, status: string): Promise<FirestoreContestant | null>;
   getContestant(competitionId: number, talentProfileId: number): Promise<FirestoreContestant | null>;
+  deleteContestant(id: number): Promise<boolean>;
   getAllContestants(): Promise<(FirestoreContestant & { talentProfile: FirestoreTalentProfile; competitionTitle: string })[]>;
 
   castVote(vote: { contestantId: number; competitionId: number; voterIp: string | null; userId?: string | null; purchaseId?: number | null; source?: "online" | "in_person"; refCode?: string | null }): Promise<FirestoreVote>;
@@ -184,6 +185,10 @@ export class FirestoreStorage implements IStorage {
 
   async getContestant(competitionId: number, talentProfileId: number): Promise<FirestoreContestant | null> {
     return firestoreContestants.get(competitionId, talentProfileId);
+  }
+
+  async deleteContestant(id: number): Promise<boolean> {
+    return firestoreContestants.delete(id);
   }
 
   async getAllContestants(): Promise<(FirestoreContestant & { talentProfile: FirestoreTalentProfile; competitionTitle: string })[]> {
