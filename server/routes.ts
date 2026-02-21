@@ -526,6 +526,16 @@ export async function registerRoutes(
     const globalMaxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
     const globalMaxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
 
+    const globalSettings = await firestoreSettings.get();
+    const minVoteCost = globalSettings?.defaultVoteCost ?? 0;
+    const minMaxVotesPerDay = globalSettings?.defaultMaxVotesPerDay ?? 1;
+
+    let finalVoteCost = parsed.data.voteCost ?? 0;
+    if (finalVoteCost < minVoteCost) finalVoteCost = minVoteCost;
+
+    let finalMaxVotesPerDay = parsed.data.maxVotesPerDay ?? 10;
+    if (finalMaxVotesPerDay > minMaxVotesPerDay && minMaxVotesPerDay > 0) finalMaxVotesPerDay = Math.min(finalMaxVotesPerDay, minMaxVotesPerDay);
+
     let compMaxImages = parsed.data.maxImagesPerContestant ?? null;
     let compMaxVideos = parsed.data.maxVideosPerContestant ?? null;
     if (compMaxImages !== null && compMaxImages > globalMaxImages) compMaxImages = globalMaxImages;
@@ -533,6 +543,8 @@ export async function registerRoutes(
 
     const comp = await storage.createCompetition({
       ...parsed.data,
+      voteCost: finalVoteCost,
+      maxVotesPerDay: finalMaxVotesPerDay,
       description: parsed.data.description || null,
       coverImage: parsed.data.coverImage || null,
       coverVideo: null,
@@ -577,7 +589,30 @@ export async function registerRoutes(
       }
     }
 
-    const updated = await storage.updateCompetition(id, req.body);
+    const updateData = { ...req.body };
+
+    const globalSettings = await firestoreSettings.get();
+    const minVoteCost = globalSettings?.defaultVoteCost ?? 0;
+    const minMaxVotesPerDay = globalSettings?.defaultMaxVotesPerDay ?? 1;
+
+    if (updateData.voteCost !== undefined && updateData.voteCost < minVoteCost) {
+      updateData.voteCost = minVoteCost;
+    }
+    if (updateData.maxVotesPerDay !== undefined && minMaxVotesPerDay > 0 && updateData.maxVotesPerDay > minMaxVotesPerDay) {
+      updateData.maxVotesPerDay = minMaxVotesPerDay;
+    }
+
+    const settingsDoc = await getFirestore().collection("platformSettings").doc("global").get();
+    const globalMaxImages = settingsDoc.exists ? (settingsDoc.data()?.maxImagesPerContestant ?? 10) : 10;
+    const globalMaxVideos = settingsDoc.exists ? (settingsDoc.data()?.maxVideosPerContestant ?? 3) : 3;
+    if (updateData.maxImagesPerContestant !== undefined && updateData.maxImagesPerContestant > globalMaxImages) {
+      updateData.maxImagesPerContestant = globalMaxImages;
+    }
+    if (updateData.maxVideosPerContestant !== undefined && updateData.maxVideosPerContestant > globalMaxVideos) {
+      updateData.maxVideosPerContestant = globalMaxVideos;
+    }
+
+    const updated = await storage.updateCompetition(id, updateData);
     if (!updated) return res.status(404).json({ message: "Competition not found" });
     res.json(updated);
   });

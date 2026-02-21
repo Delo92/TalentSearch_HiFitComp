@@ -1203,8 +1203,11 @@ export default function AdminDashboard({ user }: { user: any }) {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-white/60">Vote Cost ($)</Label>
-                    <Input type="number" step="0.01" value={voteCost} onChange={(e) => setVoteCost(e.target.value)} placeholder="0"
+                    <Input type="number" step="0.01" min={platformSettings?.defaultVoteCost ?? 0} value={voteCost} onChange={(e) => setVoteCost(e.target.value)} placeholder="0"
                       className="bg-white/5 border-white/10 text-white" data-testid="input-vote-cost" />
+                    {(platformSettings?.defaultVoteCost ?? 0) > 0 && (
+                      <p className="text-orange-400/70 text-xs">Minimum: ${(platformSettings?.defaultVoteCost ?? 0).toFixed(2)} (set in platform settings)</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -3104,7 +3107,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                         />
                       </div>
                       <div>
-                        <Label className="text-white/50 text-xs">Default Vote Cost ($)</Label>
+                        <Label className="text-white/50 text-xs">Minimum Vote Cost ($)</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -3113,6 +3116,7 @@ export default function AdminDashboard({ user }: { user: any }) {
                           className="bg-white/[0.08] border-white/20 text-white"
                           data-testid="input-default-vote-cost"
                         />
+                        <p className="text-white/30 text-[10px] mt-0.5">Competitions cannot set vote cost below this amount</p>
                       </div>
                       <div>
                         <Label className="text-white/50 text-xs">Price of 1 Vote ($)</Label>

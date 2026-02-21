@@ -715,11 +715,15 @@ export default function HostDashboard({ user }: { user: any }) {
                             <Input
                               type="number"
                               step="0.01"
+                              min={platformSettings?.defaultVoteCost ?? 0}
                               value={editForm.voteCost ?? 0}
                               onChange={(e) => setEditForm({ ...editForm, voteCost: parseFloat(e.target.value) || 0 })}
                               className="bg-white/[0.08] border-white/20 text-white"
                               data-testid={`edit-votecost-${comp.id}`}
                             />
+                            {(platformSettings?.defaultVoteCost ?? 0) > 0 && (
+                              <p className="text-orange-400/70 text-[10px] mt-0.5">Min: ${(platformSettings?.defaultVoteCost ?? 0).toFixed(2)}</p>
+                            )}
                           </div>
                           <div>
                             <Label className="text-white/50 text-xs">Max Images Per Contestant</Label>

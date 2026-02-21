@@ -72,6 +72,10 @@ export function CompetitionDetailModal({ compId }: { compId: number }) {
     queryKey: ["/api/competitions", compId, "vote-breakdown"],
   });
 
+  const { data: platformSettings } = useQuery<any>({
+    queryKey: ["/api/platform-settings"],
+  });
+
   useEffect(() => {
     if (data?.competition) {
       const c = data.competition;
@@ -185,7 +189,10 @@ export function CompetitionDetailModal({ compId }: { compId: number }) {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs text-white/40">Vote Cost ($)</Label>
-                <Input type="number" step="0.01" min="0" value={voteCost} onChange={(e) => setVoteCost(e.target.value)} className="bg-white/[0.07] border-white/15 text-white mt-1" data-testid="input-comp-vote-cost" />
+                <Input type="number" step="0.01" min={platformSettings?.defaultVoteCost ?? 0} value={voteCost} onChange={(e) => setVoteCost(e.target.value)} className="bg-white/[0.07] border-white/15 text-white mt-1" data-testid="input-comp-vote-cost" />
+                {(platformSettings?.defaultVoteCost ?? 0) > 0 && (
+                  <p className="text-orange-400/70 text-[10px] mt-0.5">Min: ${(platformSettings?.defaultVoteCost ?? 0).toFixed(2)}</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs text-white/40">Max Votes/Day</Label>
