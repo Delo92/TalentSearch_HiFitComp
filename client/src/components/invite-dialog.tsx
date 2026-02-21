@@ -62,7 +62,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [targetLevel, setTargetLevel] = useState("");
+  const [targetLevel, setTargetLevel] = useState("2");
   const [competitionId, setCompetitionId] = useState("");
   const [message, setMessage] = useState("");
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export function InviteDialog({ senderLevel }: { senderLevel: number }) {
       queryClient.invalidateQueries({ queryKey: ["/api/invitations/sent"] });
       setEmail("");
       setName("");
-      setTargetLevel("");
+      setTargetLevel("2");
       setCompetitionId("");
       setMessage("");
       const link = `${window.location.origin}/register?invite=${data.token}`;
