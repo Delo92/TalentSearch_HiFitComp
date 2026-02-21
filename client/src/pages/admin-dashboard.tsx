@@ -930,6 +930,21 @@ export default function AdminDashboard({ user }: { user: any }) {
     },
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (uid: string) => {
+      await apiRequest("DELETE", `/api/admin/users/${uid}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/contestants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitions"] });
+      toast({ title: "User completely deleted" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Delete failed", description: err.message.replace(/^\d+:\s*/, ""), variant: "destructive" });
+    },
+  });
+
   const resetLiveryMutation = useMutation({
     mutationFn: async (imageKey: string) => {
       await apiRequest("DELETE", `/api/admin/livery/${imageKey}`);
@@ -2587,7 +2602,23 @@ export default function AdminDashboard({ user }: { user: any }) {
                                 </Badge>
                               </div>
                             </div>
-                            <Eye className="h-4 w-4 text-white/20 shrink-0" />
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Eye className="h-4 w-4 text-white/20" />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Permanently delete ${u.displayName}? This removes them from Firebase, Firestore, all competitions, and everything. This cannot be undone.`)) {
+                                    deleteUserMutation.mutate(u.userId);
+                                  }
+                                }}
+                                data-testid={`button-delete-user-${u.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}

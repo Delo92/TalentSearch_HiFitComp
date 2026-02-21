@@ -1501,6 +1501,35 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/users/:uid", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { uid } = req.params;
+
+      const profile = await storage.getTalentProfileByUserId(uid);
+      if (profile) {
+        const contestantEntries = await storage.getContestantsByTalent(profile.id);
+        for (const entry of contestantEntries) {
+          await storage.deleteContestant(entry.id);
+        }
+      }
+
+      await storage.deleteTalentProfileByUserId(uid);
+
+      try {
+        await getFirestore().collection("users").doc(uid).delete();
+      } catch (e) {}
+
+      try {
+        await deleteFirebaseUser(uid);
+      } catch (e) {}
+
+      res.json({ message: "User fully deleted" });
+    } catch (error: any) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   app.patch("/api/admin/users/:uid/level", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const { uid } = req.params;

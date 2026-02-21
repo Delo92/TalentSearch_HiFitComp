@@ -484,6 +484,18 @@ export const firestoreTalentProfiles = {
       .get();
     return snapshot.docs.map(doc => doc.data() as FirestoreTalentProfile);
   },
+
+  async deleteByUserId(userId: string): Promise<boolean> {
+    const snapshot = await db()
+      .collection(COLLECTIONS.TALENT_PROFILES)
+      .where("userId", "==", userId)
+      .get();
+    if (snapshot.empty) return false;
+    for (const doc of snapshot.docs) {
+      await doc.ref.delete();
+    }
+    return true;
+  },
 };
 
 export const firestoreContestants = {

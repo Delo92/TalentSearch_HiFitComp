@@ -27,6 +27,8 @@ export interface IStorage {
   getAdminProfiles(): Promise<FirestoreTalentProfile[]>;
   getHostProfiles(): Promise<FirestoreTalentProfile[]>;
 
+  deleteTalentProfileByUserId(userId: string): Promise<boolean>;
+
   getCompetitions(): Promise<FirestoreCompetition[]>;
   getCompetitionsByStatus(status: string): Promise<FirestoreCompetition[]>;
   getCompetitionsByCategory(category: string): Promise<FirestoreCompetition[]>;
@@ -106,6 +108,10 @@ export class FirestoreStorage implements IStorage {
 
   async getHostProfiles(): Promise<FirestoreTalentProfile[]> {
     return firestoreTalentProfiles.getByRole("host");
+  }
+
+  async deleteTalentProfileByUserId(userId: string): Promise<boolean> {
+    return firestoreTalentProfiles.deleteByUserId(userId);
   }
 
   async getCompetitions(): Promise<FirestoreCompetition[]> {
