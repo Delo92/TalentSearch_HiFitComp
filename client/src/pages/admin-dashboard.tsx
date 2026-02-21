@@ -2639,12 +2639,20 @@ export default function AdminDashboard({ user }: { user: any }) {
                                     className="bg-green-500/20 text-green-400 border-0" data-testid={`button-approve-${contestant.id}`}>
                                     <Check className="h-4 w-4" />
                                   </Button>
-                                  <Button size="icon" onClick={() => updateStatusMutation.mutate({ id: contestant.id, status: "rejected" })}
-                                    className="bg-red-500/20 text-red-400 border-0" data-testid={`button-reject-${contestant.id}`}>
-                                    <XIcon className="h-4 w-4" />
-                                  </Button>
                                 </>
                               )}
+                              <Button
+                                size="icon"
+                                onClick={() => {
+                                  if (confirm(`Remove ${contestant.talentProfile.displayName} from ${contestant.competitionTitle}? This will delete their votes too.`)) {
+                                    deleteContestantMutation.mutate(contestant.id);
+                                  }
+                                }}
+                                className="bg-red-500/20 text-red-400 border-0"
+                                data-testid={`button-delete-contestant-${contestant.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </div>

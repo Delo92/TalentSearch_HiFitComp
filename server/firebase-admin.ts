@@ -54,6 +54,10 @@ export async function setUserLevel(uid: string, level: number): Promise<void> {
   await getFirebaseAuth().setCustomUserClaims(uid, { level });
 }
 
+export async function deleteFirebaseUser(uid: string): Promise<void> {
+  await getFirebaseAuth().deleteUser(uid);
+}
+
 export interface FirestoreUser {
   uid: string;
   email: string;

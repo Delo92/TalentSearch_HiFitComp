@@ -5,6 +5,7 @@ import { firebaseAuth, requireAdmin, requireHost, requireTalent } from "./auth-m
 import {
   verifyFirebaseToken,
   createFirebaseUser,
+  deleteFirebaseUser,
   setUserLevel,
   getFirestoreUser,
   createFirestoreUser,
