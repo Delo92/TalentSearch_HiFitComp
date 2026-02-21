@@ -166,9 +166,15 @@ export async function sendInviteEmail(opts: {
       <h2>${applyPlaceholders(heading, vars)}</h2>
       <p>${applyPlaceholders(body, vars)}</p>
       ${credentialBlock}
-      <p style="text-align: center;">
-        <a href="${actionUrl}" class="btn">${actionLabel}</a>
-      </p>
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px auto;">
+        <tr>
+          <td style="border-radius: 6px; background: linear-gradient(135deg, #FF5A09, #F59E0B);">
+            <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 16px 40px; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: bold; text-decoration: none; text-transform: uppercase; letter-spacing: 2px; border-radius: 6px; mso-padding-alt: 0; background: linear-gradient(135deg, #FF5A09, #F59E0B);">
+              &#9654;&nbsp; ${actionLabel}
+            </a>
+          </td>
+        </tr>
+      </table>
       <p style="font-size: 13px; color: #888;">Or copy and paste this link into your browser:<br/>
         <span style="color: #FF5A09; word-break: break-all;">${actionUrl}</span>
       </p>
