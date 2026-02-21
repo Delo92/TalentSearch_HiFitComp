@@ -55,7 +55,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [viewerName, setViewerName] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState<number>(1);
+  const [selectedLevel, setSelectedLevel] = useState<number>(2);
   const [loading, setLoading] = useState(false);
 
   const isViewerMode = selectedLevel === 1;
